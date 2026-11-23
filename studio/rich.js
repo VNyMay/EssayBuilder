@@ -622,10 +622,10 @@ function richKeys(event) {
   } else if (mod && !event.shiftKey && key === '=') {
     event.preventDefault();
     execFormat('subscript');
-  } else if (mod && (key === '>' || key === '.' || key === ']') && (event.shiftKey || key === ']')) {
+  } else if (mod && (((key === '>' || key === '.' || event.code === 'Period') && event.shiftKey) || key === ']')) {
     event.preventDefault();
     stepSize(1);
-  } else if (mod && (key === '<' || key === ',' || key === '[') && (event.shiftKey || key === '[')) {
+  } else if (mod && (((key === '<' || key === ',' || event.code === 'Comma') && event.shiftKey) || key === '[')) {
     event.preventDefault();
     stepSize(-1);
   } else if (!mod && event.shiftKey && (key === '>' || key === '<') && window.getSelection().toString()) {

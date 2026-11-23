@@ -370,7 +370,8 @@ class Compiler(*KITS):
             heading = HEADING.match(stripped)
             if heading:
                 flush()
-                title, attrs = split_attrs(heading.group(2))
+                raw = heading.group(2)
+                title, attrs = (raw, {}) if re.search(r"\]\{[^{}]*\}\s*$", raw) else split_attrs(raw)
                 blocks.append(Block("heading", line, {"level": len(heading.group(1)), "text": title, "attrs": attrs}))
                 i += 1
                 continue

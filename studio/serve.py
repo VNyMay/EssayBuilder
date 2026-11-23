@@ -575,12 +575,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(STATE.snapshot())
             if route == "/api/fonts":
                 return self.send_json(font_lists())
-            if route == "/api/forget":
-                STATE.forget(body["path"])
-                return self.send_json(STATE.snapshot())
-            if route == "/api/trash":
-                STATE.trash(body["path"])
-                return self.send_json(STATE.snapshot())
+            if route in {"/api/forget", "/api/trash"}:
+                failed = []
+                for path in body.get("paths") or [body["path"]]:
+                    try:
+                        (STATE.forget if route == "/api/forget" else STATE.trash)(path)
+                    except Exception as error:
+                        failed.append(str(error))
+                if failed and not body.get("paths"):
+                    raise ValueError(failed[0])
+                return self.send_json({**STATE.snapshot(), "failed": len(failed)})
             if route == "/api/import":
                 STATE.import_file(body["name"], body["data"])
                 return self.send_json(STATE.snapshot())

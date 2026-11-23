@@ -1927,11 +1927,21 @@ function showStart(state) {
       const folder = parts.pop() || '';
       const turn = ((name.length * 37 + index * 53) % 9) / 2 - 2;
       const card = h('button', {
-        class: 'sheet',
+        class: `sheet${S.recentPick && S.recentPick.has(path) ? ' picked' : ''}`,
         'data-path': path,
         style: `--r:${turn.toFixed(1)}deg;--i:${index}`,
-        html: '<span class="sheet-title"></span><span class="sheet-lines"></span><span class="sheet-where"></span>',
-        onclick: () => openPath(path),
+        html: `<span class="sheet-title"></span><span class="sheet-lines"></span><span class="sheet-where"></span><span class="sheet-check">${icon('check', 16)}</span>`,
+        onclick: (event) => {
+          if (S.recentPick || event.ctrlKey || event.shiftKey || event.metaKey) {
+            if (!S.recentPick) S.recentPick = new Set();
+            if (S.recentPick.has(path)) S.recentPick.delete(path);
+            else S.recentPick.add(path);
+            card.classList.toggle('picked', S.recentPick.has(path));
+            paintRecentBar(state);
+            return;
+          }
+          openPath(path);
+        },
       });
       card.querySelector('.sheet-title').textContent = name;
       card.querySelector('.sheet-where').textContent = folder;
@@ -1959,6 +1969,50 @@ function showStart(state) {
       return card;
     }),
   );
+  $('#recentSelect').onclick = () => {
+    S.recentPick = S.recentPick ? null : new Set();
+    showStart(state);
+  };
+  paintRecentBar(state);
+}
+
+function paintRecentBar(state) {
+  const bar = $('#recentBar');
+  const button = $('#recentSelect');
+  const items = state.recent || [];
+  const picking = Boolean(S.recentPick);
+  document.querySelector('#recentBox').classList.toggle('picking', picking);
+  button.textContent = picking ? 'Done' : 'Select';
+  if (!picking) {
+    conceal(bar);
+    return;
+  }
+  const count = S.recentPick.size;
+  const act = async (route, done) => {
+    if (!count) return;
+    const paths = [...S.recentPick];
+    document.querySelectorAll('#recent button.sheet.picked').forEach((card) => card.classList.add('gone'));
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    const next = await api(route, { paths });
+    S.recentPick = null;
+    if (next.error) {
+      toast(next.error.replace(/^\w+: /, ''), true);
+      showStart(state);
+      return;
+    }
+    toast(next.failed ? `${done}, but ${next.failed} could not be changed` : done);
+    showStart(next);
+  };
+  bar.replaceChildren(
+    h('span', { class: 'recent-count', text: count ? `${count} selected` : 'Click essays to select them' }),
+    h('button', { type: 'button', class: 'pill ghost small', text: count === items.length ? 'Select none' : 'Select all', onclick: () => {
+      S.recentPick = count === items.length ? new Set() : new Set(items.slice(0, 8));
+      showStart(state);
+    } }),
+    h('button', { type: 'button', class: 'pill ghost small', text: 'Remove from list', disabled: !count, onclick: () => act('/api/forget', count === 1 ? 'Removed from the list' : `${count} removed from the list`) }),
+    h('button', { type: 'button', class: 'pill small danger-pill', html: `${icon('trash', 14)}<span>Delete</span>`, disabled: !count, onclick: () => act('/api/trash', count === 1 ? 'Moved to the Recycle Bin' : `${count} moved to the Recycle Bin`) }),
+  );
+  reveal(bar);
 }
 
 async function openPath(path) {
@@ -2142,6 +2196,26 @@ function bind() {
       remove(S.sel);
     }
   });
+  document.addEventListener('keydown', (event) => {
+    const target = event.target;
+    if (!(event.ctrlKey || event.metaKey) || !event.shiftKey || !['Period', 'Comma'].includes(event.code)) return;
+    if (!(target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.type === 'text')) || !target.closest('#panel, #pages')) return;
+    const { selectionStart: from, selectionEnd: to, value } = target;
+    if (from === to) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const picked = value.slice(from, to);
+    const styled = picked.match(/^\[([\s\S]*)\]\{([^{}]*)\}$/);
+    const inner = styled ? styled[1] : picked;
+    const options = styled ? styled[2] : '';
+    const found = options.match(/(?:^|\s)size=([\d.]+)/);
+    const now = found ? Number(found[1]) : 12;
+    const sizes = SIZE_LIST.map(Number);
+    const next = (event.code === 'Period' ? sizes.find((size) => size > now) : [...sizes].reverse().find((size) => size < now)) || now;
+    const rest = options.replace(/(?:^|\s)size=[\d.]+/, '').trim();
+    target.setRangeText(`[${inner}]{${[`size=${next}`, rest].filter(Boolean).join(' ')}}`, from, to, 'select');
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+  }, true);
   document.addEventListener('beforeinput', (event) => {
     if (!S.edit || !S.edit.ta || !S.edit.ta.contains(event.target)) return;
     if (event.inputType === 'historyUndo') {

@@ -1364,11 +1364,12 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  color: var(--muted);
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: #fff;
+  background: rgb(32 33 36 / 0.78);
+  box-shadow: 0 4px 10px -4px rgb(0 0 0 / 0.45);
   opacity: 0;
   scale: 0.8;
-  transition: opacity 180ms ease, scale 260ms cubic-bezier(0.3, 0.7, 0.2, 1.6), background-color 160ms ease, color 160ms ease;
+  transition: opacity 180ms ease, scale 260ms cubic-bezier(0.3, 0.7, 0.2, 1.6), background-color 160ms ease;
 }
 
 #recent button.sheet:hover .sheet-more,
@@ -1379,8 +1380,89 @@
 
 .sheet-more:hover,
 .sheet-more.open {
-  background: var(--panel);
+  background: var(--green);
+}
+
+#recentBox.picking .sheet-more {
+  display: none;
+}
+
+.recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recent-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  box-shadow: 0 10px 24px -14px rgb(var(--shadow) / 0.5);
+}
+
+.recent-bar[hidden] {
+  display: none;
+}
+
+.recent-count {
+  flex: 1;
+  font-weight: 600;
   color: var(--text);
+}
+
+.recent-bar .pill:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.danger-pill {
+  background: var(--danger);
+  color: #fff;
+  border-color: transparent;
+}
+
+.danger-pill:hover {
+  filter: brightness(1.08);
+}
+
+.sheet-check {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: transparent;
+  background: var(--surface);
+  border: 2px solid var(--line-strong);
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 160ms ease, scale 260ms cubic-bezier(0.3, 0.7, 0.2, 1.7), background-color 160ms ease, border-color 160ms ease;
+}
+
+#recentBox.picking .sheet-check {
+  opacity: 1;
+  scale: 1;
+}
+
+#recent button.sheet.picked .sheet-check {
+  color: #fff;
+  background: var(--green);
+  border-color: var(--green);
+}
+
+#recent button.sheet.picked {
+  outline: 3px solid rgb(var(--accent-rgb) / 0.6);
+  outline-offset: 3px;
 }
 
 #recent button.sheet.gone {
