@@ -74,6 +74,35 @@ def find_system(family):
     return None
 
 
+def system_families():
+    names = set()
+    if sys.platform == "win32":
+        import winreg
+
+        key = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+        for hive in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+            try:
+                fonts = winreg.OpenKey(hive, key)
+            except OSError:
+                continue
+            for i in range(winreg.QueryInfoKey(fonts)[1]):
+                name = re.sub(r"\s*\(.*\)$", "", winreg.EnumValue(fonts, i)[0])
+                for part in name.split(" & "):
+                    family = re.sub(
+                        r"\s+(Bold|Italic|Light|Semibold|SemiBold|Semilight|SemiLight|Black|Regular|Medium|Thin|ExtraLight|ExtraBold|Condensed|Oblique|Heavy)\b.*$",
+                        "",
+                        part.strip(),
+                    )
+                    if family and not family.startswith("@"):
+                        names.add(family)
+    else:
+        for folder in [Path("/Library/Fonts"), Path.home() / "Library" / "Fonts", Path("/usr/share/fonts")]:
+            for path in folder.rglob("*") if folder.is_dir() else []:
+                if path.suffix.lower() in {".ttf", ".otf"}:
+                    names.add(re.split(r"[-_]", path.stem)[0])
+    return sorted(names, key=str.lower)
+
+
 def catalogue():
     """{id: {family, category, weights, styles, subsets}} for the whole library (cached for 30 days)."""
     try:

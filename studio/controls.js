@@ -222,10 +222,13 @@ function stepper({ value, min, max, step = 1, onChange }) {
 
 function colourPicker(value, onPick, allowAuto = true) {
   const box = h('div', { class: 'colours' });
-  const custom = h('input', { type: 'color', title: 'Custom colour' });
-  custom.value = /^#[0-9a-f]{6}$/i.test(value) ? value : '#1f4e79';
+  const custom = h('button', { type: 'button', class: 'swatch-dot custom', title: 'Custom colour', html: icon('plus', 12) });
   const mark = () => {
     box.querySelectorAll('.swatch-dot').forEach((item) => item.classList.toggle('on', item.dataset.colour === (value || '')));
+    const own = Boolean(value) && !SWATCHES.includes(value);
+    custom.classList.toggle('on', own);
+    custom.style.background = own ? value : '';
+    custom.classList.toggle('filled', own);
   };
   if (allowAuto) {
     box.append(h('button', { type: 'button', class: 'swatch-dot auto', 'data-colour': '', title: 'Automatic', onclick: () => {
@@ -241,11 +244,11 @@ function colourPicker(value, onPick, allowAuto = true) {
       onPick(colour);
     } }));
   });
-  custom.addEventListener('input', () => {
-    value = custom.value;
+  custom.addEventListener('click', () => openColourPop(custom, value, (colour) => {
+    value = colour;
     mark();
-    onPick(custom.value);
-  });
+    onPick(colour);
+  }));
   box.append(custom);
   mark();
   return box;

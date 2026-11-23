@@ -116,10 +116,10 @@ function swatchMenu(anchor, colors, onPick, reset) {
     node.append(h('div', { class: 'swatch-title', text: 'In this essay' }));
     used.forEach((color) => node.append(dot(color)));
   }
-  const custom = h('input', { type: 'color', class: 'swatch-custom', title: 'Custom colour' });
-  custom.addEventListener('input', () => onPick(custom.value));
-  custom.addEventListener('change', () => closeMenu());
-  node.append(custom);
+  node.append(h('button', { type: 'button', class: 'swatch-reset', html: `${icon('palette', 14)}<span>Custom</span>`, onclick: () => {
+    closeMenu();
+    openColourPop(anchor, '', onPick);
+  } }));
   node.append(h('button', { type: 'button', class: 'swatch-reset', text: reset, onclick: () => { closeMenu(); onPick(null); } }));
   node.addEventListener('mousedown', (event) => event.preventDefault());
   document.body.append(node);

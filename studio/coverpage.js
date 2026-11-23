@@ -359,7 +359,7 @@ function cvRichText(index) {
     setTimeout(() => {
       if (!S.edit || S.edit.ta !== el) return;
       const active = document.activeElement;
-      if (el.contains(active) || (active && active.closest && active.closest('.menu, .fmtbar, .chip-pop, #palette, #panel'))) return;
+      if (el.contains(active) || (active && active.closest && active.closest('.menu, .cpop, .fpop, .fmtbar, .chip-pop, #palette, #panel'))) return;
       closeEditor();
     }, 0);
   });

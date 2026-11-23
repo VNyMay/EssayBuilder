@@ -16,3 +16,4 @@ studio/studio.log
 *.built.html
 .*.print.html
 studio/backups/
+studio/hidden.json

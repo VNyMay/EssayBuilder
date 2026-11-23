@@ -292,7 +292,8 @@ function serializeBlock(model) {
 }
 
 const TEMPLATES = [
-  { group: 'Text', id: 'heading', label: 'Heading', icon: 'heading', kind: 'heading', lines: ['## New heading'] },
+  { group: 'Text', id: 'heading', label: 'Section heading', icon: 'heading', kind: 'heading', lines: ['# New section'] },
+  { group: 'Text', id: 'subheading', label: 'Sub-heading', icon: 'heading', kind: 'heading', lines: ['## New sub-heading'] },
   { group: 'Text', id: 'paragraph', label: 'Paragraph', icon: 'paragraph', kind: 'para', lines: ['New paragraph.'] },
   { group: 'Text', id: 'list', label: 'List', icon: 'list', kind: 'list', lines: ['- First', '- Second', '- Third'] },
   { group: 'Media', id: 'image', label: 'Image', icon: 'image', kind: 'figure', upload: true },

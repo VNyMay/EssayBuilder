@@ -30,6 +30,8 @@ SETTINGS = {
     "cover-style", "subtitle", "author", "school", "date", "candidate", "supervisor", "session", "course",
     "cover-box", "category", "cover-image", "cover-logo", "cover-color", "cover-text", "cover-align", "math-input", "citations", "sources", "embed-project",
     "notes", "header", "footer", "header-on-first", "footer-on-first", "page-number-format", "watermark",
+    "heading-color", "heading-align", "heading-case", "h2-size", "h3-size",
+    "contents-title", "contents-depth", "contents-numbers", "contents-dots",
 }
 # A look is a bundle of settings. Anything the essay sets itself wins over the look.
 LOOKS = {
@@ -701,7 +703,8 @@ class Compiler(*KITS):
             lists += '<div class="lo-title">List of Figures</div><!--LOF-->'
         if self.cfg.get("list-of-tables", "no").lower() in {"yes", "on", "true"}:
             lists += '<div class="lo-title">List of Tables</div><!--LOT-->'
-        self.emit(f'<section class="sec"><h1 id="contents">Contents</h1><!--TOC-->{lists}</section>')
+        heading = escape(self.cfg.get("contents-title", "").strip() or "Contents")
+        self.emit(f'<section class="sec"><h1 id="contents">{heading}</h1><!--TOC-->{lists}</section>')
         self.ids.add("contents")
 
     def close_section(self):
@@ -776,6 +779,8 @@ class Compiler(*KITS):
             flow = "" if first_body or self.cfg["section-breaks"].lower() not in {"no", "off", "false"} else " flow"
             if self.implicit_front and role == "body":
                 flow = " flow"
+            if flags & {"samepage", "nobreak"}:
+                flow = " flow"
             self.implicit_front, self.seen_heading = False, True
             appendix = re.match(r"(?i)appendix\s+([A-Z])(?![A-Za-z])", title)
             self.appendix = appendix.group(1).upper() if appendix else ""
@@ -802,7 +807,9 @@ class Compiler(*KITS):
                 number = f"{self.h1}.{self.h2}"
         else:
             self.ensure_section(block.line)
-            self.emit(f"<h3>{self.inline(text, line)}</h3>")
+            look = style_css(" ".join(f'{key}="{value}"' for key, value in attrs.items() if key in STYLE_KEYS and key != "id"), self, line.where)
+            look = f' style="{look}"' if look else ""
+            self.emit(f"<h3{look}>{self.inline(text, line)}</h3>")
             return
 
         ident = self.unique(attrs.get("id") or slug(title))
@@ -811,7 +818,8 @@ class Compiler(*KITS):
         num = f'<span class="num">{number}</span>' if number else ""
         look = style_css(" ".join(f'{key}="{value}"' for key, value in attrs.items() if key in STYLE_KEYS and key != "id"), self, line.where)
         look = f' style="{look}"' if look else ""
-        self.emit(f'<h{level} id="{ident}"{look}>{num}{self.inline(text, line)}</h{level}>')
+        hidden = ' class="notoc"' if "notoc" in flags else ""
+        self.emit(f'<h{level} id="{ident}"{hidden}{look}>{num}{self.inline(text, line)}</h{level}>')
 
     def do_para(self, block):
         self.ensure_section(block.line)

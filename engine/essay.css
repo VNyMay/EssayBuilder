@@ -23,7 +23,7 @@ a { color: inherit; text-decoration: none; }
 .bad { color: #b00020; font-weight: 700; }
 blockquote { margin: 4pt 0 14pt; padding: 0 0 0 14pt; border-left: 2pt solid var(--hair); line-height: 1.6; }
 blockquote p:last-child { margin-bottom: 0; }
-.probe { position: absolute; left: 0; top: 0; font-size: 4pt; line-height: 1; font-weight: 400; }
+.probe { position: absolute; left: 0; top: 0; font-size: 4pt; line-height: 1; font-weight: 400; text-transform: none !important; letter-spacing: 0 !important; font-variant: normal !important; }
 
 ul, ol { margin: 0 0 10pt; padding-left: 1.6em; }
 li { margin: 0 0 3pt; text-align: justify; }

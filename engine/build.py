@@ -171,6 +171,22 @@ def settings_css(cfg, font):
     if cfg.get("heading-size", "").strip():
         heading = number("heading-size", 15)
         rules.append(f"h1{{font-size:{heading / zoom:.2f}pt}}h2{{font-size:{heading * 0.85 / zoom:.2f}pt}}")
+    colour = cfg.get("heading-color", "").strip()
+    if re.fullmatch(r"#[0-9a-fA-F]{3,8}|[a-zA-Z]+", colour or "-"):
+        rules.append(f"h1,h2,h3{{color:{colour}}}")
+    if cfg.get("heading-align", "").strip().lower() in {"center", "centre", "right"}:
+        rules.append(f"h1,h2{{text-align:{'right' if cfg['heading-align'].strip().lower() == 'right' else 'center'}}}")
+    if cfg.get("heading-case", "").strip().lower() in {"upper", "caps", "uppercase"}:
+        rules.append("h1,h2{text-transform:uppercase;letter-spacing:0.04em}")
+    for key, tag, base in (("h2-size", "h2", 14), ("h3-size", "h3", 12)):
+        if cfg.get(key, "").strip():
+            rules.append(f"{tag}{{font-size:{number(key, base) / zoom:.2f}pt}}")
+    if cfg.get("contents-depth", "").strip() == "1":
+        rules.append(".toc a.l2{display:none}")
+    if cfg.get("contents-numbers", "yes").strip().lower() in OFF:
+        rules.append(".toc a .n{display:none}")
+    if cfg.get("contents-dots", "yes").strip().lower() in OFF:
+        rules.append(".toc .dots{visibility:hidden}")
     if cfg.get("caption-style", "bold").lower() == "italic":  # whole caption italic, like a Word document
         rules.append(".cap{font-style:italic}.cap .lab{font-weight:400}")
     indent = cfg.get("paragraph-indent", "").strip()

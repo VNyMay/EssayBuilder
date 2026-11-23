@@ -22,6 +22,7 @@ ENGINE = ROOT / "engine"
 DATA = Path(os.environ.get("ESSAY_BUILDER_DATA") or STUDIO)
 ESSAYS = Path(os.environ.get("ESSAY_BUILDER_ESSAYS") or ROOT / "Essays")
 RECENT = DATA / "recent.json"
+HIDDEN = DATA / "hidden.json"
 BACKUPS = DATA / "backups"
 STARTER = "title: Untitled essay\nsubject:\ncover: no\ncontents: no\n---\n\n# Introduction\n\n"
 PNG_DPI = 144
@@ -52,19 +53,43 @@ class State:
         self.kept = []
 
     def recent(self):
-        if not RECENT.exists():
-            return []
         try:
-            items = json.loads(RECENT.read_text(encoding="utf-8-sig"))
+            items = json.loads(RECENT.read_text(encoding="utf-8-sig")) if RECENT.exists() else []
         except (OSError, ValueError):
-            return []
+            items = []
         if isinstance(items, str):
             items = [items]
-        found = [item for item in items if isinstance(item, str) and Path(item).is_file()]
+        hidden = self.hidden()
+        found = [item for item in items if isinstance(item, str) and Path(item).is_file() and item not in hidden]
         if ESSAYS.is_dir():
             own = sorted(ESSAYS.rglob("*.txt"), key=lambda file: file.stat().st_mtime, reverse=True)
-            found += [str(file) for file in own if str(file) not in found]
+            found += [str(file) for file in own if str(file) not in found and str(file) not in hidden]
         return found[:8]
+
+    def hidden(self):
+        try:
+            items = json.loads(HIDDEN.read_text(encoding="utf-8-sig")) if HIDDEN.exists() else []
+        except (OSError, ValueError):
+            items = []
+        return set(item for item in items if isinstance(item, str))
+
+    def forget(self, path):
+        hidden = self.hidden() | {str(path)}
+        HIDDEN.write_text(json.dumps(sorted(hidden)), encoding="utf-8")
+        try:
+            items = json.loads(RECENT.read_text(encoding="utf-8-sig")) if RECENT.exists() else []
+        except (OSError, ValueError):
+            items = []
+        RECENT.write_text(json.dumps([item for item in items if item != str(path)]), encoding="utf-8")
+
+    def trash(self, path):
+        target = Path(path)
+        if str(target) not in self.recent() or target.suffix.lower() != ".txt" or not target.is_file():
+            raise ValueError("Only essays from the recent list can be deleted")
+        if self.path is not None and Path(self.path) == target:
+            raise ValueError("Close this essay before deleting it")
+        recycle(target)
+        self.forget(target)
 
     def backup_folder(self):
         import hashlib
@@ -128,6 +153,9 @@ class State:
         return file.read_text(encoding="utf-8")
 
     def remember(self, path):
+        hidden = self.hidden()
+        if str(path) in hidden:
+            HIDDEN.write_text(json.dumps(sorted(hidden - {str(path)})), encoding="utf-8")
         items = [str(path)] + [item for item in self.recent() if item != str(path)]
         RECENT.write_text(json.dumps(items[:8]), encoding="utf-8")
 
@@ -370,6 +398,54 @@ def places():
     return {"countries": sorted(names), "regions": REGIONS}
 
 
+FONT_LISTS = {}
+
+
+def font_lists():
+    if not FONT_LISTS:
+        from lib import fonts
+
+        try:
+            system = fonts.system_families()
+        except Exception:
+            system = []
+        try:
+            google = sorted(
+                ([meta["family"], meta.get("category") or ""] for meta in fonts.catalogue().values() if meta.get("category") not in fonts.SKIP_CATEGORIES),
+                key=lambda item: item[0].lower(),
+            )
+        except Exception:
+            google = []
+        FONT_LISTS.update(system=system, google=google)
+    return FONT_LISTS
+
+
+def recycle(path):
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        class Operation(ctypes.Structure):
+            _fields_ = [
+                ("hwnd", wintypes.HWND),
+                ("wFunc", wintypes.UINT),
+                ("pFrom", wintypes.LPCWSTR),
+                ("pTo", wintypes.LPCWSTR),
+                ("fFlags", ctypes.c_uint16),
+                ("fAnyOperationsAborted", wintypes.BOOL),
+                ("hNameMappings", ctypes.c_void_p),
+                ("lpszProgressTitle", wintypes.LPCWSTR),
+            ]
+
+        operation = Operation(None, 3, str(path) + "\0", None, 0x40 | 0x10 | 0x4 | 0x400, False, None, None)
+        if ctypes.windll.shell32.SHFileOperationW(ctypes.byref(operation)) or operation.fAnyOperationsAborted:
+            raise OSError("The essay could not be moved to the Recycle Bin")
+        return
+    folder = DATA / "trash"
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(path), folder / f"{int(time.time())}-{Path(path).name}")
+
+
 def pick_file():
     if sys.platform != "win32" and not os.environ.get("DISPLAY") and sys.platform != "darwin":
         return None
@@ -496,6 +572,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({"headless": True})
                 if chosen:
                     STATE.open(chosen)
+                return self.send_json(STATE.snapshot())
+            if route == "/api/fonts":
+                return self.send_json(font_lists())
+            if route == "/api/forget":
+                STATE.forget(body["path"])
+                return self.send_json(STATE.snapshot())
+            if route == "/api/trash":
+                STATE.trash(body["path"])
                 return self.send_json(STATE.snapshot())
             if route == "/api/import":
                 STATE.import_file(body["name"], body["data"])

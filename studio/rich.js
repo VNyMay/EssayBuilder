@@ -466,14 +466,10 @@ function mountRichBar() {
     className: 'fmt-drop',
     onPick: (value) => applyFmt((list) => setKey(list, 'size', value || null)),
   });
-  const font = dropdown({
-    choices: [...FONT_LIST.map((v) => ({ value: v, label: v, style: `font-family:'${v}',sans-serif` })), { value: '', label: 'Document font' }],
-    value: '',
-    label: 'Font',
-    keep: true,
-    className: 'fmt-drop wide',
-    onPick: (value) => applyFmt((list) => setKey(list, 'font', value || null)),
-  });
+  const font = fontPicker('', (value) => {
+    restoreSelection();
+    applyFmt((list) => setKey(list, 'font', value || null));
+  }, { keep: true, className: 'fmt-drop wide', empty: 'Font' });
   [size, font].forEach(keep);
   const colorBtn = tool('<span class="aa">A</span><i class="bar-color"></i>', 'Text colour', () => swatchMenu(colorBtn, TEXT_COLORS, (color) => applyFmt((list) => setKey(list, 'color', color)), 'Default'));
   const markBtn = tool(icon('highlight', 17), 'Highlight', () => swatchMenu(markBtn, HIGHLIGHTS, (color) => applyFmt((list) => setKey(list.filter((item) => item.flag !== 'highlight'), 'bg', color)), 'None'));
@@ -511,9 +507,50 @@ function mountRichBar() {
     tool(icon('trash', 16), 'Delete', () => remove(S.sel), 'danger'),
   );
   if (S.edit.cover) [...bar.children].slice(-5).forEach((node) => node.remove());
+  if (S.edit.range && S.edit.range.kind === 'heading') bar.prepend(headingTools(tool), h('span', { class: 'fmt-sep' }));
   S.edit.bar = bar;
   el.parentNode.append(bar);
   placeFormatBar();
+}
+
+function headTokens() {
+  const match = (S.edit.tail || '').match(/\{([^{}]*)\}/);
+  return match ? match[1].trim().split(/\s+/).filter(Boolean) : [];
+}
+
+function headingTools(tool) {
+  const level = () => Math.min(3, (S.edit.prefix.match(/#/g) || []).length || 1);
+  const box = h('span', { class: 'head-tools' });
+  const write = (tokens) => {
+    S.edit.tail = tokens.length ? ` {${tokens.join(' ')}}` : '';
+    commitRich();
+    paint();
+  };
+  const toggle = (name) => {
+    const tokens = headTokens();
+    write(tokens.includes(name) ? tokens.filter((item) => item !== name) : [...tokens, name]);
+  };
+  const levels = ['Section heading', 'Sub-heading', 'Minor heading'].map((title, index) => tool(`H${index + 1}`, title, () => {
+    S.edit.prefix = `${'#'.repeat(index + 1)} `;
+    commitRich();
+    paint();
+  }, 'lvl'));
+  const number = tool('#', 'Numbered', () => toggle('nonumber'), 'flag');
+  const page = tool(icon('newFile', 15), 'Starts on a new page', () => toggle('samepage'), 'flag');
+  const toc = tool(icon('list', 15), 'Shown in Contents', () => toggle('notoc'), 'flag');
+  const paint = () => {
+    const tokens = headTokens();
+    levels.forEach((button, index) => button.classList.toggle('on', level() === index + 1));
+    number.classList.toggle('on', !tokens.includes('nonumber'));
+    page.classList.toggle('on', !tokens.includes('samepage'));
+    toc.classList.toggle('on', !tokens.includes('notoc'));
+    number.hidden = level() === 3;
+    page.hidden = level() !== 1;
+    toc.hidden = level() === 3;
+  };
+  box.append(...levels, h('span', { class: 'fmt-sep' }), number, page, toc);
+  paint();
+  return box;
 }
 
 function richMathPalette(anchor) {
@@ -668,7 +705,7 @@ function openRich(range, selectAll) {
     setTimeout(() => {
       if (!S.edit || S.edit.ta !== el) return;
       const active = document.activeElement;
-      if (el.contains(active) || (active && active.closest && active.closest('.menu, .fmtbar, .chip-pop, #palette'))) return;
+      if (el.contains(active) || (active && active.closest && active.closest('.menu, .cpop, .fpop, .fmtbar, .chip-pop, #palette'))) return;
       closeChipPop();
       closeEditor();
     }, 0);

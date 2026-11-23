@@ -19,8 +19,8 @@ html = html.replace(/<h([12])(\s[^>]*)?>/g, (tag, level, attrs = '') => {
 });
 
 const entries = [];
-html.replace(/<h([12])[^>]*\sid="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/g, (_, level, id, inner) => {
-  if (id === 'contents') return;
+html.replace(/<h([12])[^>]*\sid="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/g, (whole, level, id, inner) => {
+  if (id === 'contents' || /class="[^"]*notoc/.test(whole.slice(0, whole.indexOf('>')))) return;
   inner = inner.replace(/<span class="pn"[^>]*><\/span>/g, '');
   const match = inner.match(/^<span class="num">([^<]*)<\/span>([\s\S]*)$/);
   entries.push({
@@ -178,7 +178,7 @@ const css = fs
     const data = fs.readFileSync(path.join(dist, 'fonts', font)).toString('base64');
     return `url(data:font/woff2;base64,${data})`;
   });
-const quiet = mode === 'both' ? '<style>.probe{color:transparent !important;position:absolute;font-size:1px;line-height:0;white-space:nowrap}</style>' : '';
+const quiet = mode === 'both' ? '<style>.probe{color:transparent !important;position:absolute;font-size:1px;line-height:0;white-space:nowrap;text-transform:none !important;letter-spacing:0 !important}</style>' : '';
 html = html.replace('</head>', `<style>${css}</style>\n<style>.katex{font-size:1.06em}</style>${quiet}\n</head>`);
 
 fs.writeFileSync(output, html);

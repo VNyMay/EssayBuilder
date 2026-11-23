@@ -1153,6 +1153,18 @@ function inputFor(row, spec, onChange) {
     });
     return h('div', { class: 'field' }, box);
   }
+  if (Array.isArray(spec) && spec.length && typeof spec[0] === 'object') {
+    const choices = spec.some((item) => item.value === row.value) ? spec : [...spec, { value: row.value, label: row.value }];
+    const pick = dropdown({
+      choices,
+      value: row.value,
+      onPick: (value) => {
+        row.value = value;
+        onChange(150);
+      },
+    });
+    return h('div', { class: 'field' }, pick);
+  }
   if (Array.isArray(spec)) {
     const choices = spec.includes(row.value) ? spec : [...spec, row.value];
     const pick = dropdown({
@@ -1315,7 +1327,7 @@ function genericEditor(container, model, schema, exclude, withBody) {
 const SETTING_FIELDS = [
   { key: 'title', label: 'Title', spec: 't' },
   { key: 'subject', label: 'Subject', spec: 't' },
-  { key: 'font', label: 'Font', spec: 't' },
+  { key: 'font', label: 'Font', spec: 'font' },
   { key: 'font-size', label: 'Font size', spec: ['10', '10.5', '11', '11.5', '12', '13', '14'] },
   { key: 'paper', label: 'Paper', spec: ['A4', 'Letter', 'A5', 'Legal'] },
   { key: 'margins', label: 'Margins', spec: 't' },
@@ -1323,6 +1335,21 @@ const SETTING_FIELDS = [
   { key: 'cover', label: 'Cover', spec: 'y' },
   { key: 'contents', label: 'Contents', spec: 'y' },
   { key: 'embed-project', label: 'Editable PDF', spec: 'y' },
+  { group: 'Headings' },
+  { key: 'heading-font', label: 'Font', spec: 'font' },
+  { key: 'heading-style', label: 'Style', spec: [{ value: '', label: 'Line under' }, { value: 'underline', label: 'Underlined' }, { value: 'plain', label: 'Plain' }, { value: 'accent', label: 'Accent colour' }] },
+  { key: 'heading-size', label: 'Size', spec: [{ value: '', label: 'Automatic' }, ...['13', '14', '15', '16', '17', '18', '20', '22', '24'].map((v) => ({ value: v, label: `${v} pt` }))] },
+  { key: 'heading-color', label: 'Colour', spec: 'c' },
+  { key: 'heading-align', label: 'Align', spec: [{ value: '', label: 'Left' }, { value: 'center', label: 'Centre' }, { value: 'right', label: 'Right' }] },
+  { key: 'heading-case', label: 'Capitals', spec: [{ value: '', label: 'Normal' }, { value: 'upper', label: 'ALL CAPS' }] },
+  { key: 'heading-numbers', label: 'Numbers', spec: 'y' },
+  { key: 'section-breaks', label: 'New page each', spec: 'y' },
+  { group: 'Contents' },
+  { key: 'contents', label: 'Show', spec: 'y' },
+  { key: 'contents-title', label: 'Title', spec: 't' },
+  { key: 'contents-depth', label: 'Depth', spec: [{ value: '', label: 'Sections + sub-sections' }, { value: '1', label: 'Sections only' }] },
+  { key: 'contents-numbers', label: 'Numbers', spec: 'y' },
+  { key: 'contents-dots', label: 'Dot leaders', spec: 'y' },
 ];
 
 function headerValue(key) {
@@ -1388,14 +1415,17 @@ function openSettings() {
   reveal(root);
   const body = h('div', { class: 'panel-body' });
   SETTING_FIELDS.forEach((item) => {
+    if (item.group) {
+      body.append(h('div', { class: 'panel-group', text: item.group }));
+      return;
+    }
     const current = headerValue(item.key);
     const row = { value: item.spec === 'y' ? (/^(no|off|false)$/i.test(current) ? 'no' : 'yes') : current };
     let field;
     if (item.spec === 'c') {
-      const color = h('input', { type: 'color' });
-      color.value = /^#[0-9a-f]{6}$/i.test(current) ? current : '#1f4e79';
-      color.addEventListener('input', () => setHeader(item.key, color.value));
-      field = h('div', { class: 'field' }, color);
+      field = h('div', { class: 'field' }, colourButton(/^#[0-9a-f]{6}$/i.test(current) ? current : '', (value) => setHeader(item.key, value), item.key !== 'accent'));
+    } else if (item.spec === 'font') {
+      field = h('div', { class: 'field' }, fontPicker(current, (value) => setHeader(item.key, value), { empty: item.key === 'font' ? 'Cambria (default)' : 'Same as text' }));
     } else {
       field = inputFor(row, item.spec, () => setHeader(item.key, row.value));
     }
@@ -1905,6 +1935,27 @@ function showStart(state) {
       });
       card.querySelector('.sheet-title').textContent = name;
       card.querySelector('.sheet-where').textContent = folder;
+      const more = h('span', { class: 'sheet-more', role: 'button', title: 'More', html: icon('more', 18) });
+      more.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showMenu(more, [
+          { value: 'forget', label: 'Remove from list' },
+          { value: 'trash', label: 'Delete file', style: 'color:var(--danger)' },
+        ], '', async (value) => {
+          card.classList.add('gone');
+          await new Promise((resolve) => setTimeout(resolve, 320));
+          try {
+            const next = await api(value === 'trash' ? '/api/trash' : '/api/forget', { path });
+            if (next.error) throw new Error(next.error.replace(/^\w+: /, ''));
+            toast(value === 'trash' ? 'Moved to the Recycle Bin' : 'Removed from the list');
+            showStart(next);
+          } catch (error) {
+            card.classList.remove('gone');
+            toast(error.message || 'Could not do that', true);
+          }
+        });
+      });
+      card.append(more);
       return card;
     }),
   );
