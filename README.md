@@ -1,4 +1,6 @@
-﻿# Essay Builder
+<p align="center"><img src="studio/logo.png" width="128" alt="Essay Builder logo"></p>
+
+<h1 align="center">Essay Builder</h1>
 
 Write your essay on real pages and export a perfect PDF. Cover, contents, page numbers and word count are done for you.
 
