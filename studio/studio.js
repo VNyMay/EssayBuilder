@@ -169,7 +169,7 @@ async function saveNow() {
   if (!S.name || S.source === savedSource) return;
   const text = S.source;
   try {
-    await api('/api/save', { source: text });
+    await api('/api/save', { source: text, keep: keepVersions() });
     savedSource = text;
   } catch (error) {
     savedSource = null;
@@ -278,7 +278,7 @@ async function applyResult(result) {
   S.title = result.title;
   normalizeRanges();
   S.sel = start === null ? null : S.ranges.find((range) => range.start === start) || null;
-  if (S.edit) {
+  if (S.edit && !S.edit.cover) {
     if (S.sel) S.edit.range = S.sel;
     else closeEditor(true);
   }
@@ -502,6 +502,7 @@ function inPlace(range) {
 }
 
 function positionEditor() {
+  if (!S.edit || S.edit.cover || !S.edit.range) return;
   const { range, ta } = S.edit;
   const span = firstSpan(range);
   if (!span) return;
@@ -1247,6 +1248,14 @@ function openSettings() {
   });
   body.append(h('div', { class: 'row' }, h('label', { text: 'Copy' }), h('button', { type: 'button', class: 'pill ghost small', html: `${icon('copy', 15)}<span>Make a copy</span>`, onclick: makeCopy }), h('span')));
   body.append(h('div', { class: 'row' }, h('label', { text: 'Versions' }), h('button', { type: 'button', class: 'pill ghost small', html: `${icon('clock', 15)}<span>Show</span>`, onclick: openVersions }), h('span')));
+  body.append(h('div', { class: 'row' }, h('label', { text: 'Keep' }), segmented(
+    [{ value: 0, label: 'Off' }, { value: 10, label: '10' }, { value: 30, label: '30' }, { value: 60, label: '60' }],
+    keepVersions(),
+    (value) => {
+      localStorage.setItem('studio.keep', String(value));
+      api('/api/save', { source: S.source, keep: value });
+    },
+  ), h('span')));
   root.append(
     h('div', { class: 'panel-head' }, h('span', { text: 'Settings' }), h('button', { class: 'round', html: icon('close', 16), title: 'Close', onclick: closeSettings })),
     body,
@@ -1624,6 +1633,11 @@ function zoomStep(direction) {
   if (next) setZoom((next / 100) * (96 / 72));
 }
 
+function keepVersions() {
+  const value = Number(localStorage.getItem('studio.keep'));
+  return localStorage.getItem('studio.keep') === null || !Number.isFinite(value) ? 30 : value;
+}
+
 function wantedDpi() {
   const scale = S.scale || 96 / 72;
   const pixels = scale * (window.devicePixelRatio || 1) * 72;
@@ -1750,6 +1764,7 @@ function load(state) {
     showStart(state);
     return;
   }
+  if (state.notice) setTimeout(() => toast(state.notice), 900);
   conceal($('#start'));
   document.documentElement.classList.remove('home');
   S.source = state.source;
@@ -1816,7 +1831,7 @@ function bind() {
       load(answer);
       return;
     }
-    const file = await pickFile('.txt,.pdf');
+    const file = await pickFile('.txt,.docx,.pdf');
     if (!file) return;
     load(await api('/api/import', { name: file.name, data: await toBase64(file) }));
   };
@@ -1864,7 +1879,11 @@ function bind() {
   document.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName);
-    if ((event.ctrlKey || event.metaKey) && key === 'z') {
+    const inEditor = Boolean(S.edit && S.edit.ta && S.edit.ta.isContentEditable && S.edit.ta.contains(event.target));
+    const redoing = key === 'y' || (key === 'z' && event.shiftKey);
+    if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(key) && inEditor && ((redoing ? S.edit.redos : S.edit.typed) || 0) > 0) {
+      return;
+    } else if ((event.ctrlKey || event.metaKey) && key === 'z') {
       event.preventDefault();
       undo(event.shiftKey ? 1 : -1);
     } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Enter') {
@@ -1897,6 +1916,52 @@ function bind() {
     } else if (event.key === 'Delete' && !typing && S.sel && !TEXT_KINDS.has(S.sel.kind)) {
       remove(S.sel);
     }
+  });
+  document.addEventListener('beforeinput', (event) => {
+    if (!S.edit || !S.edit.ta || !S.edit.ta.contains(event.target)) return;
+    if (event.inputType === 'historyUndo') {
+      S.edit.typed = Math.max(0, (S.edit.typed || 0) - 1);
+      S.edit.redos = (S.edit.redos || 0) + 1;
+    } else if (event.inputType === 'historyRedo') {
+      S.edit.redos = Math.max(0, (S.edit.redos || 0) - 1);
+      S.edit.typed = (S.edit.typed || 0) + 1;
+    } else {
+      S.edit.typed = (S.edit.typed || 0) + 1;
+      S.edit.redos = 0;
+    }
+  }, true);
+  const blockClipboard = (event) => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
+    if (typing || S.edit || !S.sel || (typeof CV !== 'undefined' && CV.mode === 'page')) return false;
+    const selection = window.getSelection();
+    return !selection || selection.isCollapsed;
+  };
+  document.addEventListener('copy', (event) => {
+    if (!blockClipboard(event)) return;
+    event.preventDefault();
+    S.clip = { text: linesOf(S.sel).join('\n'), kind: S.sel.kind };
+    event.clipboardData.setData('text/plain', S.clip.text);
+    toast('Block copied');
+  });
+  document.addEventListener('cut', (event) => {
+    if (!blockClipboard(event)) return;
+    event.preventDefault();
+    S.clip = { text: linesOf(S.sel).join('\n'), kind: S.sel.kind };
+    event.clipboardData.setData('text/plain', S.clip.text);
+    commitHistory();
+    remove(S.sel);
+    commitHistory();
+  });
+  document.addEventListener('paste', (event) => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
+    if (typing || S.edit || !S.pages.length || (typeof CV !== 'undefined' && CV.mode === 'page')) return;
+    const text = (event.clipboardData.getData('text/plain') || '').replace(/\r/g, '');
+    if (!text.trim()) return;
+    event.preventDefault();
+    commitHistory();
+    if (S.clip && text === S.clip.text) insertLines(S.clip.text.split('\n'), S.clip.kind);
+    else insertLines(text.trim().split(/\n\s*\n/).map((part) => part.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n').split('\n'), 'para');
+    commitHistory();
   });
   setInterval(() => fetch('/api/ping').catch(() => null), 5000);
 }

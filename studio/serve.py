@@ -75,7 +75,10 @@ class State:
         return folder
 
     def backup(self, source, force=False):
+        keep = getattr(self, "keep", 30)
         if self.path is None or not source.strip():
+            return
+        if keep <= 0:
             return
         try:
             folder = self.backup_folder()
@@ -88,7 +91,7 @@ class State:
                     return
             stamp = time.strftime("%Y-%m-%d %H-%M-%S")
             (folder / f"{stamp}.txt").write_text(source, encoding="utf-8")
-            for old in sorted(folder.glob("*.txt"))[:-60]:
+            for old in sorted(folder.glob("*.txt"))[:-keep]:
                 old.unlink(missing_ok=True)
         except OSError:
             pass
@@ -128,6 +131,24 @@ class State:
         items = [str(path)] + [item for item in self.recent() if item != str(path)]
         RECENT.write_text(json.dumps(items[:8]), encoding="utf-8")
 
+    def from_word(self, source):
+        from lib.docx_import import import_docx
+
+        ESSAYS.mkdir(parents=True, exist_ok=True)
+        stem = re.sub(r"[^\w -]+", "", source.stem).strip() or "Essay"
+        folder = ESSAYS / stem
+        number = 2
+        while folder.exists():
+            folder = ESSAYS / f"{stem} {number}"
+            number += 1
+        try:
+            target, warnings = import_docx(source, folder)
+        except Exception as error:
+            shutil.rmtree(folder, ignore_errors=True)
+            raise ValueError("This Word file could not be read") from error
+        self.notice = "Imported from Word. " + "; ".join(warnings).capitalize() if warnings else "Imported from Word"
+        return target
+
     def extract(self, pdf):
         import io
         import zipfile
@@ -163,6 +184,8 @@ class State:
             raise FileNotFoundError(f"File not found: {path}")
         if path.suffix.lower() == ".pdf":
             path = self.extract(path)
+        elif path.suffix.lower() == ".docx":
+            path = self.from_word(path)
         self.path = path
         self.remember(path)
         try:
@@ -173,8 +196,14 @@ class State:
     def import_file(self, name, data):
         ESSAYS.mkdir(parents=True, exist_ok=True)
         clean = re.sub(r"[^\w. -]+", "", Path(name).name).strip() or "Essay.txt"
-        if Path(clean).suffix.lower() not in {".txt", ".pdf"}:
-            raise ValueError("Choose an essay (.txt) or a PDF made by Essay Builder")
+        if Path(clean).suffix.lower() not in {".txt", ".pdf", ".docx"}:
+            raise ValueError("Choose an essay (.txt), a Word file (.docx) or a PDF made by Essay Builder")
+        if Path(clean).suffix.lower() == ".docx":
+            with tempfile.TemporaryDirectory() as folder:
+                source = Path(folder) / clean
+                source.write_bytes(base64.b64decode(data))
+                self.open(source)
+            return
         target = ESSAYS / clean
         number = 2
         while target.exists():
@@ -195,8 +224,10 @@ class State:
     def snapshot(self):
         if self.path is None:
             return {"open": False, "recent": self.recent()}
+        notice, self.notice = getattr(self, "notice", None), None
         return {
             "open": True,
+            "notice": notice,
             "path": str(self.path),
             "name": self.path.name,
             "source": self.path.read_text(encoding="utf-8-sig"),
@@ -348,7 +379,7 @@ def pick_file():
         "root = tk.Tk()\n"
         "root.withdraw()\n"
         "root.attributes('-topmost', True)\n"
-        "print(filedialog.askopenfilename(filetypes=[('Essay or PDF made by Essay Builder', '*.txt *.pdf'), ('All files', '*.*')]))\n"
+        "print(filedialog.askopenfilename(filetypes=[('Essay, Word file or Essay Builder PDF', '*.txt *.docx *.pdf'), ('All files', '*.*')]))\n"
     )
     done = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     return done.stdout.strip()
@@ -445,6 +476,8 @@ class Handler(BaseHTTPRequestHandler):
                 STATE.copy()
                 return self.send_json(STATE.snapshot())
             if route == "/api/save":
+                if "keep" in body:
+                    STATE.keep = max(0, min(200, int(body["keep"])))
                 STATE.save(body["source"])
                 return self.send_json({"ok": True})
             if route == "/api/versions":

@@ -15,6 +15,7 @@ Made for IB students, works for any long document.
 - 📊 Charts, tables, diagrams and real maps
 - 📚 Citations in APA, MLA, Harvard, Chicago or IEEE
 - 💾 Saves by itself, keeps older versions, Ctrl+Z works
+- 📥 Bring in drafts from Word or Google Docs (.docx)
 
 ## Get it
 

@@ -182,10 +182,24 @@ function cvRichText(index) {
   el.classList.remove('empty');
   el.contentEditable = 'true';
   el.style.cursor = 'text';
-  el.replaceChildren(inlineNodes(box.text.replace(/\n/g, BREAK)));
+  const lone = (box.text.match(/^\{(\w+)\}$/) || [])[1];
+  const field = lone && lone !== 'words' && CV_FIELDS.some((item) => item[0] === lone) ? lone : null;
+  const tokens = [...box.text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).filter((key) => CV_FIELDS.some((item) => item[0] === key));
+  const shown = field ? cvFieldValue(field) || '' : cvShow(box);
+  el.replaceChildren(inlineNodes(shown.replace(/\n/g, BREAK)));
+  const typed = () => bodyMd(el).replace(/\\\\\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const read = () => {
+    if (field) return `{${field}}`;
+    let out = bodyMd(el).replace(/\\\\\n/g, '\n');
+    tokens.forEach((key) => {
+      const value = cvFieldValue(key) || (CV_FIELDS.find((item) => item[0] === key) || [])[1];
+      if (value && out.includes(value)) out = out.replace(value, `{${key}}`);
+    });
+    return out;
+  };
   let timer = null;
   const commit = () => {
-    box.text = bodyMd(el).replace(/\\\\\n/g, '\n');
+    box.text = read();
     clearTimeout(timer);
     timer = setTimeout(cvSave, 350);
   };
@@ -205,8 +219,9 @@ function cvRichText(index) {
       },
       close: () => {
         clearTimeout(timer);
-        box.text = bodyMd(el).replace(/\\\\\n/g, '\n');
+        box.text = read();
         CV.editing = null;
+        if (field && typed() !== (cvFieldValue(field) || '')) setHeader(field, typed());
         cvSave();
         cvDrawPage();
       },
@@ -318,6 +333,13 @@ document.addEventListener(
       event.preventDefault();
       event.stopPropagation();
       cvRichText(CV.sel);
+    } else if (CV.sel >= 0 && !mod && !event.altKey && key.length === 1 && CV.boxes[CV.sel] && CV.boxes[CV.sel].kind === 'text') {
+      event.preventDefault();
+      event.stopPropagation();
+      cvRichText(CV.sel);
+      const selection = window.getSelection();
+      if (selection.rangeCount) selection.collapseToEnd();
+      document.execCommand('insertText', false, key);
     } else if (CV.sel >= 0 && key.startsWith('Arrow')) {
       event.preventDefault();
       event.stopPropagation();
@@ -356,9 +378,12 @@ cvDown = function (event, index) {
       return;
     }
     cvLastDown = { index, time: now, x: event.clientX, y: event.clientY };
+    const again = CV.sel === index && CV.boxes[index] && CV.boxes[index].kind === 'text';
     CV.dragging = true;
-    window.addEventListener('pointerup', () => {
+    window.addEventListener('pointerup', (up) => {
       CV.dragging = false;
+      const still = Math.abs(up.clientX - event.clientX) < 4 && Math.abs(up.clientY - event.clientY) < 4;
+      if (again && still && performance.now() - now < 600 && CV.editing !== index) setTimeout(() => cvRichText(index), 0);
     }, { once: true });
   }
   return cvScreenDown(event, index);
