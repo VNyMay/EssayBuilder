@@ -372,3 +372,4 @@ figure.fig.wrap .cap, figure.tbl.wrap .cap { margin-left: 0; margin-right: 0; }
 
 .blank-page { break-before: page; height: calc(var(--body-h) - 1mm); }
 .pn { position: relative; white-space: nowrap; }
+.ph { color: #9aa0a6; font-style: italic; font-weight: 400; letter-spacing: 0; text-transform: none; border-bottom: 1px dashed #c4c7c5; }

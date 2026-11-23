@@ -254,21 +254,88 @@ function cvSelection() {
   if (CV.sel < 0 || !CV.boxes[CV.sel] || CV.editing !== null) return;
   const bounds = cvBounds(CV.sel);
   if (!bounds) return;
-  const frame = h('div', { class: 'cvsel', style: `left:${bounds.left}px;top:${bounds.top}px;width:${bounds.width}px;height:${bounds.height}px;transform:rotate(${bounds.rot}deg)` });
-  ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach((side) => {
+  const line = CV.boxes[CV.sel].kind === 'line';
+  const frame = h('div', { class: `cvsel${line ? ' line' : ''}`, style: `left:${bounds.left}px;top:${bounds.top}px;width:${bounds.width}px;height:${bounds.height}px;transform:rotate(${bounds.rot}deg)` });
+  (line ? ['w', 'e'] : ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']).forEach((side) => {
     const dot = h('span', { class: `cvh cvh-${side}` });
     dot.addEventListener('pointerdown', (event) => cvResize(event, side));
     frame.append(dot);
   });
+  const turn = h('span', { class: 'cvrot', title: 'Rotate (Shift: 15° steps, double-click: reset)' });
+  turn.addEventListener('pointerdown', (event) => cvRotate(event));
+  turn.addEventListener('dblclick', (event) => {
+    event.stopPropagation();
+    const box = CV.boxes[CV.sel];
+    if (!box || !box.p.rot) return;
+    cvSnapshot();
+    delete box.p.rot;
+    cvSave();
+    cvDraw();
+  });
+  frame.append(turn);
   CV.page.append(frame);
 }
 
 function cvGuides(lines) {
   CV.page.querySelectorAll('.cvguide').forEach((node) => node.remove());
   lines.forEach((guide) => {
-    const el = h('div', { class: `cvguide ${guide.axis}`, style: guide.axis === 'v' ? `left:${guide.at}%` : `top:${guide.at}%` });
+    const el = h('div', { class: `cvguide ${guide.axis} ${guide.kind || ''}`, style: guide.axis === 'v' ? `left:${guide.at}%` : `top:${guide.at}%` });
     CV.page.append(el);
   });
+}
+
+function cvBadge(text) {
+  let badge = CV.page.querySelector('.cvbadge');
+  if (!text) {
+    if (badge) badge.remove();
+    return;
+  }
+  const bounds = cvBounds(CV.sel);
+  if (!bounds) return;
+  if (!badge) {
+    badge = h('div', { class: 'cvbadge' });
+    CV.page.append(badge);
+  }
+  badge.textContent = text;
+  badge.style.left = `${bounds.left + bounds.width / 2}px`;
+  badge.style.top = `${bounds.top + bounds.height + 14}px`;
+}
+
+function cvMmOf(percent, axis) {
+  const page = cvPage();
+  return cvMm((percent / 100) * (axis === 'x' ? page.w : page.h));
+}
+
+function cvTargets(index) {
+  const rect = CV.page.getBoundingClientRect();
+  const page = cvPage();
+  const mx = (marginPt() / page.w) * 100;
+  const my = (marginPt() / page.h) * 100;
+  const xs = [{ at: 0, kind: 'edge' }, { at: 50, kind: 'centre' }, { at: 100, kind: 'edge' }, { at: mx, kind: 'margin' }, { at: 100 - mx, kind: 'margin' }];
+  const ys = [{ at: 0, kind: 'edge' }, { at: 50, kind: 'centre' }, { at: 100, kind: 'edge' }, { at: my, kind: 'margin' }, { at: 100 - my, kind: 'margin' }];
+  CV.boxes.forEach((item, i) => {
+    if (i === index) return;
+    const bounds = cvBounds(i);
+    if (!bounds) return;
+    const l = (bounds.left / rect.width) * 100;
+    const t = (bounds.top / rect.height) * 100;
+    const w = (bounds.width / rect.width) * 100;
+    const hh = (bounds.height / rect.height) * 100;
+    xs.push({ at: l, kind: 'box' }, { at: l + w / 2, kind: 'box' }, { at: l + w, kind: 'box' });
+    ys.push({ at: t, kind: 'box' }, { at: t + hh / 2, kind: 'box' }, { at: t + hh, kind: 'box' });
+  });
+  return { xs, ys };
+}
+
+function cvBest(edges, targets, limit) {
+  let best = null;
+  edges.forEach((edge, k) => {
+    targets.forEach((target) => {
+      const gap = Math.abs(target.at - edge);
+      if (gap <= limit && (best === null || gap < best.gap)) best = { gap, k, at: target.at, kind: target.kind, shift: target.at - edge };
+    });
+  });
+  return best;
 }
 
 function cvSnap(value, candidates, limit) {
@@ -292,6 +359,15 @@ function cvDown(event, index) {
   }
   event.preventDefault();
   event.stopPropagation();
+  let snapshotted = false;
+  if (event.altKey && CV.boxes[index]) {
+    cvSnapshot();
+    snapshotted = true;
+    CV.boxes.push(JSON.parse(JSON.stringify(CV.boxes[index])));
+    index = CV.boxes.length - 1;
+    CV.sel = index;
+    cvDraw();
+  }
   CV.sel = index;
   const box = CV.boxes[index];
   const start = cvPoint(event);
@@ -300,21 +376,8 @@ function cvDown(event, index) {
   const rect = CV.page.getBoundingClientRect();
   const width = (size.width / rect.width) * 100;
   const height = (size.height / rect.height) * 100;
-  const others = CV.boxes.map((item, i) => (i === index ? null : item)).filter(Boolean);
-  const xs = [0, 50, 100];
-  const ys = [0, 50, 100];
-  others.forEach((item) => {
-    const bounds = cvBounds(CV.boxes.indexOf(item));
-    if (!bounds) return;
-    const l = (bounds.left / rect.width) * 100;
-    const t = (bounds.top / rect.height) * 100;
-    const w = (bounds.width / rect.width) * 100;
-    const hh = (bounds.height / rect.height) * 100;
-    xs.push(l, l + w / 2, l + w);
-    ys.push(t, t + hh / 2, t + hh);
-  });
+  const targets = cvTargets(index);
   let moved = false;
-  let snapshotted = false;
   cvSelection();
   cvInspect();
   const move = (e) => {
@@ -323,8 +386,8 @@ function cvDown(event, index) {
     let y = origin.y + now.y - start.y;
     if (!moved && Math.abs(now.x - start.x) + Math.abs(now.y - start.y) < 0.4) return;
     const lock = e.shiftKey || e.ctrlKey;
+    const horizontal = Math.abs(now.x - start.x) * rect.width >= Math.abs(now.y - start.y) * rect.height;
     if (lock) {
-      const horizontal = Math.abs(now.x - start.x) * rect.width >= Math.abs(now.y - start.y) * rect.height;
       if (horizontal) y = origin.y;
       else x = origin.x;
     }
@@ -333,28 +396,22 @@ function cvDown(event, index) {
       cvSnapshot();
       snapshotted = true;
     }
-    const limit = 6 / rect.width * 100;
     const guides = [];
-    if (lock) {
-      guides.push(Math.abs(now.x - start.x) * rect.width >= Math.abs(now.y - start.y) * rect.height ? { axis: 'h', at: y + height / 2 } : { axis: 'v', at: x + width / 2 });
-    } else if (!e.altKey) {
-      const best = [x, x + width / 2, x + width]
-        .map((edge, k) => ({ snap: cvSnap(edge, xs, limit), k }))
-        .filter((item) => item.snap)
-        .sort((a, b) => a.snap.gap - b.snap.gap)[0];
+    if (!lock || horizontal) {
+      const best = cvBest([x, x + width / 2, x + width], targets.xs, (6 / rect.width) * 100);
       if (best) {
-        x += best.snap.at - [x, x + width / 2, x + width][best.k];
-        guides.push({ axis: 'v', at: best.snap.at });
-      }
-      const bestY = [y, y + height / 2, y + height]
-        .map((edge, k) => ({ snap: cvSnap(edge, ys, limit * (rect.width / rect.height)), k }))
-        .filter((item) => item.snap)
-        .sort((a, b) => a.snap.gap - b.snap.gap)[0];
-      if (bestY) {
-        y += bestY.snap.at - [y, y + height / 2, y + height][bestY.k];
-        guides.push({ axis: 'h', at: bestY.snap.at });
+        x += best.shift;
+        guides.push({ axis: 'v', at: best.at, kind: best.kind });
       }
     }
+    if (!lock || !horizontal) {
+      const best = cvBest([y, y + height / 2, y + height], targets.ys, (6 / rect.height) * 100);
+      if (best) {
+        y += best.shift;
+        guides.push({ axis: 'h', at: best.at, kind: best.kind });
+      }
+    }
+    if (lock) guides.push(horizontal ? { axis: 'h', at: y + height / 2, kind: 'lock' } : { axis: 'v', at: x + width / 2, kind: 'lock' });
     box.p.x = String(Math.round(x * 100) / 100);
     box.p.y = String(Math.round(y * 100) / 100);
     const el = CV.page.querySelector(`.cvb[data-i="${index}"]`);
@@ -362,12 +419,14 @@ function cvDown(event, index) {
     el.style.top = `${box.p.y}%`;
     cvSelection();
     cvGuides(guides);
+    cvBadge(`X ${cvMmOf(x, 'x')}  Y ${cvMmOf(y, 'y')} mm`);
   };
   const up = () => {
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
     CV.page.querySelectorAll('.cvguide').forEach((node) => node.remove());
-    if (moved) {
+    cvBadge(null);
+    if (moved || snapshotted) {
       cvSave();
       cvInspect();
     }
@@ -383,46 +442,217 @@ function cvResize(event, side) {
   const box = CV.boxes[index];
   const bounds = cvBounds(index);
   const rect = CV.page.getBoundingClientRect();
-  const start = cvPoint(event);
-  const origin = {
-    x: cvNum(box, 'x', 10),
-    y: cvNum(box, 'y', 10),
-    w: (bounds.width / rect.width) * 100,
-    h: (bounds.height / rect.height) * 100,
-  };
+  const W = rect.width;
+  const H = rect.height;
+  const start = { x: event.clientX, y: event.clientY };
+  const o = { l: bounds.left, t: bounds.top, w: bounds.width, h: Math.max(bounds.height, 1) };
+  const ratio = o.w / o.h;
+  const size = cvNum(box, 'size', 12);
+  const sized = box.p.h !== undefined && box.p.h !== '';
+  const targets = cvTargets(index);
+  const round = (value) => String(Math.round(value * 100) / 100);
   cvSnapshot();
   const move = (e) => {
-    const now = cvPoint(e);
-    const dx = now.x - start.x;
-    const dy = now.y - start.y;
-    let { x, y, w, h: hh } = origin;
-    if (side.includes('e')) w = Math.max(1.5, origin.w + dx);
-    if (side.includes('s')) hh = Math.max(0.6, origin.h + dy);
-    if (side.includes('w')) {
-      w = Math.max(1.5, origin.w - dx);
-      x = origin.x + origin.w - w;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const centre = e.ctrlKey || e.metaKey;
+    const square = e.shiftKey && box.kind !== 'line';
+    const k = centre ? 2 : 1;
+    let w = o.w;
+    let hh = o.h;
+    if (side.includes('e')) w = o.w + dx * k;
+    if (side.includes('w')) w = o.w - dx * k;
+    if (side.includes('s')) hh = o.h + dy * k;
+    if (side.includes('n')) hh = o.h - dy * k;
+    const guides = [];
+    if (!centre && !square && !e.altKey) {
+      if (side.includes('e') || side.includes('w')) {
+        const edge = side.includes('e') ? ((o.l + w) / W) * 100 : ((o.l + o.w - w) / W) * 100;
+        const best = cvBest([edge], targets.xs, (6 / W) * 100);
+        if (best) {
+          w += (side.includes('e') ? best.shift : -best.shift) * (W / 100);
+          guides.push({ axis: 'v', at: best.at, kind: best.kind });
+        }
+      }
+      if (side.includes('n') || side.includes('s')) {
+        const edge = side.includes('s') ? ((o.t + hh) / H) * 100 : ((o.t + o.h - hh) / H) * 100;
+        const best = cvBest([edge], targets.ys, (6 / H) * 100);
+        if (best) {
+          hh += (side.includes('s') ? best.shift : -best.shift) * (H / 100);
+          guides.push({ axis: 'h', at: best.at, kind: best.kind });
+        }
+      }
     }
-    if (side.includes('n')) {
-      hh = Math.max(0.6, origin.h - dy);
-      y = origin.y + origin.h - hh;
+    if (square) {
+      if (side.length === 2) {
+        const scale = Math.max(w / o.w, hh / o.h);
+        w = o.w * scale;
+        hh = o.h * scale;
+      } else if (side === 'e' || side === 'w') hh = w / ratio;
+      else w = hh * ratio;
     }
-    box.p.x = String(Math.round(x * 100) / 100);
-    box.p.y = String(Math.round(y * 100) / 100);
-    if (side.includes('e') || side.includes('w') || box.kind !== 'text') box.p.w = String(Math.round(w * 100) / 100);
-    if (side.includes('n') || side.includes('s') || box.kind !== 'text') box.p.h = String(Math.round(hh * 100) / 100);
+    w = Math.max(6, w);
+    hh = Math.max(4, hh);
+    let l = o.l;
+    let t = o.t;
+    if (centre) {
+      l = o.l + (o.w - w) / 2;
+      t = o.t + (o.h - hh) / 2;
+    } else {
+      if (side.includes('w')) l = o.l + o.w - w;
+      if (side.includes('n')) t = o.t + o.h - hh;
+      if (square && (side === 'e' || side === 'w')) t = o.t + (o.h - hh) / 2;
+      if (square && (side === 'n' || side === 's')) l = o.l + (o.w - w) / 2;
+    }
+    box.p.x = round((l / W) * 100);
+    box.p.y = round((t / H) * 100);
+    const text = box.kind === 'text';
+    if (side.includes('e') || side.includes('w') || square || !text) box.p.w = round((w / W) * 100);
+    if (text && square) {
+      box.p.size = String(Math.max(4, Math.round(size * (w / o.w) * 10) / 10));
+      if (sized) box.p.h = round((hh / H) * 100);
+    } else if (side.includes('n') || side.includes('s') || !text) box.p.h = round((hh / H) * 100);
     if (box.kind === 'line') delete box.p.h;
     const el = CV.page.querySelector(`.cvb[data-i="${index}"]`);
     cvStyle(el, box);
     cvSelection();
+    cvGuides(guides);
+    const label = box.kind === 'line' ? `${cvMmOf((w / W) * 100, 'x')} mm` : `${cvMmOf((w / W) * 100, 'x')} × ${cvMmOf((el.offsetHeight / H) * 100, 'y')} mm`;
+    cvBadge(text && square ? `${label} · ${box.p.size} pt` : label);
   };
   const up = () => {
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
+    CV.page.querySelectorAll('.cvguide').forEach((node) => node.remove());
+    cvBadge(null);
     cvSave();
     cvInspect();
   };
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up);
+}
+
+function cvRotate(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const index = CV.sel;
+  const box = CV.boxes[index];
+  const el = CV.page.querySelector(`.cvb[data-i="${index}"]`);
+  if (!box || !el) return;
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  cvSnapshot();
+  const move = (e) => {
+    let angle = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90;
+    if (e.shiftKey) angle = Math.round(angle / 15) * 15;
+    angle = (((Math.round(angle * 10) / 10) % 360) + 360) % 360;
+    if (angle > 180) angle -= 360;
+    if (Math.abs(angle) < 0.05) delete box.p.rot;
+    else box.p.rot = String(angle);
+    cvStyle(el, box);
+    cvSelection();
+    cvBadge(`${Math.round(angle)}°`);
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    cvBadge(null);
+    cvSave();
+    cvInspect();
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+}
+
+function cvOrderTo(front) {
+  const index = CV.sel;
+  if (index < 0) return;
+  const target = front ? CV.boxes.length - 1 : 0;
+  if (index === target) return;
+  cvSnapshot();
+  const [box] = CV.boxes.splice(index, 1);
+  if (front) CV.boxes.push(box);
+  else CV.boxes.unshift(box);
+  CV.sel = target;
+  cvSave();
+  cvDraw();
+}
+
+function cvShortcut(event) {
+  const mod = event.ctrlKey || event.metaKey;
+  const key = event.key.toLowerCase();
+  const box = CV.boxes[CV.sel];
+  const stop = () => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  if (mod && (key === 'c' || key === 'x') && box) {
+    stop();
+    CV.clip = JSON.stringify(box);
+    CV.pasted = 0;
+    if (key === 'x') cvDelete();
+    return true;
+  }
+  if (mod && key === 'v' && CV.clip) {
+    stop();
+    cvSnapshot();
+    CV.pasted = (CV.pasted || 0) + 1;
+    const copy = JSON.parse(CV.clip);
+    copy.p.x = String(cvNum(copy, 'x', 10) + 3 * CV.pasted);
+    copy.p.y = String(cvNum(copy, 'y', 10) + 3 * CV.pasted);
+    CV.boxes.push(copy);
+    CV.sel = CV.boxes.length - 1;
+    cvSave();
+    cvDraw();
+    return true;
+  }
+  if (event.key === 'Tab' && CV.boxes.length) {
+    stop();
+    const n = CV.boxes.length;
+    CV.sel = CV.sel < 0 ? 0 : (CV.sel + (event.shiftKey ? -1 : 1) + n) % n;
+    cvDraw();
+    return true;
+  }
+  if (!box || !mod) return false;
+  if (event.code === 'BracketRight' || event.code === 'BracketLeft') {
+    stop();
+    const forward = event.code === 'BracketRight';
+    if (event.shiftKey) cvOrderTo(forward);
+    else cvOrder(forward ? 1 : -1);
+    return true;
+  }
+  if (box.kind !== 'text') return false;
+  const flags = { b: 'bold', i: 'italic', u: 'underline' };
+  const aligns = { l: '', e: 'center', r: 'right', j: 'justify' };
+  if (!event.shiftKey && flags[key]) {
+    stop();
+    cvSnapshot();
+    if (box.p[flags[key]]) delete box.p[flags[key]];
+    else box.p[flags[key]] = '1';
+    cvSave();
+    cvDraw();
+    return true;
+  }
+  if (!event.shiftKey && key in aligns) {
+    stop();
+    cvSnapshot();
+    if (aligns[key]) box.p.align = aligns[key];
+    else delete box.p.align;
+    cvSave();
+    cvDraw();
+    return true;
+  }
+  if (event.shiftKey && (event.code === 'Period' || event.code === 'Comma')) {
+    stop();
+    cvSnapshot();
+    const now = cvNum(box, 'size', 12);
+    box.p.size = String(Math.max(4, Math.round((event.code === 'Period' ? now + 1 : now - 1) * 10) / 10));
+    cvSave();
+    cvDraw();
+    return true;
+  }
+  return false;
 }
 
 function cvAdd(box, edit = false) {

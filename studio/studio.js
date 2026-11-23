@@ -806,7 +806,7 @@ function fillBlank(range, block, kind) {
   insertLines(block, kind);
 }
 
-function lastRangeOn(pageIndex) {
+function lastRangeOn(pageIndex, strict = false) {
   let best = null;
   let bestKey = -1;
   S.ranges.forEach((range) => {
@@ -819,7 +819,7 @@ function lastRangeOn(pageIndex) {
       }
     });
   });
-  return best || S.ranges[S.ranges.length - 1] || null;
+  return best || (strict ? null : S.ranges[S.ranges.length - 1] || null);
 }
 
 function pageInView() {
@@ -885,11 +885,20 @@ function deleteButton(pageIndex) {
   const go = () => {
     const page = button.closest('.page');
     const before = S.source;
-    if (page) page.classList.add('leaving');
+    if (page) {
+      page.style.setProperty('--h', `${page.offsetHeight}px`);
+      page.classList.add('leaving');
+      const previous = page.previousElementSibling;
+      const scroll = $('#scroll');
+      if (!page.nextElementSibling && previous && scroll) {
+        const top = scroll.scrollTop + previous.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 24;
+        scroll.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }
+    }
     setTimeout(() => {
       removePage(pageIndex);
       if (S.source === before && page) page.classList.remove('leaving');
-    }, 230);
+    }, 560);
   };
   let timer = null;
   const stop = () => {
@@ -929,9 +938,14 @@ function deleteButton(pageIndex) {
 
 function addPageAfter(pageIndex) {
   if (!S.pages.length) return;
-  const range = lastRangeOn(pageIndex);
-  if (!range) return;
-  S.target = { range, where: 'after' };
+  const range = lastRangeOn(pageIndex, true);
+  if (range) S.target = { range, where: 'after' };
+  else {
+    const next = S.ranges.find((item) => item.kind !== 'pagebreak' && (S.regions[item.id] || []).some((span) => span.page > pageIndex));
+    if (S.edit) closeEditor(true);
+    S.sel = null;
+    S.target = next ? { range: next, where: 'before' } : null;
+  }
   S.arrivePage = pageIndex + 1;
   insertLines([':::blank'], 'blank');
   S.focusSelectAll = false;

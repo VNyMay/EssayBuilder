@@ -514,8 +514,9 @@ class Compiler(*KITS):
         if style not in COVER_STYLES:
             self.report.error(name, f"cover-style must be one of: {', '.join(COVER_STYLES)}{suggest(style, COVER_STYLES)}")
             style = "classic"
-        subject = render_inline(self.cfg.get("subject", ""), self)
-        question = render_inline(self.cfg.get("question") or self.cfg.get("title", ""), self)
+        hint = (lambda label: f'<span class="ph">{label}</span>') if self.studio else (lambda label: "")
+        subject = render_inline(self.cfg.get("subject", ""), self) or hint("Subject")
+        question = render_inline(self.cfg.get("question") or self.cfg.get("title", ""), self) or hint("Title of your essay")
         extra = "".join(f"{render_inline(text, self)}<br>" for text in self.cover_lines)
         if style == "classic":
             extra = "".join(
@@ -536,14 +537,17 @@ class Compiler(*KITS):
             title = render_inline(self.cfg.get("title", ""), self)
             asked = self.cfg.get("question", "").strip()
             category = self.cfg.get("category", "").strip()
-            heading = subject + (f'<span class="ib-category">{render_inline(category, self)}</span>' if category else "")
+            shown = render_inline(category, self) if category else hint("Category (language essays)")
+            heading = subject + (f'<span class="ib-category">{shown}</span>' if shown else "")
             question_block = ""
             if asked and title:
                 question_block = (
                     f'<div class="ib-label">Research question</div>'
                     f'<p class="ib-question">{render_inline(asked, self)}</p>'
                 )
-            main = title or render_inline(asked, self)
+            elif self.studio and not asked:
+                question_block = f'<div class="ib-label">Research question</div><p class="ib-question">{hint("Your research question")}</p>'
+            main = title or render_inline(asked, self) or hint("Title of your essay")
             self.emit(
                 f'<section class="cover cover-ib"><div class="ib-subject">{heading}</div>'
                 f'<div class="ib-mid"><div class="ib-title">{main}</div>{question_block}</div>'
@@ -565,12 +569,13 @@ class Compiler(*KITS):
             now = date.today()
             self.cfg["date"] = f"{now.day} {now.strftime('%B %Y')}"
         items = "".join(
-            f'<div class="cv-item"><b>{label}</b><span>{render_inline(self.cfg[key], self)}</span></div>'
+            f'<div class="cv-item"><b>{label}</b><span>{render_inline(self.cfg[key], self) if self.cfg.get(key, "").strip() else hint(label)}</span></div>'
             for key, label in COVER_ITEMS
-            if self.cfg.get(key, "").strip()
+            if self.cfg.get(key, "").strip() or self.studio
         )
         subtitle = self.cfg.get("subtitle", "").strip()
-        subtitle = f'<p class="cv-subtitle">{render_inline(subtitle, self)}</p>' if subtitle else ""
+        subtitle = render_inline(subtitle, self) if subtitle else hint("Subtitle")
+        subtitle = f'<p class="cv-subtitle">{subtitle}</p>' if subtitle else ""
         logo = self.cover_file("cover-logo")
         logo = f'<img class="cv-logo" src="{logo.as_uri()}" alt="">' if logo else ""
         art = ""

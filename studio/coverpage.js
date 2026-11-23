@@ -305,6 +305,7 @@ document.addEventListener(
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key;
+    if (typeof cvShortcut === 'function' && cvShortcut(event)) return;
     if (key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
