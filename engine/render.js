@@ -21,6 +21,7 @@ html = html.replace(/<h([12])(\s[^>]*)?>/g, (tag, level, attrs = '') => {
 const entries = [];
 html.replace(/<h([12])[^>]*\sid="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/g, (_, level, id, inner) => {
   if (id === 'contents') return;
+  inner = inner.replace(/<span class="pn"[^>]*><\/span>/g, '');
   const match = inner.match(/^<span class="num">([^<]*)<\/span>([\s\S]*)$/);
   entries.push({
     level,
@@ -32,7 +33,8 @@ html.replace(/<h([12])[^>]*\sid="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/g, (_, level, i
 
 const start = entries.length && pages[entries[0].id] !== undefined ? pages[entries[0].id] : 1;
 const continuous = /<meta name="page-numbering" content="continuous"/.test(html);
-const pageOf = (id) => (pages[id] === undefined ? '00' : continuous ? pages[id] : pages[id] - start + 1);
+const labels = pages['@labels'];
+const pageOf = (id) => (pages[id] === undefined ? '00' : labels ? labels[pages[id] - 1] || '' : continuous ? pages[id] : pages[id] - start + 1);
 
 const toc = entries
   .map((e) => {
@@ -47,6 +49,7 @@ html = html.replace('<!--TOC-->', `<nav class="toc">\n${toc}\n</nav>`);
 html = html.replace(/@PG:([\w-]+)@/g, (_, id) => pageOf(id));
 
 if (mode === 'probe' || mode === 'both') {
+  html = html.replace(/<span class="pn" id="(pn-[\w-]+)"><\/span>/g, (tag, id) => `<span class="pn" id="${id}"><span class="probe">@@${id}@@</span></span>`);
   html = html.replace(/<h([12])[^>]*\sid="([^"]+)"[^>]*>/g, (tag, _, id) => `${tag}<span class="probe">@@${id}@@</span>`);
   html = html.replace(/<figure\b[^>]*\sid="((?:fig|tbl)-[\w-]+)"[^>]*>/g, (tag, id) => `${tag}<span class="probe">@@${id}@@</span>`);
   html = html.replace(/<sup class="fnr" data-n="(\d+)">/g, (tag, n) => `${tag}<span class="probe">@@FN${n}@@</span>`);

@@ -87,6 +87,17 @@ function updatePill(kind) {
   if (S.pages && S.pages.length) parts.push(`${S.pages.length} ${S.pages.length === 1 ? 'page' : 'pages'}`);
   pill.className = state;
   pill.innerHTML = parts.map((part, index) => `<span class="${index === 0 ? 'state' : ''}">${part}</span>`).join('');
+  const segments = [...pill.children];
+  segments[0].title = 'Versions';
+  segments[0].onclick = () => {
+    openSettings();
+    openVersions();
+  };
+  const pagesPart = segments.find((node) => /page/.test(node.textContent));
+  if (pagesPart) {
+    pagesPart.title = 'Outline';
+    pagesPart.onclick = () => toggleOutline();
+  }
 }
 
 function lines() {
@@ -336,13 +347,28 @@ function layout() {
     div.style.height = `${page.h * S.scale}px`;
     const image = div.firstChild;
     if (image.getAttribute('src') !== page.url) image.src = page.url;
-    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del').forEach((node) => node.remove());
+    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-num').forEach((node) => node.remove());
     if (S.arrivePage === i && S.pages.length) {
       S.arrivePage = null;
       div.classList.remove('arrive');
       void div.offsetWidth;
       div.classList.add('arrive');
       setTimeout(() => div.classList.remove('arrive'), 900);
+    }
+    const spot = numberingOn(i);
+    if (spot) {
+      const tag = h('button', {
+        type: 'button',
+        class: `page-num${spot.rule ? ' set' : ''}`,
+        title: 'Page number',
+        html: icon('hash', 14),
+        onclick: (event) => {
+          event.stopPropagation();
+          numberMenu(tag, i);
+        },
+      });
+      tag.style.top = `${(S.pages[i].h - 34) * S.scale + 5}px`;
+      div.append(tag);
     }
     const last = i === S.pages.length - 1;
     div.append(h('button', {
@@ -379,7 +405,7 @@ function drawHits() {
       const top = (blank ? marginPt() : Math.max(span.y0 - 3, 0)) * S.scale;
       const bottom = (blank ? page.h - marginPt() : Math.min(span.y1 + 3, page.h - marginPt() * 0.55)) * S.scale;
       const hit = h('div', {
-        class: `hit${S.sel === range ? ' sel' : ''}`,
+        class: `hit${blank ? ' blank' : ''}${S.sel === range ? ' sel' : ''}`,
         'data-id': range.id,
         style: `left:${side}px;right:${side}px;top:${top}px;height:${Math.max(bottom - top, 8)}px`,
         onclick: () => select(range),
@@ -673,6 +699,8 @@ function insertLines(block, kind) {
   const target = S.target && S.ranges.includes(S.target.range) ? S.target : null;
   S.target = null;
   if (typeof clearMarker === 'function') clearMarker();
+  const anchor = target ? target.range : S.sel;
+  if (anchor && anchor.kind === 'blank' && kind !== 'blank') return fillBlank(anchor, block, kind);
   if (target && target.where === 'replace') return replaceWith(target.range, block, kind);
   if (target && target.where === 'before') return insertBefore(target.range, block, kind);
   const after = target ? target.range : S.sel || S.ranges[S.ranges.length - 1] || null;
@@ -693,6 +721,88 @@ function insertLines(block, kind) {
   if (!TEXT_KINDS.has(kind)) openPanel(fresh);
   placeOverlays();
   schedule(200);
+}
+
+const NUMBER_MODES = ['hide', 'skip', 'start', 'restart'];
+const NUMBER_STYLES = ['numbers', 'roman', 'Roman', 'letters', 'Letters'];
+
+function firstRangeOn(pageIndex) {
+  let best = null;
+  let top = Infinity;
+  S.ranges.forEach((range) => {
+    if (range.kind === 'pagebreak' || range.kind === 'numbering') return;
+    const span = (S.regions[range.id] || [])[0];
+    if (span && span.page === pageIndex && span.y0 < top) {
+      best = range;
+      top = span.y0;
+    }
+  });
+  return best;
+}
+
+function numberingOn(pageIndex) {
+  const first = firstRangeOn(pageIndex);
+  if (!first) return null;
+  const before = S.ranges[S.ranges.indexOf(first) - 1];
+  return { first, rule: before && before.kind === 'numbering' ? before : null };
+}
+
+function numberWords(rule) {
+  return rule ? linesOf(rule)[0].replace(/^:::\s*numbering\s*/i, '').split(/[\s,]+/).filter(Boolean) : [];
+}
+
+function numberMenu(button, pageIndex) {
+  const spot = numberingOn(pageIndex);
+  if (!spot) return;
+  const words = numberWords(spot.rule);
+  const mode = words.find((word) => NUMBER_MODES.includes(word)) || 'auto';
+  const style = words.find((word) => NUMBER_STYLES.includes(word)) || '';
+  const mark = (value, label) => ({ value, label: value === style ? `${label} ✓` : label });
+  const choices = [
+    { value: 'auto', label: 'Number normally' },
+    { value: 'hide', label: 'Hide on this page' },
+    { value: 'skip', label: "Don't count this page" },
+    { value: 'start', label: 'Start numbering here' },
+    { value: 'restart', label: 'Restart at 1 here' },
+    mark('numbers', '1, 2, 3 from here'),
+    mark('roman', 'i, ii, iii from here'),
+    mark('Roman', 'I, II, III from here'),
+    mark('letters', 'a, b, c from here'),
+  ];
+  showMenu(button, choices, mode, (value) => {
+    let next = [...words];
+    if (NUMBER_STYLES.includes(value)) {
+      next = next.filter((word) => !NUMBER_STYLES.includes(word));
+      if (value !== style) next.push(value);
+    } else {
+      next = next.filter((word) => !NUMBER_MODES.includes(word) && !/^\d+$/.test(word));
+      if (value !== 'auto') next.unshift(value);
+    }
+    writeNumbering(spot, next);
+  }, true);
+}
+
+function writeNumbering(spot, words) {
+  const all = lines();
+  const line = `:::numbering ${words.join(' ')}`;
+  if (spot.rule) {
+    let count = spot.rule.end - spot.rule.start + 1;
+    if (!words.length && all[spot.rule.start - 1 + count] !== undefined && !all[spot.rule.start - 1 + count].trim()) count += 1;
+    all.splice(spot.rule.start - 1, count, ...(words.length ? [line] : []));
+  } else if (words.length) {
+    all.splice(spot.first.start - 1, 0, line, '');
+  } else {
+    return;
+  }
+  restoreSource(all.join('\n'));
+}
+
+function fillBlank(range, block, kind) {
+  setRangeLines(range, [':::pagebreak']);
+  range.kind = 'pagebreak';
+  S.sel = null;
+  S.target = { range, where: 'after' };
+  insertLines(block, kind);
 }
 
 function lastRangeOn(pageIndex) {
@@ -733,7 +843,11 @@ function removePage(pageIndex) {
   if (!S.pages.length || S.front && pageIndex === 0 && S.settings.cover === 'yes') return;
   const doomed = pageRanges(pageIndex);
   if (doomed.length) {
-    const before = S.ranges[S.ranges.indexOf(doomed[0]) - 1];
+    let before = S.ranges[S.ranges.indexOf(doomed[0]) - 1];
+    if (before && before.kind === 'numbering') {
+      doomed.unshift(before);
+      before = S.ranges[S.ranges.indexOf(before) - 1];
+    }
     if (before && before.kind === 'pagebreak') doomed.unshift(before);
   } else {
     const after = S.ranges.find((range) => (S.regions[range.id] || []).some((span) => span.page > pageIndex));

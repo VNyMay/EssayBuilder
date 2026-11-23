@@ -454,7 +454,7 @@ def paginate(src, work, page, raw, cfg, probe=True, memo=None):
     elif probe and memo and memo in PAGE_MEMO:
         pages = PAGE_MEMO[memo]
         for _ in range(3):
-            pages_file.write_text(json.dumps(pages))
+            pages_file.write_text(json.dumps(labelled(pages, cfg)))
             expanded.write_text(src, encoding="utf-8")
             render(expanded, page, "both", pages_file)
             print_pdf(page, raw)
@@ -469,7 +469,7 @@ def paginate(src, work, page, raw, cfg, probe=True, memo=None):
         pages = find_pages(raw)
         if memo:
             PAGE_MEMO[memo] = pages
-    pages_file.write_text(json.dumps(pages))
+    pages_file.write_text(json.dumps(labelled(pages, cfg)))
     expanded.write_text(text, encoding="utf-8")
     render(expanded, page, "final", pages_file)
     print_pdf(page, raw)
@@ -505,6 +505,84 @@ def to_letters(n):
 
 
 STYLES = {"arabic": ("D", str), "roman": ("r", to_roman), "letter": ("a", to_letters)}
+
+
+STYLE_WORDS = {
+    "numbers": ("D", str),
+    "roman": ("r", to_roman),
+    "Roman": ("R", lambda n: to_roman(n).upper()),
+    "letters": ("a", to_letters),
+    "Letters": ("A", lambda n: to_letters(n).upper()),
+}
+NUMBER_RULE = re.compile(r"pn-\d+-([\w-]+)")
+
+
+def numbering_rules(pages):
+    rules = {}
+    for key, number in pages.items():
+        match = NUMBER_RULE.fullmatch(key)
+        if match:
+            rules.setdefault(number - 1, []).extend(match.group(1).split("-"))
+    return rules
+
+
+def page_plan(total, first, continuous, cover, cfg, rules):
+    _, style, convert = page_format(cfg.get("page-number-format"))
+    begin = (1 if cover else 0) if continuous else first
+    starts = [i for i, words in rules.items() if "start" in words]
+    if starts:
+        begin = min(starts)
+    value = 1 - (0 if continuous else first)
+    plan = []
+    for i in range(total):
+        words = rules.get(i, [])
+        if "start" in words or "restart" in words:
+            value = next((int(word) for word in words if word.isdigit()), 1)
+        for word in words:
+            if word in STYLE_WORDS:
+                style, convert = STYLE_WORDS[word]
+        if "skip" in words:
+            plan.append(None)
+            continue
+        plan.append({
+            "n": value,
+            "text": convert(value) if value > 0 else "",
+            "style": style,
+            "shown": i >= begin and value > 0 and "hide" not in words,
+        })
+        value += 1
+    return plan
+
+
+def plan_labels(plan):
+    labels, previous = [], None
+    for i, entry in enumerate(plan):
+        if entry and entry["n"] > 0:
+            if not (previous and previous[0] == entry["style"] and previous[1] == entry["n"] - 1):
+                labels.append({"startpage": i, "prefix": "", "style": entry["style"], "firstpagenum": entry["n"]})
+            previous = (entry["style"], entry["n"])
+        else:
+            if previous != "off":
+                labels.append({"startpage": i, "prefix": "", "style": "r", "firstpagenum": i + 1})
+            previous = "off"
+    return labels
+
+
+def body_start(pages):
+    body = [
+        number for key, number in pages.items()
+        if key != "contents" and not key.startswith(("fig-", "tbl-", "@")) and not re.fullmatch(r"B\d+", key)
+    ]
+    return min(body) - 1 if body else 0
+
+
+def labelled(pages, cfg):
+    if not any(key.startswith("pn-") for key in pages):
+        return pages
+    continuous = cfg.get("page-numbering", "body").lower() == "continuous"
+    cover = cfg.get("cover", "yes").lower() not in OFF
+    plan = page_plan(max(pages.values()), body_start(pages), continuous, cover, cfg, numbering_rules(pages))
+    return {**pages, "@labels": [entry["text"] if entry else "" for entry in plan]}
 
 
 def page_format(value):
@@ -577,7 +655,7 @@ def date_text(cfg):
 
 def number_pages(
     pdf, output, first, font_file, title, numbered=True, continuous=False, cover=True,
-    cfg=None, sections=(), fast=False,
+    cfg=None, sections=(), fast=False, rules=None,
 ):
     import pymupdf
 
@@ -588,38 +666,35 @@ def number_pages(
     margin, grey = margin_of(cfg), (0.38, 0.38, 0.38)
     with pymupdf.open(pdf) as doc:
         total = len(doc)
-        begin = (1 if cover else 0) if continuous else first
-        base = 0 if continuous else first
+        plan = page_plan(total, first, continuous, cover, cfg, rules or {})
+        shown_pages = [i for i, entry in enumerate(plan) if entry and entry["shown"]]
+        last = max((entry["n"] for entry in plan if entry), default=1)
         values = {
             "title": title,
             "author": cfg.get("author", "").strip(),
             "date": date_text(cfg),
-            "pages": convert(max(total - base, 1)),
+            "pages": convert(max(last, 1)),
         }
-        for i in range(begin, total):
+        for i in shown_pages:
             page = doc[i]
-            n = i - base + 1
-            values["page"] = convert(n)
+            values["page"] = plan[i]["text"]
             values["section"] = next((t for p, t in reversed(sections) if p <= i), "")
             for text, kind, y in (
                 (header, "header", min(40, margin * 0.55)),
                 (footer, "footer", page.rect.height - 34),
             ):
-                skip = i == begin and cfg.get(f"{kind}-on-first", "yes").lower() in OFF
+                skip = i == shown_pages[0] and cfg.get(f"{kind}-on-first", "yes").lower() in OFF
                 if text and not skip:
                     for side, part in zip(("left", "centre", "right"), parts_of(text)):
                         shown = fill_tokens(part, values)
                         stamp(page, shown, side, y, margin, font, font_file, 9.5, grey)
             if numbered and not footer:
-                shown = fill_tokens(pattern, {"n": convert(n), "pages": values["pages"]})
+                shown = fill_tokens(pattern, {"n": plan[i]["text"], "pages": values["pages"]})
                 stamp(page, shown, "centre", page.rect.height - 34, margin, font, font_file, 10.5, (0.27, 0.27, 0.27))
         if cfg.get("watermark", "").strip():
             for page in doc:
                 watermark(page, cfg["watermark"].strip(), font, font_file)
-        labels = [{"startpage": base, "prefix": "", "style": style, "firstpagenum": 1}]
-        if first and not continuous:
-            labels.insert(0, {"startpage": 0, "prefix": "", "style": "r", "firstpagenum": 1})
-        doc.set_page_labels(labels)
+        doc.set_page_labels(plan_labels(plan))
         doc.set_metadata({"title": title, "author": "", "creator": "", "producer": ""})
         if fast:
             doc.save(output)
@@ -711,7 +786,7 @@ def build(essay, output=None, check=False, keep=False):
         has_cover = cfg.get("cover", "yes").lower() not in OFF
         count = number_pages(
             raw, output, first, font_file, title, numbered, continuous, has_cover,
-            cfg, section_list(src, pages),
+            cfg, section_list(src, pages), rules=numbering_rules(pages),
         )
         if essay.suffix.lower() not in {".html", ".htm"} and cfg.get("embed-project", "yes").lower() not in OFF:
             embed_project(output, essay)
@@ -747,7 +822,7 @@ def scan_page(page):
     return SCANNED[digest]
 
 
-def studio_regions(pdf):
+def studio_regions(pdf, margin=0):
     import pymupdf
 
     found = []
@@ -757,6 +832,9 @@ def studio_regions(pdf):
         sizes = [(page.rect.width, page.rect.height) for page in doc]
         for number, page in enumerate(doc):
             marks, spots, backs = scan_page(page)
+            if margin:
+                low, high = margin - 2, page.rect.height - margin - 4
+                spots = [b for b in spots if b[1] > low and b[0] < high]
             found.extend((ident, number, y0) for ident, y0 in marks)
             boxes.append(spots)
             panels.append(backs)
@@ -848,7 +926,7 @@ def studio_build(essay, source, output):
     printable = work / "print.html"
     raw = work / "raw.pdf"
     try:
-        needs_pages = "<!--TOC-->" in src or "@PG:" in src
+        needs_pages = "<!--TOC-->" in src or "@PG:" in src or 'class="pn"' in src
         cfg = compiler.cfg
         pages, raw = paginate(src, work, printable, raw, cfg, needs_pages, str(essay))
         pages = {k: v for k, v in pages.items() if not re.fullmatch(r"B\d+", k)}
@@ -860,9 +938,9 @@ def studio_build(essay, source, output):
         continuous = cfg.get("page-numbering", "body").lower() == "continuous"
         count = number_pages(
             raw, output, first, font_file, title, numbered, continuous, has_cover,
-            cfg, section_list(src, pages), True,
+            cfg, section_list(src, pages), True, rules=numbering_rules(pages),
         )
-        sizes, regions = studio_regions(output)
+        sizes, regions = studio_regions(output, margin_of(cfg))
     finally:
         shutil.rmtree(work, ignore_errors=True)
     result.update({"pdf": str(output), "pages": count, "words": words, "sizes": sizes, "regions": regions})

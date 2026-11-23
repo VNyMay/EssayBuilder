@@ -48,6 +48,7 @@ numbers: latex
 | `cover` / `contents` | `no` removes the cover page / contents page | `yes` |
 | `page-numbers` | `no` hides page numbers | `yes` |
 | `page-numbering` | `body`: the first section is page 1, the cover and contents pages are not numbered. `continuous`: every page counts from the first one as it really sits in the PDF, so with a cover and a contents page the Introduction is page 3 (the cover counts as 1 but shows no number; the contents list uses the same numbers) | `body` |
+| `:::numbering` (block) | put `:::numbering hide`, `skip`, `start`, `restart 5`, `roman`, `Roman`, `letters` or `numbers` (words can be combined) just before the first block of a page: `hide` = no number on that page, `skip` = that page is not counted, `start` = numbering begins here (earlier pages unnumbered), `restart N` = count from N here, a style word changes the style from that page on | |
 | `word-count` | `auto` (counted), `off` (not shown on the cover), or a number to print | `auto` |
 | `word-count-label` | Text before the count on the cover | `Word count` |
 | `word-limit` | e.g. `4000`: the build warns when exceeded | none |

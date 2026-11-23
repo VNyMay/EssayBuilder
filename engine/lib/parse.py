@@ -72,7 +72,7 @@ MERMAID_BLOCKS = {
 }
 TABLE_STYLES = {"classic", "grid", "striped", "minimal"}
 SCIENCE_KEYS = {"src", "smiles", "width", "caption", "id", "source", "align", "wrap", "color", "stereo"}
-NO_BODY = {"pagebreak", "blank", "spacer", "wc-start", "wc-end", "list-of-figures", "list-of-tables", "contents"}
+NO_BODY = {"pagebreak", "blank", "numbering", "spacer", "wc-start", "wc-end", "list-of-figures", "list-of-tables", "contents"}
 DIRECTIVES = (
     {"figure", "figures", "table", "code", "run", "eq-pair", "box", "question", "note", "proof", "text", "chart",
      "diagram", "flow", "mindmap", "tree", "timeline", "grid", "swot", "references", "map", "music", "molecule"}
@@ -87,6 +87,7 @@ CHART_KEYS = {"type", "src", "file", "csv", "data", "path", "sheet", "x", "y", "
 DIAGRAM_KEYS = {"direction", "width", "caption", "id", "source", "title", "align", "wrap"}
 GRID_KEYS = {"cols", "width", "caption", "id", "source", "align", "wrap"}
 FIGURES_KEYS = {"cols", "width", "caption", "id", "source", "align", "wrap"}
+NUMBER_WORDS = {"hide", "skip", "start", "restart", "numbers", "roman", "Roman", "letters", "Letters"}
 TEXT_KEYS = {"page", "size", "align", "style", "indent", "font", "color", "bg", "spacing", "line", "weight"}
 DIRECTIVE = re.compile(r"^:::\s*([A-Za-z][\w-]*)\s*(.*?)\s*$")
 HEADING = re.compile(r"^(#{1,3})\s+(.+?)\s*$")
@@ -138,6 +139,7 @@ class Compiler(*KITS):
         self.path = Path(path).resolve()
         self.source_text = source_text
         self.studio = studio
+        self.pending_numbers = []
         self.ranges = []
         self.front = None
         self.main_lines = []
@@ -702,9 +704,21 @@ class Compiler(*KITS):
         for k, block in enumerate(blocks):
             start = len(self.out)
             getattr(self, f"do_{block.kind}")(block)
+            if self.pending_numbers and not (block.kind == "dir" and block.data.get("name") in {"numbering", "pagebreak"}):
+                self.attach_numbers(start)
             if self.studio and block.line.file == self.path:
                 self.mark_block(blocks, k, start)
             self.band_notes(block, start)
+
+    def attach_numbers(self, start):
+        for index in range(start, len(self.out)):
+            chunk = self.out[index]
+            if re.match(r"<(?:h[1-6]|p|figure|div|ul|ol|blockquote|table|pre)\b", chunk):
+                cut = chunk.index(">") + 1
+                spans = "".join(f'<span class="pn" id="{ident}"></span>' for ident in self.pending_numbers)
+                self.out[index] = chunk[:cut] + spans + chunk[cut:]
+                self.pending_numbers = []
+                return
 
     def mark_block(self, blocks, k, start):
         block = blocks[k]
@@ -954,6 +968,17 @@ class Compiler(*KITS):
     def dir_pagebreak(self, args, body, line):
         self.ensure_section(line)
         self.emit('<div class="pb"></div>')
+
+    def dir_numbering(self, args, body, line):
+        words = []
+        for word in (args or "").replace(",", " ").split():
+            plain_word = word if word in NUMBER_WORDS else word.lower()
+            if word.isdigit() or plain_word in NUMBER_WORDS:
+                words.append(word if word.isdigit() else plain_word)
+            else:
+                self.report.warn(line.where, f"numbering: '{word}' is not known (use hide, skip, start, restart, a number, numbers, roman, Roman or letters)")
+        if words:
+            self.pending_numbers.append(f"pn-{line.no}-{'-'.join(words)}")
 
     def dir_blank(self, args, body, line):
         self.ensure_section(line)

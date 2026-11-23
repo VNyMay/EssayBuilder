@@ -974,3 +974,138 @@
     animation: none;
   }
 }
+
+.hit.blank,
+.hit.blank:hover,
+.hit.blank.sel {
+  background: transparent;
+  border-color: transparent;
+  outline: 0;
+  box-shadow: none;
+  cursor: text;
+}
+
+.hit.blank.sel::before {
+  display: none;
+}
+
+.hit.blank::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 6px;
+  width: 2px;
+  height: 1.4em;
+  border-radius: 1px;
+  background: var(--green);
+  opacity: 0;
+}
+
+.hit.blank:hover::after {
+  animation: caret 1.05s steps(1) infinite;
+}
+
+@keyframes caret {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0; }
+}
+
+.page-num {
+  position: absolute;
+  left: 50%;
+  z-index: 4;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1.5px dashed rgb(var(--accent-rgb) / 0.5);
+  background: var(--surface);
+  color: var(--green);
+  cursor: pointer;
+  opacity: 0;
+  translate: -50% 4px;
+  scale: 0.8;
+  transition: opacity 200ms ease, translate 320ms cubic-bezier(0.3, 0.7, 0.2, 1.5), scale 320ms cubic-bezier(0.3, 0.7, 0.2, 1.5), background-color 160ms ease, box-shadow 200ms ease;
+}
+
+.page:hover .page-num,
+.page-num.open,
+.page-num:focus-visible {
+  opacity: 1;
+  translate: -50% 0;
+  scale: 1;
+}
+
+.page-num.set {
+  opacity: 0.55;
+  border-style: solid;
+  scale: 0.9;
+}
+
+.page-num:hover,
+.page-num.open {
+  border-style: solid;
+  box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 0.12), 0 6px 14px -6px rgb(var(--shadow) / 0.4);
+}
+
+.page-num svg {
+  transition: rotate 360ms cubic-bezier(0.3, 0.7, 0.2, 1.6);
+}
+
+.page-num:hover svg {
+  rotate: 15deg;
+}
+
+.page-num:active {
+  scale: 0.9;
+}
+
+.page.arrive .page-num {
+  display: none;
+}
+
+#statusPill {
+  transition: translate 260ms cubic-bezier(0.3, 0.7, 0.2, 1.4), box-shadow 260ms ease;
+}
+
+#statusPill:hover {
+  translate: 0 -2px;
+  box-shadow: 0 10px 24px -10px rgb(var(--shadow) / 0.45), 0 0 0 1px var(--edge);
+}
+
+#statusPill span {
+  position: relative;
+  transition: color 160ms ease, background-color 180ms ease, translate 220ms cubic-bezier(0.3, 0.7, 0.2, 1.5);
+  border-radius: 999px;
+}
+
+#statusPill span[title] {
+  cursor: pointer;
+}
+
+#statusPill span[title]:hover {
+  color: var(--green);
+  background: rgb(var(--accent-rgb) / 0.08);
+}
+
+#statusPill span:hover {
+  translate: 0 -1px;
+}
+
+#statusPill .state::before {
+  transition: scale 260ms cubic-bezier(0.3, 0.7, 0.2, 1.8);
+}
+
+#statusPill .state:hover::before {
+  scale: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #statusPill,
+  #statusPill span,
+  .page-num {
+    transition: none;
+  }
+}
