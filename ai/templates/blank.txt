@@ -1,0 +1,13 @@
+%% TEMPLATE: blank. Use when no other template fits. Fill the {{...}} parts, delete what the student does not need.
+%% Comment lines (starting with %%) are never printed. Remove every {{...}} before you send the file.
+title: {{DOCUMENT TITLE}}
+look: {{ESSAY OR DOCUMENT OR COMPACT}}
+---
+
+# {{THE STUDENT'S FIRST HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS, COPIED EXACTLY}}
+
+# References
+
+{{THE STUDENT'S REFERENCES, ONE PARAGRAPH EACH, IN THEIR ORDER}}

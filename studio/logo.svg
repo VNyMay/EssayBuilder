@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#12b387"/>
+      <stop offset="0.55" stop-color="#027554"/>
+      <stop offset="1" stop-color="#00432f"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e3f1ea"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffbf2e"/>
+      <stop offset="1" stop-color="#f1a001"/>
+    </linearGradient>
+    <filter id="lift" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#00241a" flood-opacity="0.38"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="118" fill="url(#gloss)"/>
+  <g filter="url(#lift)">
+    <path d="M172 82h134l78 78v218a48 48 0 0 1-48 48H172a48 48 0 0 1-48-48V130a48 48 0 0 1 48-48z" fill="url(#sheet)"/>
+  </g>
+  <path d="M306 82l78 78h-54a24 24 0 0 1-24-24V82z" fill="#b9dccd"/>
+  <rect x="164" y="176" width="124" height="26" rx="13" fill="url(#gold)"/>
+  <rect x="164" y="236" width="184" height="16" rx="8" fill="#027554"/>
+  <rect x="164" y="276" width="184" height="16" rx="8" fill="#027554" opacity="0.62"/>
+  <rect x="164" y="316" width="184" height="16" rx="8" fill="#027554" opacity="0.62"/>
+  <rect x="164" y="356" width="112" height="16" rx="8" fill="#027554" opacity="0.62"/>
+</svg>

@@ -1,0 +1,59 @@
+$ErrorActionPreference = "Stop"
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repo = Split-Path -Parent $here
+$build = Join-Path $here "build"
+$app = Join-Path $build "app"
+
+function Find-Iscc {
+    $found = Get-Command iscc -ErrorAction SilentlyContinue
+    if ($found) { return $found.Source }
+    foreach ($base in @((Join-Path $env:LOCALAPPDATA "Programs"), $env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        $candidate = Join-Path $base "Inno Setup 6\ISCC.exe"
+        if (Test-Path $candidate) { return $candidate }
+    }
+    return $null
+}
+
+$iscc = Find-Iscc
+if (-not $iscc) {
+    Write-Host "Installing Inno Setup (the tool that builds the installer)..."
+    winget install -e --id JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements | Out-Null
+    $iscc = Find-Iscc
+    if (-not $iscc) { throw "Inno Setup is missing. Install it from https://jrsoftware.org/isinfo.php and run this script again." }
+}
+
+if (Test-Path $build) { Remove-Item $build -Recurse -Force }
+New-Item -ItemType Directory $app | Out-Null
+
+Write-Host "Copying Essay Builder..."
+$skip = @("node_modules", "__pycache__", "fonts", "cache", ".git", ".github", "installer", "dist", "docker", "Essays", "essays")
+robocopy $repo $app /E /XD $skip /XF *.log *.pdf running.json recent.json launcher.json Dockerfile docker-compose.yml .dockerignore .gitignore .gitattributes build-docker.bat /NFL /NDL /NJH /NJS /NP | Out-Null
+New-Item -ItemType Directory (Join-Path $app "engine\fonts") -Force | Out-Null
+
+Write-Host "Bundling Python..."
+$python = (python -c "import sys; print(sys.base_prefix)").Trim()
+$target = Join-Path $app "python"
+robocopy $python $target /E /XD site-packages Doc test tests idlelib __pycache__ include libs Scripts /NFL /NDL /NJH /NJS /NP | Out-Null
+$site = Join-Path $target "Lib\site-packages"
+New-Item -ItemType Directory $site -Force | Out-Null
+python -m pip install --disable-pip-version-check --quiet --target $site -r (Join-Path $repo "engine\requirements.txt")
+if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
+
+Write-Host "Bundling Node.js..."
+$node = (Get-Command node).Source
+New-Item -ItemType Directory (Join-Path $app "node") | Out-Null
+Copy-Item $node (Join-Path $app "node\node.exe")
+
+Write-Host "Installing the JavaScript libraries..."
+npm ci --omit=dev --no-audit --no-fund --loglevel=error --prefix (Join-Path $app "engine")
+if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+
+Set-Content -Path (Join-Path $app "installed.flag") -Value "installed" -Encoding ascii
+
+Write-Host "Preparing the wizard pictures..."
+python (Join-Path $here "make_wizard.py") $build
+
+Write-Host "Building the installer..."
+& $iscc (Join-Path $here "EssayBuilder.iss")
+if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+Write-Host "Done: $(Join-Path $here 'dist\EssayBuilder-Setup.exe')"

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Essay Title</title>
+<meta name="font" content="Cambria">
+<meta name="numbers" content="text">
+</head>
+<body>
+
+<section class="cover">
+  <div class="cover-title">Subject</div>
+  <div class="cover-mid">
+    <p class="cover-main"><strong>Essay title or research question</strong></p>
+  </div>
+  <div class="cover-foot">Word count: {{WORDS}}</div>
+</section>
+
+<section class="sec">
+<h1 id="contents">Contents</h1>
+<!--TOC-->
+</section>
+
+<!--WC-START-->
+<section class="sec">
+<h1 id="introduction"><span class="num">1</span>Introduction</h1>
+<p>Body paragraph. Inline maths such as $x^2 + 1$ is optional.</p>
+<div class="box"><strong>A highlighted statement, such as the research question.</strong></div>
+<blockquote><p>A long quotation goes here.</p></blockquote>
+
+<h2 id="background"><span class="num">1.1</span>Background</h2>
+<p>Another paragraph (Author, 2020).</p>
+<div class="eq">$$E = mc^2$$</div>
+
+<figure class="tbl">
+  <figcaption class="cap"><b class="lab">Table 1:</b> Caption.</figcaption>
+  <table class="data">
+    <thead><tr><th>Item</th><th>Value</th></tr></thead>
+    <tbody><tr><td>A</td><td class="r">1.5</td></tr><tr><td>B</td><td class="r">2.0</td></tr></tbody>
+  </table>
+</figure>
+</section>
+
+<section class="sec">
+<h1 id="conclusion"><span class="num">2</span>Conclusion</h1>
+<p>Final paragraph.</p>
+</section>
+<!--WC-END-->
+
+<section class="sec">
+<h1 id="references">References</h1>
+<p class="ref">Author, A. (2020). <em>Title of the source</em>. Publisher. <a class="url" href="https://example.com">https://example.com</a></p>
+</section>
+
+</body>
+</html>

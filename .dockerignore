@@ -1,0 +1,16 @@
+.git
+.github
+installer
+dist
+essays
+Essays
+examples
+**/__pycache__
+**/node_modules
+engine/fonts
+engine/cache
+*.pdf
+*.log
+*.bat
+*.pyw
+Essay Builder Skill.zip

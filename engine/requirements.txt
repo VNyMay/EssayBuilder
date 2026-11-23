@@ -1,0 +1,6 @@
+pymupdf
+pygments
+openpyxl
+websockets
+Pillow
+pywebview; sys_platform == "win32"

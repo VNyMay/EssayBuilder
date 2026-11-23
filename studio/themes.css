@@ -1,0 +1,278 @@
+:root,
+[data-theme='light'] {
+  --green: #188038;
+  --bright: #1e8e3e;
+  --deep: #0d652d;
+  --accent-rgb: 24 128 56;
+  --on-accent: #ffffff;
+  --danger: #d93025;
+  --surface: #ffffff;
+  --surface-hi: rgb(255 255 255 / 0.9);
+  --panel: #f1f3f4;
+  --text: #1f1f1f;
+  --muted: #5f6368;
+  --line: #e3e3e3;
+  --line-strong: #c4c7c5;
+  --edge: rgb(60 64 67 / 0.12);
+  --hi-line: rgb(255 255 255 / 0.9);
+  --shadow: 60 64 67;
+  --thumb: #c4c7c5;
+  --thumb-hover: #9aa0a6;
+  --mat: #eceff1;
+  --mat-line: rgb(60 64 67 / 0.05);
+  --mat-major: rgb(60 64 67 / 0.1);
+  --mat-mark: rgb(60 64 67 / 0.4);
+  --on-mat: #1f1f1f;
+  --on-mat-2: #5f6368;
+  --marker: #fdd663;
+  --proof: #d93025;
+  --press: #0d652d;
+  --slip: #ffffff;
+  --sheet: #ffffff;
+  --sheet-rule: rgb(66 133 244 / 0.16);
+  --sheet-margin: rgb(234 67 53 / 0.35);
+  --grain-a: 0.04;
+}
+
+[data-theme='docs'] {
+  --green: #0b57d0;
+  --bright: #1a73e8;
+  --deep: #0842a0;
+  --accent-rgb: 11 87 208;
+  --surface: #ffffff;
+  --panel: #f0f4f9;
+  --text: #1f1f1f;
+  --muted: #444746;
+  --line: #dde3ea;
+  --line-strong: #c4c7c5;
+  --edge: rgb(31 31 31 / 0.1);
+  --shadow: 32 33 36;
+  --mat: #f0f4f9;
+  --mat-line: rgb(11 87 208 / 0.04);
+  --mat-major: rgb(11 87 208 / 0.08);
+  --mat-mark: rgb(68 71 70 / 0.4);
+  --on-mat: #1f1f1f;
+  --on-mat-2: #444746;
+  --press: #0842a0;
+  --marker: #fdd663;
+}
+
+[data-theme='aqua'] {
+  --green: #007aff;
+  --bright: #2a8cff;
+  --deep: #0062cc;
+  --accent-rgb: 0 122 255;
+  --danger: #ff3b30;
+  --surface: #ffffff;
+  --panel: #f5f5f7;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #e5e5ea;
+  --line-strong: #d2d2d7;
+  --edge: rgb(0 0 0 / 0.08);
+  --shadow: 0 0 0;
+  --mat: #f5f5f7;
+  --mat-line: rgb(0 0 0 / 0.025);
+  --mat-major: rgb(0 0 0 / 0.05);
+  --mat-mark: rgb(0 0 0 / 0.3);
+  --on-mat: #1d1d1f;
+  --on-mat-2: #6e6e73;
+  --press: #0062cc;
+  --marker: #ffd60a;
+  --proof: #ff3b30;
+  --grain-a: 0.02;
+}
+
+[data-theme='notebook'] {
+  --green: #2848a8;
+  --bright: #3a5fd0;
+  --deep: #1c3580;
+  --accent-rgb: 40 72 168;
+  --surface: #fbfcff;
+  --panel: #eef2fa;
+  --text: #1c2a4a;
+  --muted: #56627e;
+  --line: #dbe3f2;
+  --line-strong: #b9c6e0;
+  --edge: rgb(28 42 74 / 0.1);
+  --shadow: 28 42 74;
+  --mat: #e6ebf3;
+  --mat-line: rgb(40 72 168 / 0.06);
+  --mat-major: rgb(40 72 168 / 0.12);
+  --mat-mark: rgb(28 42 74 / 0.38);
+  --on-mat: #1c2a4a;
+  --on-mat-2: #56627e;
+  --press: #1c3580;
+  --marker: #ffe45c;
+  --proof: #d33a3a;
+  --sheet: #fbfcff;
+  --sheet-rule: rgb(40 72 168 / 0.16);
+  --sheet-margin: rgb(239 163 169 / 0.9);
+}
+
+[data-theme='periwinkle'] {
+  --green: #4a57a8;
+  --bright: #6271bb;
+  --deep: #3e4a99;
+  --accent-rgb: 74 87 168;
+  --surface: #ffffff;
+  --panel: #eef0fa;
+  --text: #1e2550;
+  --muted: #555c86;
+  --line: #dde1f4;
+  --line-strong: #bcc2e4;
+  --edge: rgb(30 37 80 / 0.1);
+  --shadow: 16 20 60;
+  --mat: #6271bb;
+  --mat-line: rgb(255 255 255 / 0.07);
+  --mat-major: rgb(255 255 255 / 0.15);
+  --mat-mark: rgb(255 255 255 / 0.55);
+  --on-mat: #ffffff;
+  --on-mat-2: #e6e9fa;
+  --press: #2f3a85;
+  --marker: #ffe45c;
+  --proof: #d33a4a;
+}
+
+[data-theme='paper'] {
+  --green: #2f6b45;
+  --bright: #3c8457;
+  --deep: #224f33;
+  --accent-rgb: 47 107 69;
+  --surface: #fffaf0;
+  --surface-hi: rgb(255 253 245 / 0.9);
+  --panel: #f3ead8;
+  --text: #2c2416;
+  --muted: #7a6c52;
+  --line: #e8dcc3;
+  --line-strong: #cdbb98;
+  --edge: rgb(80 60 20 / 0.14);
+  --shadow: 60 42 15;
+  --mat: #cdb48c;
+  --mat-line: rgb(90 60 20 / 0.1);
+  --mat-major: rgb(90 60 20 / 0.2);
+  --mat-mark: rgb(60 40 10 / 0.45);
+  --on-mat: #2c2416;
+  --on-mat-2: #5b4c33;
+  --press: #224f33;
+  --sheet: #fffbf1;
+  --grain-a: 0.09;
+}
+
+[data-theme='dark'] {
+  --green: #0a84ff;
+  --bright: #409cff;
+  --deep: #0071e3;
+  --danger: #ff453a;
+  --accent-rgb: 10 132 255;
+  --on-accent: #ffffff;
+  --surface: #2c2c2e;
+  --surface-hi: rgb(255 255 255 / 0.05);
+  --panel: #1c1c1e;
+  --text: #f5f5f7;
+  --muted: #98989d;
+  --line: #3a3a3c;
+  --line-strong: #48484a;
+  --edge: rgb(255 255 255 / 0.1);
+  --hi-line: rgb(255 255 255 / 0.07);
+  --danger-bg: #3a1c1e;
+  --warn-bg: #3a2e12;
+  --warn-text: #ffd60a;
+  --shadow: 0 0 0;
+  --thumb: #48484a;
+  --thumb-hover: #636366;
+  --mat: #111113;
+  --mat-line: rgb(255 255 255 / 0.03);
+  --mat-major: rgb(255 255 255 / 0.07);
+  --mat-mark: rgb(255 255 255 / 0.35);
+  --on-mat: #f5f5f7;
+  --on-mat-2: #98989d;
+  --press: #0062cc;
+  --slip: #2c2c2e;
+  --sheet: #f5f5f7;
+  --marker: rgb(255 214 10 / 0.35);
+  --proof: #ff453a;
+}
+
+[data-theme='ink'] {
+  --green: #94b2ff;
+  --bright: #b0c6ff;
+  --deep: #7192ea;
+  --danger: #ff7e7e;
+  --accent-rgb: 148 178 255;
+  --on-accent: #0b1220;
+  --surface: #111a29;
+  --surface-hi: rgb(255 255 255 / 0.04);
+  --panel: #0c1322;
+  --text: #e4eaf5;
+  --muted: #a3afc6;
+  --line: #1e2b42;
+  --line-strong: #33415c;
+  --edge: rgb(255 255 255 / 0.08);
+  --hi-line: rgb(255 255 255 / 0.06);
+  --danger-bg: #3a1c24;
+  --warn-bg: #3a3012;
+  --warn-text: #f1c46b;
+  --shadow: 0 0 0;
+  --thumb: #2c3a54;
+  --thumb-hover: #3f5275;
+  --mat: #080c14;
+  --mat-line: rgb(148 178 255 / 0.045);
+  --mat-major: rgb(148 178 255 / 0.1);
+  --mat-mark: rgb(228 234 245 / 0.4);
+  --on-mat: #e4eaf5;
+  --on-mat-2: #a3afc6;
+  --press: #4f6fc9;
+  --slip: #182236;
+  --sheet: #eef1f8;
+  --marker: rgb(255 126 126 / 0.35);
+  --proof: #ff7e7e;
+}
+
+[data-theme='contrast'] {
+  --green: #005c3f;
+  --surface: #ffffff;
+  --surface-hi: transparent;
+  --panel: #ffffff;
+  --text: #000000;
+  --muted: #1f1f1f;
+  --line: #000000;
+  --line-strong: #000000;
+  --edge: #000000;
+  --mat: #ffffff;
+  --mat-line: rgb(0 0 0 / 0.06);
+  --mat-major: rgb(0 0 0 / 0.14);
+  --on-mat: #000000;
+  --on-mat-2: #1f1f1f;
+  --grain-a: 0;
+}
+
+[data-theme='docs'] .hero-brand .word i,
+[data-theme='aqua'] .hero-brand .word i,
+[data-theme='light'] .hero-brand .word i {
+  color: var(--green);
+}
+
+[data-theme='periwinkle'] .hero-brand .word i {
+  color: #ffffff;
+}
+
+[data-theme='periwinkle'] .hero-brand .word i::before {
+  background: rgb(255 228 92 / 0.5);
+}
+
+[data-theme='dark'] .word i {
+  color: #64d2ff;
+}
+
+[data-theme='dark'] .word i::before {
+  background: rgb(255 214 10 / 0.22);
+}
+
+[data-theme='ink'] .word i {
+  color: #b0c6ff;
+}
+
+[data-theme='ink'] .word i::before {
+  background: rgb(255 126 158 / 0.28);
+}

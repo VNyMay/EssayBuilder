@@ -1,0 +1,64 @@
+%% TEMPLATE: science or maths Internal Assessment / lab report with data, charts and equations.
+%% Compact look: no cover or contents, numbered sections that flow. Replace every {{...}}; delete blocks the student does not have.
+%% If the student's headings already carry numbers, add  heading-numbers: no  and keep their text.
+title: {{TITLE FOR THE PDF FILE NAME}}
+look: compact
+numbers: latex
+word-limit: {{WORD LIMIT, e.g. 3000}}
+%% Ask the student; any google font works
+%% font: Cambria
+---
+
+:::text
+align: center
+style: bold
+size: 20
+---
+{{THE STUDENT'S TITLE OR RESEARCH QUESTION}}
+:::
+
+# {{THE STUDENT'S FIRST HEADING, e.g. Introduction}}
+
+{{THE STUDENT'S PARAGRAPHS, COPIED EXACTLY}}
+
+# {{THE STUDENT'S METHOD HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+%% A picture of the apparatus (a small one can sit beside the text with wrap: right, placed before its paragraph):
+:::figure
+src: {{FULL PATH OF THE IMAGE}}
+caption: {{THE STUDENT'S CAPTION}}
+width: 60%
+:::
+
+# {{THE STUDENT'S RESULTS HEADING}}
+
+%% Raw data from the student's file:
+:::table
+src: {{FULL PATH OF THE CSV OR XLSX}}
+caption: {{THE STUDENT'S CAPTION}}
+decimals: {{NUMBER OF DECIMALS}}
+:::
+
+%% A graph drawn from the same file (x and y are column names from the file list):
+:::chart
+type: scatter
+src: {{FULL PATH OF THE CSV OR XLSX}}
+x: {{X COLUMN NAME}}
+y: {{Y COLUMN NAME}}
+xlabel: {{X AXIS LABEL WITH UNITS}}
+ylabel: {{Y AXIS LABEL WITH UNITS}}
+caption: {{THE STUDENT'S CAPTION}}
+:::
+
+%% An equation the student typed:
+$$ {{LATEX OF THE EQUATION}} $$
+
+# {{THE STUDENT'S EVALUATION OR CONCLUSION HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+# References
+
+{{ONE PARAGRAPH PER SOURCE}}

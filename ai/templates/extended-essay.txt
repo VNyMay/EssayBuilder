@@ -1,0 +1,57 @@
+%% TEMPLATE: Extended Essay or any long research essay (about 3000 words and more).
+%% Cover page, contents page, numbered sections, justified text. Replace every {{...}}; delete lines the student does not need.
+%% If the student's headings already carry numbers ("1. Introduction"), add the line  heading-numbers: no  and keep their text.
+title: {{TITLE FOR THE PDF FILE NAME}}
+subject: {{SUBJECT, e.g. Mathematics: Analysis and Approaches}}
+question: {{THE RESEARCH QUESTION, EXACTLY AS THE STUDENT WROTE IT}}
+cover-line: {{CANDIDATE NUMBER}}
+cover-line: {{EXAM SESSION, e.g. May 2027}}
+look: essay
+word-limit: 4000
+list-of-figures: yes
+list-of-tables: yes
+%% Add only if the cover and contents pages must count, so the introduction is page 3; ask the student
+%% page-numbering: continuous
+%% Any google font works, e.g. lora, eb garamond; ask the student
+%% font: Cambria
+---
+
+# {{THE STUDENT'S FIRST HEADING, e.g. Introduction}}
+
+{{THE STUDENT'S PARAGRAPHS, COPIED EXACTLY}}
+
+## {{A SUB-HEADING ONLY IF THE STUDENT HAS ONE}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+%% A wide picture or chart goes between paragraphs, with the student's caption:
+:::figure
+src: {{FULL PATH OF THE IMAGE}}
+caption: {{THE STUDENT'S CAPTION}}
+width: 80%
+source: {{CREDIT, IF IT IS NOT THE STUDENT'S OWN}}
+:::
+
+%% A table from a file:
+:::table
+src: {{FULL PATH OF THE CSV OR XLSX}}
+caption: {{THE STUDENT'S CAPTION}}
+:::
+
+%% A displayed equation the student typed (not one that is already inside a picture). Add {#name} after the closing $$ only if the student's text refers to it:
+$$ {{LATEX OF THE EQUATION}} $$
+
+# {{THE STUDENT'S NEXT MAIN HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+# {{THE STUDENT'S CONCLUSION HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+# References
+
+{{ONE PARAGRAPH PER SOURCE, THE STUDENT'S ORDER AND STYLE; *italic* FOR TITLES}}
+
+%% Optional appendix (outside the word count):
+%% # Appendix A: {{TITLE}}

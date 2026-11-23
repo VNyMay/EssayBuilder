@@ -1,0 +1,74 @@
+%% TEMPLATE: TOK exhibition. Three objects, one per page, each with a small picture beside the first paragraph.
+%% No cover, no contents, no heading numbers. Replace every {{...}}. Copy the student's words exactly.
+%% If the student has only two objects, delete the third block. Do not add headings the student did not write.
+title: {{TITLE FOR THE PDF FILE NAME, e.g. TOK Exhibition Draft 1}}
+look: document
+page-numbers: no
+word-limit: 950
+%% Ask the student; any google font works
+%% font: Cambria
+---
+
+%% The title block at the top of page 1 (the student's own lines, e.g. prompt, author, word count):
+:::text
+align: center
+style: italic
+---
+{{THE PROMPT, e.g. \#18. Are some things unknowable?}}\\
+{{AUTHOR LINE, EXACTLY AS WRITTEN}}\\
+{{WORD COUNT LINE, ONLY IF THE STUDENT HAS ONE}}
+:::
+
+# {{OBJECT 1 HEADING, EXACTLY AS THE STUDENT WROTE IT}}
+
+%% The picture goes BEFORE the paragraph it sits beside. Remove the whole block if there is no picture.
+%% If the picture is a photo or painting rather than a small card, drop "wrap" and use width: 70% (between paragraphs).
+:::figure
+src: {{FULL PATH OF IMAGE 1}}
+wrap: right
+width: 36%
+%% Only if the student's original has a frame around the picture
+%% border: yes
+%% caption: {{ONLY IF THE STUDENT WROTE A CAPTION}}
+:::
+
+{{OBJECT 1, PARAGRAPH 1, COPIED EXACTLY}}
+
+{{OBJECT 1, PARAGRAPH 2}}
+
+{{OBJECT 1, PARAGRAPH 3}}
+
+# {{OBJECT 2 HEADING}}
+
+:::figure
+src: {{FULL PATH OF IMAGE 2}}
+wrap: right
+width: 30%
+:::
+
+{{OBJECT 2, PARAGRAPH 1}}
+
+{{OBJECT 2, PARAGRAPH 2}}
+
+{{OBJECT 2, PARAGRAPH 3}}
+
+# {{OBJECT 3 HEADING}}
+
+:::figure
+src: {{FULL PATH OF IMAGE 3}}
+wrap: right
+width: 36%
+:::
+
+{{OBJECT 3, PARAGRAPH 1}}
+
+{{OBJECT 3, PARAGRAPH 2}}
+
+{{OBJECT 3, PARAGRAPH 3}}
+
+# References
+
+%% The student's own list. Keep their dashes as list items and their italics.
+- {{REFERENCE 1, EXACTLY}}
+- {{REFERENCE 2, EXACTLY}}
+- {{REFERENCE 3, EXACTLY}}

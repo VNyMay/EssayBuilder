@@ -1,0 +1,142 @@
+.fmtbar {
+  position: absolute;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 8px 26px rgb(var(--shadow) / 0.26);
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.fmt-btn {
+  position: relative;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fmt-btn:hover {
+  background: var(--panel);
+}
+
+.fmt-btn.math {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.fmt-btn .aa {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.fmt-btn .bar-color {
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: 5px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--green);
+}
+
+.fmt-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+.fmt-drop {
+  width: auto;
+  min-width: 74px;
+  min-height: 32px;
+  padding: 2px 8px 2px 12px;
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+.fmt-drop.wide {
+  min-width: 96px;
+}
+
+.fmt-drop:hover {
+  background: var(--panel);
+}
+
+.menu.swatches {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 176px;
+  padding: 10px;
+}
+
+.swatch-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+}
+
+.swatch-reset {
+  width: 100%;
+  padding: 6px;
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.swatch-reset:hover {
+  background: var(--panel);
+}
+
+.menu.mathpal {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  width: 340px;
+  padding: 10px;
+}
+
+.mathpal button {
+  height: 36px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.mathpal button:hover {
+  background: var(--panel);
+  color: var(--green);
+}
+
+
+.fmt-btn sup,
+.fmt-btn sub {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.fmt-btn sup {
+  vertical-align: top;
+  position: relative;
+  top: -3px;
+}
+
+.fmt-btn sub {
+  vertical-align: bottom;
+  position: relative;
+  top: 4px;
+}
+
+.fmtbar { transform: scale(var(--ui)); transform-origin: left bottom; }
+.tool { transform: scale(var(--ui)); transform-origin: right bottom; }

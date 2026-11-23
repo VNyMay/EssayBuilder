@@ -1,0 +1,235 @@
+:root {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --fast: 120ms;
+  --mid: 200ms;
+  --slow: 280ms;
+}
+
+button,
+.pill,
+.round,
+.wbtn,
+.tile,
+.drop,
+.cvt,
+.cvtool,
+.fmt-btn,
+.swatch-dot,
+.version,
+.cmd-row,
+.ol,
+.theme,
+.chooser,
+#recent button,
+#palette button,
+.menu-list button,
+.segments button,
+.cards > * {
+  transition:
+    background-color var(--fast) ease,
+    color var(--fast) ease,
+    border-color var(--fast) ease,
+    box-shadow var(--mid) var(--ease),
+    opacity var(--fast) ease,
+    transform var(--mid) var(--ease),
+    scale var(--fast) var(--ease),
+    translate var(--mid) var(--ease);
+}
+
+.pill:active,
+.round:active,
+.wbtn:active,
+.cvtool:active,
+.cvt:active,
+.fmt-btn:active,
+.swatch-dot:active,
+#palette button:active,
+.cards > *:active,
+.cmd-row:active,
+.version:active {
+  scale: 0.96;
+}
+
+.tile:active,
+#recent button:active {
+  scale: 0.985;
+}
+
+.hit {
+  transition: background-color var(--fast) ease, box-shadow var(--mid) var(--ease);
+}
+
+.drop-chevron {
+  transition: transform var(--mid) var(--ease);
+}
+
+.field input[type='checkbox'] {
+  transition: background-color var(--mid) ease;
+}
+
+.field input[type='checkbox']::before {
+  transition: left var(--slow) var(--ease-spring), width var(--fast) ease;
+}
+
+.field input[type='checkbox']:active::before {
+  width: 22px;
+}
+
+.field input[type='checkbox']:checked:active::before {
+  left: 15px;
+}
+
+#statusPill .state::before,
+#status::before {
+  transition: background-color var(--mid) ease;
+}
+
+.segments {
+  position: relative;
+  isolation: isolate;
+}
+
+.segments .seg-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgb(var(--shadow) / 0.2);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.segments.ready .seg-thumb {
+  transition: left var(--slow) var(--ease), width var(--slow) var(--ease);
+}
+
+.segments.has-thumb button.on {
+  background: transparent;
+  box-shadow: none;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+    scale: 0.97;
+  }
+}
+
+@keyframes pop-up {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+    scale: 0.98;
+  }
+}
+
+@keyframes slide-left {
+  from {
+    opacity: 0;
+    translate: 16px 0;
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes leave {
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.menu {
+  animation: pop-in 170ms var(--ease);
+  transform-origin: top center;
+}
+
+#panel:not([hidden]) {
+  animation: slide-left var(--slow) var(--ease);
+}
+
+#outline:not([hidden]) {
+  animation: slide-right var(--slow) var(--ease);
+}
+
+#appearance:not([hidden]),
+#issueList:not([hidden]),
+.chip-pop {
+  animation: pop-in var(--mid) var(--ease);
+}
+
+#palette:not([hidden]),
+#toast:not([hidden]) {
+  animation: pop-up var(--mid) var(--ease);
+}
+
+#tip:not([hidden]) {
+  animation: fade-in var(--fast) ease;
+}
+
+.fmtbar {
+  animation: fade-in var(--fast) ease;
+}
+
+.cmd-back {
+  animation: fade-in 150ms ease;
+}
+
+.cmd-back .cmd-box {
+  animation: pop-in var(--mid) var(--ease);
+}
+
+.cvs {
+  animation: fade-in var(--mid) ease;
+}
+
+#start.entering {
+  animation: fade-in var(--mid) ease;
+}
+
+#start.entering .hero {
+  animation: pop-up var(--slow) var(--ease);
+}
+
+.leaving,
+.leaving .cmd-box {
+  animation: leave 130ms var(--ease-in) forwards !important;
+  pointer-events: none;
+}
+
+html.theming,
+html.theming *,
+html.theming *::before {
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease,
+    fill 300ms ease,
+    stroke 300ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

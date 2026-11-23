@@ -1,0 +1,15 @@
+services:
+  essay-builder:
+    build: .
+    image: essay-builder
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./essays:/data/essays
+      - essay-builder-state:/data/state
+      - essay-builder-fonts:/app/engine/fonts
+    restart: unless-stopped
+
+volumes:
+  essay-builder-state:
+  essay-builder-fonts:

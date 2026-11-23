@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Essay Builder</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="stylesheet" href="studio.css">
+<link rel="stylesheet" href="kits.css">
+<link rel="stylesheet" href="format.css">
+<link rel="stylesheet" href="/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="rich.css">
+<link rel="stylesheet" href="place.css">
+<link rel="stylesheet" href="panels.css">
+<link rel="stylesheet" href="coverfree.css">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="press.css">
+<link rel="stylesheet" href="themes.css">
+<link rel="stylesheet" href="depth.css">
+</head>
+<body>
+<header id="bar">
+  <button id="outlineBtn" class="round" title="Outline"></button>
+  <button id="searchBtn" class="round" title="Search (Ctrl+K)"></button>
+  <button id="homeBtn" class="brand" title="All essays"><span class="home-arrow"></span><img class="logo" src="logo.svg" alt=""><span class="word"><b>Essay</b> <i>Builder</i></span></button>
+  <input id="title" type="text" spellcheck="false" title="Title">
+  <div class="right">
+    <span id="status"></span>
+    <button id="issues" class="pill soft" title="Issues" hidden></button>
+    <button id="coverBtn" class="pill soft" title="Cover"></button>
+    <button id="themeBtn" class="pill soft" title="Appearance"></button>
+    <button id="settingsBtn" class="pill soft" title="Settings"></button>
+    <button id="export" class="pill solid" title="Export PDF"></button>
+    <div id="winctl" hidden>
+      <button id="wMin" class="wbtn" title="Minimise"></button>
+      <button id="wMax" class="wbtn" title="Maximise"></button>
+      <button id="wClose" class="wbtn close" title="Close"></button>
+    </div>
+  </div>
+</header>
+<div id="edges" hidden>
+  <i data-edge="n"></i><i data-edge="ne"></i><i data-edge="nw"></i>
+</div>
+<main id="scroll"><div id="pages"></div></main>
+<div id="dock">
+  <button id="insertBtn" class="pill solid" title="Insert"></button>
+  <button id="pageBtn" class="round" title="New page (Ctrl+Shift+Enter)"></button>
+  <span class="sep"></span>
+  <button id="zoomOut" class="round" title="Zoom out (Ctrl and -)"></button>
+  <button id="zoomIn" class="round" title="Zoom in (Ctrl and +)"></button>
+  <span id="zoomHolder"></span>
+</div>
+<div id="statusPill" hidden></div>
+<aside id="outline" hidden></aside>
+<aside id="panel" hidden></aside>
+<div id="tip" hidden></div>
+<div id="palette" hidden></div>
+<div id="issueList" hidden></div>
+<div id="toast" hidden></div>
+<section id="start" hidden>
+  <div class="hero">
+    <div class="hero-brand"><img class="mark" src="logo.svg" alt=""><div><span class="word"><b>Essay</b> <i>Builder</i></span><span class="tagline">write it, see it, print it</span></div></div>
+    <div class="tiles">
+      <button id="newEssay" class="tile primary"></button>
+      <button id="openEssay" class="tile"></button>
+    </div>
+    <div id="recentBox" hidden>
+      <div class="recent-title">Recent</div>
+      <div id="recent"></div>
+    </div>
+  </div>
+</section>
+<input type="file" id="file" hidden>
+<script src="icons.js"></script>
+<script src="blocks.js"></script>
+<script src="ui.js"></script>
+<script src="controls.js"></script>
+<script src="panels.js"></script>
+<script src="cover.js"></script>
+<script src="coverfree.js"></script>
+<script src="coverpage.js"></script>
+<script src="kits.js"></script>
+<script src="kit-bundle.js"></script>
+<script src="/vendor/katex/katex.min.js"></script>
+<script src="/vendor/asciimath.js"></script>
+<script src="format.js"></script>
+<script src="rich.js"></script>
+<script src="place.js"></script>
+<script src="commands.js"></script>
+<script src="studio.js"></script>
+</body>
+</html>

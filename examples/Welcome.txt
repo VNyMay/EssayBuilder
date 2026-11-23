@@ -1,0 +1,36 @@
+title: Welcome to Essay Builder
+subject: A short tour
+author: Your name
+session: May 2027
+cover-style: banner
+cover-color: #027554
+---
+
+# Writing
+
+Type your essay as plain paragraphs. Use **bold** and *italic* in the text, and write equations as plain text, for example $x^2 + 3x = 10$.
+
+A line with only an equation is centred on its own:
+
+$sqrt(a^2 + b^2) = c$
+
+# Blocks
+
+Press **Insert** in the Studio to add a table, a chart, a map, an image and more. In a text file the same blocks look like this.
+
+:::table
+caption: A small table.
+---
+Item | Price | Stock
+Pens | 1.20 | 40
+Notebooks | 3.50 | 12
+:::
+
+:::map
+focus: Egypt
+caption: A map of Egypt.
+:::
+
+# Sources
+
+Add sources with `[@key]` and list them in a `:::sources` block, and the bibliography formats itself in APA, MLA, Harvard, Chicago or IEEE.

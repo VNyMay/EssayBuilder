@@ -1,0 +1,181 @@
+.editor.rich {
+  white-space: pre-wrap;
+  overflow: visible;
+  cursor: text;
+  min-height: 2.4em;
+}
+
+.editor.rich:empty::before {
+  content: 'Type here';
+  color: var(--muted);
+}
+
+.editor.rich b {
+  font-weight: 700;
+}
+
+.editor.rich code {
+  font-family: Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.editor.rich .rlink {
+  color: var(--green);
+  text-decoration: underline;
+}
+
+.editor.rich .chip {
+  display: inline-block;
+  padding: 0 7px;
+  margin: 0 1px;
+  border-radius: 999px;
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: all;
+}
+
+.editor.rich .chip.ref {
+  background: rgb(var(--accent-rgb) / 0.12);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.editor.rich .chip.cite {
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.editor.rich .chip.math {
+  padding: 0 4px;
+  border-radius: 8px;
+}
+
+.editor.rich .chip.math:hover,
+.editor.rich .chip.ref:hover,
+.editor.rich .chip.cite:hover {
+  outline: 0;
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.35);
+}
+
+.chip-pop {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgb(var(--shadow) / 0.28);
+}
+
+.chip-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  font-family: Consolas, monospace;
+}
+
+.chip-input:focus {
+  border-color: var(--green);
+}
+
+.chip-preview {
+  min-height: 28px;
+  padding: 4px 6px;
+  font-size: 1.15em;
+}
+
+.chip-remove {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--danger);
+}
+
+.chip-remove:hover {
+  background: var(--danger-bg);
+}
+
+.fmt-btn.danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.page:has(.editor) .tool {
+  display: none;
+}
+
+.editor.rich .chip.note {
+  padding: 0 4px;
+  vertical-align: super;
+  font-size: 0.8em;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.inline-menu {
+  min-width: 260px;
+  max-height: 300px;
+}
+
+.inline-query {
+  padding: 6px 12px 8px;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.inline-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.inline-empty {
+  padding: 8px 12px;
+  color: var(--muted);
+}
+
+.chip-pop { transform: scale(var(--ui)); transform-origin: left top; }
+
+.editor.rich.inplace {
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: #fff;
+  color: #141414;
+  min-height: 0;
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.55);
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+
+.editor.rich.inplace .chip {
+  padding: 0 1px;
+  margin: 0;
+  border-radius: 3px;
+  line-height: inherit;
+}
+
+.editor.rich.inplace .chip.cite {
+  border: 0;
+  background: rgb(var(--accent-rgb) / 0.08);
+}
+
+.editor.rich.inplace code {
+  padding: 0;
+  background: transparent;
+}
+
+.editor.rich.inplace .rlink {
+  color: inherit;
+}

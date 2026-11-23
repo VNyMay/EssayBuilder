@@ -1,0 +1,2 @@
+figure.fig.diagram svg foreignObject { overflow: visible; }
+figure.fig.diagram svg foreignObject div, figure.fig.diagram svg foreignObject span { white-space: nowrap; }

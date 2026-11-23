@@ -1,0 +1,37 @@
+%% TEMPLATE: TOK essay (about 1600 words), or any medium-length essay answering a set title.
+%% A title block instead of a cover page, numbered flowing sections, no contents page. Replace every {{...}}.
+title: {{TITLE FOR THE PDF FILE NAME}}
+look: compact
+heading-numbers: no
+word-limit: 1600
+%% Ask the student; any google font works
+%% font: Cambria
+---
+
+:::text
+align: center
+style: bold
+size: 20
+---
+{{THE PRESCRIBED TITLE, EXACTLY AS THE STUDENT WROTE IT}}
+:::
+
+%% Only the headings the student really has. If the essay has none, delete the # lines and just write paragraphs.
+# {{THE STUDENT'S FIRST HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS, COPIED EXACTLY}}
+
+# {{THE STUDENT'S NEXT HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+%% A long quotation from a source:
+> {{THE QUOTATION, EXACTLY}}
+
+# {{THE STUDENT'S CONCLUSION HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+# Bibliography
+
+{{ONE PARAGRAPH PER SOURCE, THE STUDENT'S ORDER AND STYLE}}

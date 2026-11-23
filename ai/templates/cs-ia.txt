@@ -1,0 +1,67 @@
+%% TEMPLATE: Computer Science IA or any report with code, screenshots and diagrams.
+%% Compact look: no cover or contents, numbered sections that flow. Replace every {{...}}; delete blocks the student does not have.
+%% Code is ALWAYS shown from the student's file (src), never retyped.
+title: {{TITLE FOR THE PDF FILE NAME}}
+look: compact
+code-font: Fira Code
+word-limit: {{WORD LIMIT IF THERE IS ONE}}
+---
+
+:::text
+align: center
+style: bold
+size: 20
+---
+{{THE STUDENT'S PROJECT TITLE}}
+:::
+
+# {{THE STUDENT'S FIRST HEADING, e.g. Planning}}
+
+{{THE STUDENT'S PARAGRAPHS, COPIED EXACTLY}}
+
+%% A screenshot of the program (wide, between paragraphs):
+:::figure
+src: {{FULL PATH OF THE SCREENSHOT}}
+caption: {{THE STUDENT'S CAPTION}}
+width: 80%
+:::
+
+%% A flow chart of an algorithm, only from steps the student listed (max 4 boxes per row; use TD for longer ones):
+:::flow
+direction: TD
+caption: {{THE STUDENT'S CAPTION}}
+---
+{{STEP 1}} -> {{STEP 2}} -> {{STEP 3}}
+:::
+
+# {{THE STUDENT'S DEVELOPMENT HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+%% Code from the student's file; "lines" shows only part of it, "highlight" shades lines:
+:::code
+src: {{FULL PATH OF THE CODE FILE}}
+caption: {{THE STUDENT'S CAPTION}}
+%% lines: 10-40
+%% highlight: 12, 20-22
+:::
+
+%% What the program printed:
+%% :::run {{TITLE}}
+%% $ {{COMMAND}}
+%% {{OUTPUT}}
+%% :::
+
+%% A test table from a file or typed:
+:::table
+src: {{FULL PATH OF THE CSV OR XLSX}}
+caption: {{THE STUDENT'S CAPTION}}
+:::
+
+# {{THE STUDENT'S EVALUATION HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+# Bibliography
+
+{{ONE PARAGRAPH PER SOURCE}}

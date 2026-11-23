@@ -1,0 +1,342 @@
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+body {
+  color: var(--text);
+}
+
+#scroll,
+#start,
+.cvs-stage {
+  background-color: var(--mat);
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, transparent 55%, rgb(var(--shadow) / 0.14) 100%),
+    radial-gradient(1100px 520px at 28% -8%, rgb(255 255 255 / 0.32), transparent 62%),
+    linear-gradient(var(--mat-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mat-major) 1px, transparent 1px),
+    linear-gradient(var(--mat-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mat-line) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: 0 0, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+  background-attachment: fixed, fixed, local, local, local, local;
+}
+
+#start {
+  background-attachment: fixed, fixed, scroll, scroll, scroll, scroll;
+}
+
+#scroll::before,
+#start::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  opacity: var(--grain-a, 0.07);
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+#pages,
+#start .hero {
+  position: relative;
+  z-index: 1;
+}
+
+#bar,
+#panel,
+#dock,
+#statusPill,
+.menu,
+#palette,
+#appearance,
+#outline,
+#issueList,
+.cmd-box,
+.chip-pop {
+  background-color: var(--surface);
+  background-image: linear-gradient(180deg, var(--surface-hi), transparent 46px);
+  border: 1px solid var(--edge);
+  box-shadow:
+    inset 0 1px 0 var(--hi-line),
+    0 1px 1px rgb(var(--shadow) / 0.07),
+    0 6px 14px -6px rgb(var(--shadow) / 0.18),
+    0 28px 56px -28px rgb(var(--shadow) / 0.42);
+}
+
+#bar {
+  border-width: 0 0 1px;
+  box-shadow: inset 0 -1px 0 var(--hi-line), 0 8px 22px -14px rgb(var(--shadow) / 0.35);
+}
+
+#dock,
+#statusPill {
+  box-shadow:
+    inset 0 1px 0 var(--hi-line),
+    0 1px 1px rgb(var(--shadow) / 0.08),
+    0 14px 30px -12px rgb(var(--shadow) / 0.4);
+}
+
+.pill.soft {
+  background: linear-gradient(180deg, var(--surface), var(--panel));
+  border: 1px solid var(--edge);
+  box-shadow: inset 0 1px 0 var(--hi-line), 0 1px 2px rgb(var(--shadow) / 0.08);
+  color: var(--text);
+}
+
+.pill.soft:hover {
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--panel) 80%, var(--line)));
+  box-shadow: inset 0 1px 0 var(--hi-line), 0 4px 10px -4px rgb(var(--shadow) / 0.22);
+  translate: 0 -1px;
+}
+
+.pill.ghost,
+.drop,
+.field input,
+.stepper,
+.cvnum input {
+  border-color: var(--edge);
+  box-shadow: inset 0 1px 2px rgb(var(--shadow) / 0.06);
+}
+
+.page {
+  box-shadow:
+    0 0 0 1px rgb(var(--shadow) / 0.06),
+    0 1px 1px rgb(var(--shadow) / 0.1),
+    0 4px 8px -2px rgb(var(--shadow) / 0.1),
+    0 18px 30px -10px rgb(var(--shadow) / 0.2),
+    0 46px 80px -40px rgb(var(--shadow) / 0.5);
+}
+
+.hero-brand .word,
+.recent-title {
+  color: var(--on-mat);
+}
+
+.hero-brand .tagline {
+  color: var(--on-mat-2);
+}
+
+.tile {
+  background-color: var(--surface);
+  background-image: linear-gradient(180deg, var(--surface-hi), transparent 60%);
+  border: 1px solid var(--edge);
+  transform: perspective(800px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 500ms cubic-bezier(0.2, 0.9, 0.25, 1), box-shadow 300ms ease, translate 300ms cubic-bezier(0.3, 0.7, 0.2, 1.4);
+}
+
+.tile.primary {
+  background-color: var(--green);
+  background-image: linear-gradient(135deg, var(--bright), var(--green) 55%, var(--deep));
+  border-color: transparent;
+}
+
+.tile:hover {
+  transform: perspective(800px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  translate: 0 -4px;
+  transition: transform 120ms linear, box-shadow 300ms ease, translate 300ms cubic-bezier(0.3, 0.7, 0.2, 1.4);
+}
+
+.tile::after,
+#recent button.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.55), transparent 55%);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  mix-blend-mode: soft-light;
+}
+
+.tile {
+  position: relative;
+  overflow: hidden;
+}
+
+.tile:hover::after,
+#recent button.sheet:hover::before {
+  opacity: 1;
+}
+
+#recent button.sheet {
+  background-color: var(--sheet);
+  background-image:
+    linear-gradient(90deg, transparent 22px, var(--sheet-margin) 22px, var(--sheet-margin) 23.5px, transparent 23.5px),
+    var(--grain-faint);
+  background-blend-mode: normal, normal;
+  background-size: 100% 100%, 180px 180px;
+  padding-left: 34px;
+  color: #1d2420;
+  transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.04),
+    inset 0 -26px 30px -28px rgb(80 60 30 / 0.18),
+    0 1px 1px rgb(var(--shadow) / 0.12),
+    0 6px 10px -4px rgb(var(--shadow) / 0.16),
+    0 22px 34px -18px rgb(var(--shadow) / 0.45);
+  transition:
+    rotate 520ms cubic-bezier(0.3, 0.7, 0.2, 1.35),
+    translate 520ms cubic-bezier(0.3, 0.7, 0.2, 1.35),
+    transform 600ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    box-shadow 380ms ease;
+  animation-fill-mode: backwards;
+}
+
+#recent button.sheet:hover {
+  rotate: 0deg;
+  translate: 0 -12px;
+  transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition:
+    rotate 520ms cubic-bezier(0.3, 0.7, 0.2, 1.35),
+    translate 520ms cubic-bezier(0.3, 0.7, 0.2, 1.35),
+    transform 110ms linear,
+    box-shadow 380ms ease;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.04),
+    inset 0 -26px 30px -28px rgb(80 60 30 / 0.18),
+    0 2px 3px rgb(var(--shadow) / 0.12),
+    0 16px 24px -10px rgb(var(--shadow) / 0.25),
+    0 44px 60px -28px rgb(var(--shadow) / 0.55);
+  z-index: 2;
+}
+
+#recent button.sheet::after {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(225deg, transparent 0 50%, #e9e4d8 50%, #fdfbf5 100%);
+  box-shadow: -2px 2px 3px rgb(0 0 0 / 0.12);
+  transition: width 420ms cubic-bezier(0.3, 0.7, 0.2, 1.4), height 420ms cubic-bezier(0.3, 0.7, 0.2, 1.4);
+}
+
+#recent button.sheet:hover::after {
+  width: 34px;
+  height: 34px;
+}
+
+#recent button.sheet .sheet-lines {
+  background: repeating-linear-gradient(transparent 0 8px, var(--sheet-rule) 8px 9px);
+  -webkit-mask: none;
+  mask: none;
+  opacity: 1;
+}
+
+#recent button.sheet .sheet-title {
+  color: #1d2420;
+}
+
+#recent button.sheet:active {
+  scale: 0.97;
+}
+
+#palette .palette-grid button {
+  animation-fill-mode: backwards;
+}
+
+.themes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.theme {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 6px 6px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--edge);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.theme:hover {
+  translate: 0 -2px;
+  box-shadow: 0 8px 16px -8px rgb(var(--shadow) / 0.35);
+}
+
+.theme.on {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.35);
+}
+
+.theme .scene {
+  position: relative;
+  height: 54px;
+  border-radius: 9px;
+  overflow: hidden;
+  background-color: var(--m);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--k) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--k) 22%, transparent) 1px, transparent 1px);
+  background-size: 9px 9px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+
+.theme .scene i {
+  position: absolute;
+  left: 50%;
+  top: 9px;
+  width: 34px;
+  height: 46px;
+  margin-left: -17px;
+  border-radius: 2px;
+  background: #fff;
+  rotate: -4deg;
+  box-shadow: 0 6px 10px -4px rgb(0 0 0 / 0.35);
+  transition: rotate 320ms cubic-bezier(0.3, 0.7, 0.2, 1.5), translate 320ms cubic-bezier(0.3, 0.7, 0.2, 1.5);
+}
+
+.theme .scene b {
+  position: absolute;
+  left: calc(50% - 11px);
+  top: 18px;
+  width: 22px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--k);
+  rotate: -4deg;
+  transition: rotate 320ms cubic-bezier(0.3, 0.7, 0.2, 1.5), translate 320ms cubic-bezier(0.3, 0.7, 0.2, 1.5);
+}
+
+.theme:hover .scene i,
+.theme:hover .scene b {
+  rotate: 2deg;
+  translate: 0 -3px;
+}
+
+#appearance {
+  width: 380px;
+}
+
+#start::before {
+  position: absolute;
+}
+
+[data-theme='ocean'] .hero-brand .word i {
+  color: #ffffff;
+}
+
+[data-theme='ocean'] .hero-brand .word i::before {
+  background: rgb(255 228 92 / 0.45);
+}
+
+[data-theme='ink'] .hero-brand .word i::before {
+  background: rgb(255 126 158 / 0.3);
+}
+
+#bar,
+#panel,
+.menu,
+#palette,
+#appearance,
+#outline,
+.cmd-box {
+  background-image: linear-gradient(180deg, var(--surface-hi), transparent 46px), var(--grain-faint);
+}

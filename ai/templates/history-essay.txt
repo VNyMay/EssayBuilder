@@ -1,0 +1,56 @@
+%% TEMPLATE: history, geography, economics or humanities essay with pictures, a timeline and a reference list.
+%% Essay look with flowing sections (no half-empty pages). Replace every {{...}}; delete blocks the student does not have.
+title: {{TITLE FOR THE PDF FILE NAME}}
+subject: {{SUBJECT, e.g. History}}
+question: {{THE QUESTION, EXACTLY AS THE STUDENT WROTE IT}}
+cover-line: {{CANDIDATE NUMBER}}
+look: essay
+section-breaks: no
+word-limit: {{WORD LIMIT, e.g. 2200}}
+list-of-figures: yes
+%% Add only if the cover and contents pages must count, so the introduction is page 3; ask the student
+%% page-numbering: continuous
+%% Ask the student; any google font works
+%% font: Lora
+---
+
+# {{THE STUDENT'S FIRST HEADING, e.g. Introduction}}
+
+%% A wide painting or photo between paragraphs, with the student's caption and credit:
+:::figure
+src: {{FULL PATH OF THE IMAGE}}
+caption: {{THE STUDENT'S CAPTION}}
+width: 80%
+source: {{CREDIT, e.g. Wikimedia Commons}}
+:::
+
+{{THE STUDENT'S PARAGRAPHS, COPIED EXACTLY}}
+
+# {{THE STUDENT'S NEXT HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+%% Only if the student listed dates: one line per date.
+:::timeline
+caption: {{THE STUDENT'S CAPTION}}
+---
+{{YEAR}}: {{WHAT HAPPENED, IN THE STUDENT'S WORDS}}
+{{YEAR}}: {{WHAT HAPPENED}}
+:::
+
+%% Two related pictures side by side:
+%% :::figures
+%% cols: 2
+%% caption: {{THE STUDENT'S CAPTION}}
+%% ---
+%% {{FULL PATH 1}} | {{SUB-CAPTION 1}}
+%% {{FULL PATH 2}} | {{SUB-CAPTION 2}}
+%% :::
+
+# {{THE STUDENT'S CONCLUSION HEADING}}
+
+{{THE STUDENT'S PARAGRAPHS}}
+
+# References
+
+{{ONE PARAGRAPH PER SOURCE, THE STUDENT'S ORDER AND STYLE}}
