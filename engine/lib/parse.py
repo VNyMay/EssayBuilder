@@ -75,7 +75,7 @@ SCIENCE_KEYS = {"src", "smiles", "width", "caption", "id", "source", "align", "w
 NO_BODY = {"pagebreak", "blank", "numbering", "spacer", "wc-start", "wc-end", "list-of-figures", "list-of-tables", "contents"}
 DIRECTIVES = (
     {"figure", "figures", "table", "code", "run", "eq-pair", "box", "question", "note", "proof", "text", "chart",
-     "diagram", "flow", "mindmap", "tree", "timeline", "grid", "swot", "references", "map", "music", "molecule"}
+     "diagram", "flow", "mindmap", "tree", "timeline", "grid", "swot", "references", "map", "music", "molecule", "design", "overlay"}
     | NO_BODY | set(CALLOUTS) | set(MERMAID_BLOCKS) | KIT_DIRECTIVES
 )
 
@@ -598,7 +598,7 @@ class Compiler(*KITS):
             f'<div class="cv-foot">{foot}</div></div></section>'
         )
 
-    def cover_free(self):
+    def cover_free(self, boxes=None, background=None, page=False, fragment=False):
         name = self.path.name
         if self.cfg.get("date", "").strip().lower() == "today":
             now = date.today()
@@ -617,11 +617,11 @@ class Compiler(*KITS):
         number = re.compile(r"^-?\d+(?:\.\d+)?$")
         pair = re.compile(r'(\w+)=("[^"]*"|\S+)')
         parts = []
-        background = self.cfg.get("cover-color", "").strip()
+        background = (self.cfg.get("cover-color", "") if background is None else background).strip()
         if background and not COLOR.match(background):
             self.report.error(name, f"cover-color must be a colour such as #1f4e79 or navy (got '{background}')")
             background = ""
-        for raw in self.cover_boxes:
+        for raw in self.cover_boxes if boxes is None else boxes:
             kind, _, rest = raw.partition("|")
             attrs, _, content = rest.partition("|")
             kind = kind.strip().lower()
@@ -686,6 +686,11 @@ class Compiler(*KITS):
             parts.append(f'<div class="cvx cvx-{kind}" style="{";".join(style)}">{inner}</div>')
         paint = f' style="--cv-bg:{background}"' if background else ""
         wash = '<div class="cvx-wash"></div>' if background else ""
+        if fragment:
+            return "".join(parts)
+        if page:
+            self.emit(f'<div class="cover cv cv-free design-page"{paint}>{wash}{"".join(parts)}</div>')
+            return
         self.emit(f'<section class="cover cv cv-free"{paint}>{wash}{"".join(parts)}</section>')
 
     def contents(self):
@@ -984,6 +989,26 @@ class Compiler(*KITS):
                 self.report.warn(line.where, f"numbering: '{word}' is not known (use hide, skip, start, restart, a number, numbers, roman, Roman or letters)")
         if words:
             self.pending_numbers.append(f"pn-{line.no}-{'-'.join(words)}")
+
+    def dir_overlay(self, args, body, line):
+        self.ensure_section(line)
+        boxes = [ln.text.strip().partition(":")[2].strip() for ln in body if ln.text.strip().lower().startswith("box")]
+        if not boxes:
+            return
+        ident = f"ov-{line.no}"
+        self.emit(f'<template class="ovt" data-id="{ident}">{self.cover_free(boxes, "", fragment=True)}</template>')
+        self.pending_numbers.append(ident)
+
+    def dir_design(self, args, body, line):
+        self.ensure_section(line)
+        boxes, background = [], ""
+        for ln in body:
+            key, _, value = ln.text.strip().partition(":")
+            if key.strip().lower() == "box":
+                boxes.append(value.strip())
+            elif key.strip().lower() == "color":
+                background = value.strip()
+        self.cover_free(boxes, background, page=True)
 
     def dir_blank(self, args, body, line):
         self.ensure_section(line)

@@ -271,6 +271,7 @@ async function applyResult(result) {
   S.pages = result.pages;
   S.dpi = result.dpi || 144;
   S.regions = result.regions;
+  S.overlays = result.overlays || {};
   S.ranges = result.ranges.map((range) => ({ ...range }));
   S.front = result.front;
   S.settings = result.settings;
@@ -347,13 +348,42 @@ function layout() {
     div.style.height = `${page.h * S.scale}px`;
     const image = div.firstChild;
     if (image.getAttribute('src') !== page.url) image.src = page.url;
-    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-num').forEach((node) => node.remove());
+    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-num, .page-design, .add-cover').forEach((node) => node.remove());
     if (S.arrivePage === i && S.pages.length) {
       S.arrivePage = null;
       div.classList.remove('arrive');
       void div.offsetWidth;
       div.classList.add('arrive');
       setTimeout(() => div.classList.remove('arrive'), 900);
+    }
+    const coverOn = !/^(no|off|false)$/i.test(S.settings.cover || 'yes');
+    if (i === 0 && !coverOn) {
+      div.append(h('button', {
+        type: 'button',
+        class: 'add-cover',
+        html: `${icon('plus', 14)}<span>Add cover</span>`,
+        onclick: (event) => {
+          event.stopPropagation();
+          setHeader('cover', 'yes');
+          if (!headerValue('cover-style')) setHeader('cover-style', 'classic');
+        },
+      }));
+    }
+    const designFirst = firstRangeOn(i);
+    if ((i === 0 && coverOn && S.front) || designFirst) {
+      div.append(h('button', {
+        type: 'button',
+        class: 'page-design',
+        title: 'Design this page',
+        html: icon('shapes', 16),
+        onclick: (event) => {
+          event.stopPropagation();
+          if (i === 0 && coverOn && !designFirst) return cvEnterPage();
+          if (i === 0 && coverOn && designFirst && (S.regions[designFirst.id] || [])[0] && S.regions[designFirst.id][0].page !== 0) return cvEnterPage();
+          if (designFirst.kind === 'design') return cvEnterDesign(designFirst);
+          cvEnterOverlay(i);
+        },
+      }));
     }
     const spot = numberingOn(i);
     if (spot) {
@@ -385,6 +415,7 @@ function layout() {
     }
   });
   drawHits();
+  drawOverlayViews();
   if (typeof drawInsertPoints === 'function') drawInsertPoints();
   placeOverlays();
   if (typeof cvAfterLayout === 'function') cvAfterLayout();
@@ -464,6 +495,7 @@ function select(range) {
   closePanel();
   S.settingsOpen = false;
   S.sel = range;
+  if (range.kind === 'design' && typeof cvEnterDesign === 'function') return cvEnterDesign(range);
   if (TEXT_KINDS.has(range.kind) || isRichText(range)) openEditor(range);
   else openPanel(range);
   placeOverlays();
@@ -719,7 +751,8 @@ function insertLines(block, kind) {
   S.sel = fresh;
   S.focusNew = true;
   lockHits();
-  if (!TEXT_KINDS.has(kind)) openPanel(fresh);
+  if (kind === 'design') S.pendingDesign = fresh.start;
+  else if (!TEXT_KINDS.has(kind)) openPanel(fresh);
   placeOverlays();
   schedule(200);
 }
@@ -731,7 +764,7 @@ function firstRangeOn(pageIndex) {
   let best = null;
   let top = Infinity;
   S.ranges.forEach((range) => {
-    if (range.kind === 'pagebreak' || range.kind === 'numbering') return;
+    if (range.kind === 'pagebreak' || range.kind === 'numbering' || range.kind === 'overlay') return;
     const span = (S.regions[range.id] || [])[0];
     if (span && span.page === pageIndex && span.y0 < top) {
       best = range;
@@ -741,11 +774,47 @@ function firstRangeOn(pageIndex) {
   return best;
 }
 
+function leadingRanges(first) {
+  const out = [];
+  let at = S.ranges.indexOf(first) - 1;
+  while (at >= 0 && ['numbering', 'overlay'].includes(S.ranges[at].kind)) {
+    out.push(S.ranges[at]);
+    at -= 1;
+  }
+  return out;
+}
+
 function numberingOn(pageIndex) {
   const first = firstRangeOn(pageIndex);
   if (!first) return null;
-  const before = S.ranges[S.ranges.indexOf(first) - 1];
-  return { first, rule: before && before.kind === 'numbering' ? before : null };
+  return { first, rule: leadingRanges(first).find((range) => range.kind === 'numbering') || null };
+}
+
+function drawOverlayViews() {
+  document.querySelectorAll('.ov-view').forEach((node) => node.remove());
+  if (!S.overlays || typeof cvParse !== 'function') return;
+  S.ranges.filter((range) => range.kind === 'overlay').forEach((range) => {
+    const pageIndex = S.overlays[`ov-${range.start}`];
+    const div = $('#pages').children[pageIndex];
+    if (pageIndex === undefined || !div) return;
+    if (CV.mode === 'page' && CV.target && CV.target.kind === 'overlay' && CV.target.start === range.start) return;
+    const view = h('div', { class: 'ov-view' });
+    const saved = CV.scale;
+    CV.scale = S.scale;
+    linesOf(range).forEach((line) => {
+      const match = line.match(/^\s*box\s*:\s*(.*)$/i);
+      const box = match && cvParse(match[1]);
+      if (!box) return;
+      const el = h('div', { class: `cvb cvb-${box.kind}` });
+      if (box.kind === 'text') el.textContent = cvShow(box);
+      else if (box.kind === 'image' && box.text) el.append(h('img', { src: fileUrl(box.text), draggable: 'false', style: `object-fit:${box.p.fit || 'cover'}` }));
+      cvStyle(el, box);
+      view.append(el);
+    });
+    CV.scale = saved;
+    view.style.fontFamily = docFont();
+    div.append(view);
+  });
 }
 
 function numberWords(rule) {
@@ -845,7 +914,7 @@ function removePage(pageIndex) {
   const doomed = pageRanges(pageIndex);
   if (doomed.length) {
     let before = S.ranges[S.ranges.indexOf(doomed[0]) - 1];
-    if (before && before.kind === 'numbering') {
+    while (before && ['numbering', 'overlay'].includes(before.kind)) {
       doomed.unshift(before);
       before = S.ranges[S.ranges.indexOf(before) - 1];
     }

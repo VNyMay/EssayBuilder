@@ -788,6 +788,7 @@ def build(essay, output=None, check=False, keep=False):
             raw, output, first, font_file, title, numbered, continuous, has_cover,
             cfg, section_list(src, pages), rules=numbering_rules(pages),
         )
+        stamp_overlays(src, pages, output, work)
         if essay.suffix.lower() not in {".html", ".htm"} and cfg.get("embed-project", "yes").lower() not in OFF:
             embed_project(output, essay)
     finally:
@@ -795,6 +796,30 @@ def build(essay, output=None, check=False, keep=False):
         shutil.rmtree(work, ignore_errors=True)
 
     print(f"{count} pages, {words} words -> {output}")
+
+
+def stamp_overlays(src, pages, output, work):
+    found = [(key, inner) for key, inner in re.findall(r'<template class="ovt" data-id="(ov-\d+)">(.*?)</template>', src, re.S) if key in pages]
+    if not found:
+        return
+    import pymupdf
+
+    sheets = "".join(f'<section class="cover cv cv-free ov-sheet">{inner}</section>' for _, inner in found)
+    sheet = re.sub(r"(<body[^>]*>)[\s\S]*(</body>)", lambda m: m.group(1) + sheets + m.group(2), src, count=1)
+    sheet = sheet.replace("</head>", "<style>html,body{background:transparent!important}</style></head>", 1)
+    expanded, printable, pdf, empty = work / "ov.html", work / "ov.print.html", work / "ov.pdf", work / "ov.json"
+    expanded.write_text(sheet, encoding="utf-8")
+    empty.write_text("{}", encoding="utf-8")
+    render(expanded, printable, "final", empty)
+    print_pdf(printable, pdf)
+    stamped = work / "stamped.pdf"
+    with pymupdf.open(pdf) as layer, pymupdf.open(output) as doc:
+        for index, (key, _) in enumerate(found):
+            target = pages[key] - 1
+            if 0 <= target < len(doc) and index < len(layer):
+                doc[target].show_pdf_page(doc[target].rect, layer, index, overlay=True)
+        doc.save(stamped, garbage=3, deflate=True)
+    shutil.move(stamped, output)
 
 
 def scan_page(page):
@@ -943,7 +968,8 @@ def studio_build(essay, source, output):
         sizes, regions = studio_regions(output, margin_of(cfg))
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    result.update({"pdf": str(output), "pages": count, "words": words, "sizes": sizes, "regions": regions})
+    overlays = {key: number - 1 for key, number in pages.items() if key.startswith("ov-")}
+    result.update({"pdf": str(output), "pages": count, "words": words, "sizes": sizes, "regions": regions, "overlays": overlays})
     return result
 
 

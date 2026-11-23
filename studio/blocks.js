@@ -329,6 +329,7 @@ const TEMPLATES = [
   { group: 'Layout', id: 'spacer', label: 'Space', icon: 'spacer', kind: 'spacer', lines: [':::spacer 12mm'] },
   { group: 'Layout', id: 'pagebreak', label: 'Page break', icon: 'pagebreak', kind: 'pagebreak', lines: [':::pagebreak'] },
   { group: 'Layout', id: 'blank', label: 'Blank page', icon: 'newFile', kind: 'blank', lines: [':::blank'] },
+  { group: 'Layout', id: 'design', label: 'Design page', icon: 'frame', kind: 'design', lines: [':::design', 'box: text | x=10 y=40 w=80 size=30 align=center bold | Your title', 'box: line | x=35 y=52 w=30 bw=2 | ', ':::'] },
 ];
 
 const ICONS = {

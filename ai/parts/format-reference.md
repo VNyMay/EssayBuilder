@@ -112,6 +112,8 @@ cover-color: #1f4e79
 - A blank line separates paragraphs. Lines inside one paragraph are joined; end a line with `\\` to force a line break.
 - A literal dollar sign: `\$5`. (A lone `$` before a number such as `$4.5m` is already safe.) Other escapes: `\*`, `\_`, `\#`, `\[`, `\@`, `\\`.
 - `:::pagebreak` starts a new page. `:::spacer 10mm` adds vertical space.
+- `:::design` makes a full page laid out freely, like the free cover: one `box: kind | settings | content` line per box (same kinds and settings as `cover-box`) and an optional `color: #hex` line for the page colour, closed with `:::`. Use it for section dividers, posters or appendix title pages.
+- `:::overlay` (same `box:` lines, closed with `:::`) placed just before the first block of a page draws those boxes on top of that normal page, which still flows as usual: stickers, arrows, callouts, a coloured band.
 
 ### Headings
 

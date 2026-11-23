@@ -49,7 +49,7 @@ html = html.replace('<!--TOC-->', `<nav class="toc">\n${toc}\n</nav>`);
 html = html.replace(/@PG:([\w-]+)@/g, (_, id) => pageOf(id));
 
 if (mode === 'probe' || mode === 'both') {
-  html = html.replace(/<span class="pn" id="(pn-[\w-]+)"><\/span>/g, (tag, id) => `<span class="pn" id="${id}"><span class="probe">@@${id}@@</span></span>`);
+  html = html.replace(/<span class="pn" id="((?:pn|ov)-[\w-]+)"><\/span>/g, (tag, id) => `<span class="pn" id="${id}"><span class="probe">@@${id}@@</span></span>`);
   html = html.replace(/<h([12])[^>]*\sid="([^"]+)"[^>]*>/g, (tag, _, id) => `${tag}<span class="probe">@@${id}@@</span>`);
   html = html.replace(/<figure\b[^>]*\sid="((?:fig|tbl)-[\w-]+)"[^>]*>/g, (tag, id) => `${tag}<span class="probe">@@${id}@@</span>`);
   html = html.replace(/<sup class="fnr" data-n="(\d+)">/g, (tag, n) => `${tag}<span class="probe">@@FN${n}@@</span>`);

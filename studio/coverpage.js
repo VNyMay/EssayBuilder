@@ -60,10 +60,47 @@ function cvInk() {
   return headerValue('cover-color') || S.settings.accent || '#1f4e79';
 }
 
+function cvEnterOverlay(pageIndex) {
+  const first = firstRangeOn(pageIndex);
+  if (!S.pages.length || !first) return;
+  const existing = leadingRanges(first).find((range) => range.kind === 'overlay');
+  cvStart(existing || { virtual: true, kind: 'overlay', before: first }, pageIndex);
+}
+
+function cvEnterDesign(range) {
+  if (!S.pages.length || !range) return;
+  const span = (S.regions[range.id] || [])[0];
+  if (!span) return;
+  cvStart(range, span.page);
+}
+
+function cvStart(target, pageIndex) {
+  closeEditor(true);
+  closePanel();
+  CV.target = target;
+  CV.pageIndex = pageIndex;
+  const span = { page: pageIndex };
+  cvLoad();
+  CV.mode = 'page';
+  CV.sel = -1;
+  CV.history = [];
+  CV.future = [];
+  CV.editing = null;
+  S.sel = null;
+  S.settingsOpen = true;
+  S.coverOpen = false;
+  const div = $('#pages').children[span.page];
+  if (div) div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  cvDrawPage();
+  cvTools();
+}
+
 function cvEnterPage(style) {
   if (!S.pages.length) return;
   closeEditor(true);
   closePanel();
+  CV.target = null;
+  CV.pageIndex = 0;
   cvLoad();
   if (style && CV_PRESETS[style]) {
     CV.boxes = CV_PRESETS[style](cvInk());
@@ -92,16 +129,35 @@ function cvExitPage() {
   if (S.edit && S.edit.cover) closeEditor();
   CV.mode = null;
   CV.root = null;
+  CV.target = null;
+  CV.pageIndex = 0;
   document.querySelectorAll('.cover-layer').forEach((node) => node.remove());
   if (cvFrame) conceal(cvFrame, true);
   cvFrame = null;
   S.settingsOpen = false;
   conceal($('#panel'));
   placeOverlays();
+  if (typeof drawOverlayViews === 'function') drawOverlayViews();
 }
 
 function cvDrawPage() {
-  const div = $('#pages').children[0];
+  if (CV.target && CV.target.virtual) {
+    const fresh = S.ranges.find((range) => range.start === CV.target.before.start && range.kind === CV.target.before.kind);
+    if (fresh) CV.target.before = fresh;
+  } else if (CV.target) {
+    const fresh = S.ranges.find((range) => range.start === CV.target.start && range.kind === CV.target.kind);
+    if (fresh) CV.target = fresh;
+    if (CV.target.kind === 'overlay') {
+      if (S.overlays && S.overlays[`ov-${CV.target.start}`] !== undefined) CV.pageIndex = S.overlays[`ov-${CV.target.start}`];
+    } else {
+      const span = (S.regions[CV.target.id] || [])[0];
+      if (span) CV.pageIndex = span.page;
+    }
+  }
+  document.querySelectorAll('.cover-layer').forEach((node) => {
+    if (node.parentElement !== $('#pages').children[CV.pageIndex || 0]) node.remove();
+  });
+  const div = $('#pages').children[CV.pageIndex || 0];
   if (!div) return;
   let layer = div.querySelector('.cover-layer');
   if (!layer) {
@@ -117,7 +173,10 @@ function cvDrawPage() {
   CV.page = layer;
   CV.root = layer;
   CV.scale = S.scale;
-  layer.style.background = headerValue('cover-color') || '#ffffff';
+  const overlay = Boolean(CV.target && CV.target.kind === 'overlay');
+  layer.classList.toggle('ov-edit', overlay);
+  layer.style.background = overlay ? 'transparent' : (CV.target ? CV.color : headerValue('cover-color')) || '#ffffff';
+  div.querySelectorAll('.ov-view').forEach((node) => node.remove());
   layer.style.fontFamily = docFont();
   layer.replaceChildren();
   CV.boxes.forEach((box, index) => layer.append(cvElement(box, index)));
@@ -129,7 +188,7 @@ function cvInspectPanel() {
   const panel = $('#panel');
   panel.classList.remove('wide');
   const box = CV.boxes[CV.sel];
-  const title = box ? { text: 'Text', rect: 'Shape', ellipse: 'Shape', line: 'Line', image: 'Picture' }[box.kind] : 'Cover';
+  const title = box ? { text: 'Text', rect: 'Shape', ellipse: 'Shape', line: 'Line', image: 'Picture' }[box.kind] : CV.target ? 'Page' : 'Cover';
   CV.inspector = h('div', { class: 'panel-body cv-panel' });
   panel.replaceChildren(
     h('div', { class: 'panel-head' }, h('span', { text: title }), h('button', { class: 'round', html: icon('close', 16), title: 'Done', onclick: cvExitPage })),
@@ -155,19 +214,79 @@ function cvTools() {
       cvDrawPage();
     }, false),
   });
+  const make = CV.target ? h('button', { type: 'button', class: 'cv-tool', title: 'Turn this page into the cover', html: `${icon('cover', 18)}<span>Make cover</span>`, onclick: cvMakeCover }) : '';
   cvFrame = h(
     'div',
-    { class: 'cover-tools' },
+    { class: 'cover-tools rail' },
     h('button', { type: 'button', class: 'cv-tool', html: `${icon('textIcon', 18)}<span>Text</span>`, onclick: () => cvAdd(cvTextBox('Text', { x: '20', y: '40', w: '60', size: '20' }), true) }),
     field,
     shape,
     h('button', { type: 'button', class: 'cv-tool', html: `${icon('image', 18)}<span>Picture</span>`, onclick: cvAddImage }),
     h('span', { class: 'cv-sep' }),
     layouts,
+    make,
     h('span', { class: 'cv-sep' }),
     h('button', { type: 'button', class: 'pill solid small', text: 'Done', onclick: cvExitPage }),
   );
   document.body.append(cvFrame);
+}
+
+function cvMakeCover() {
+  const pageIndex = CV.pageIndex;
+  const size = S.pages[pageIndex];
+  if (!size) return;
+  const round = (value) => String(Math.round(value * 100) / 100);
+  const boxes = [];
+  const doomed = [];
+  const color = CV.target && CV.target.kind === 'design' ? CV.color : '';
+  if (CV.target && CV.target.kind === 'design') {
+    boxes.push(...CV.boxes);
+    doomed.push(CV.target);
+  } else {
+    const x = (marginPt() / size.w) * 100;
+    pageRanges(pageIndex).forEach((range) => {
+      const span = (S.regions[range.id] || [])[0];
+      if (!span) return;
+      const y = round((span.y0 / size.h) * 100);
+      if (['heading', 'para', 'text', 'quote', 'list'].includes(range.kind)) {
+        const parts = range.kind === 'text' && typeof textParts === 'function' ? textParts(range) : null;
+        let text = (parts ? parts.inner : linesOf(range)).join('\n').replace(/\\\\\n/g, '\n');
+        if (range.kind === 'heading') text = text.replace(/^#+\s*/, '').replace(/\s*\{[^}]*\}\s*$/, '');
+        if (range.kind === 'quote') text = text.replace(/^>\s?/gm, '');
+        const heading = range.kind === 'heading';
+        boxes.push({ kind: 'text', p: { x: round(x), y, w: round(100 - 2 * x), size: heading ? '20' : String(parseFloat(S.settings['font-size']) || 12), ...(heading ? { bold: '1' } : {}) }, text });
+        doomed.push(range);
+      } else if (range.kind === 'figure') {
+        const src = (linesOf(range).find((line) => /^\s*src\s*:/i.test(line)) || '').replace(/^\s*src\s*:\s*/i, '').trim();
+        if (!src) return;
+        boxes.push({ kind: 'image', p: { x: round(x), y, w: round(100 - 2 * x), h: round(((span.y1 - span.y0) / size.h) * 100), fit: 'contain' }, text: src });
+        doomed.push(range);
+      }
+    });
+    boxes.push(...CV.boxes);
+    if (CV.target && !CV.target.virtual) doomed.push(CV.target);
+  }
+  if (!boxes.length) {
+    toast('Nothing on this page to move to the cover');
+    return;
+  }
+  cvExitPage();
+  const all = lines();
+  const gone = new Set();
+  doomed.forEach((range) => {
+    for (let n = range.start; n <= range.end; n += 1) gone.add(n - 1);
+    if (all[range.end] !== undefined && !all[range.end].trim()) gone.add(range.end);
+  });
+  let text = all.filter((_, index) => !gone.has(index)).join('\n');
+  text = text.replace(/(:::pagebreak[ \t]*\n)(\s*:::pagebreak[ \t]*\n)+/g, '$1');
+  restoreSource(text);
+  setHeaderLines('cover-box', boxes.map(cvLine));
+  setHeader('cover', 'yes');
+  setHeader('cover-style', 'free');
+  if (color) setHeader('cover-color', color);
+  commitHistory();
+  S.pendingCover = true;
+  toast('This page is now the cover');
 }
 
 function cvRichText(index) {
@@ -292,6 +411,17 @@ openCoverFree = function (style) {
 };
 
 function cvAfterLayout() {
+  if (S.pendingCover && CV.mode !== 'page') {
+    S.pendingCover = false;
+    setTimeout(() => cvEnterPage(), 0);
+    return;
+  }
+  if (S.pendingDesign && CV.mode !== 'page') {
+    const range = S.ranges.find((item) => item.start === S.pendingDesign && item.kind === 'design');
+    S.pendingDesign = null;
+    if (range) setTimeout(() => cvEnterDesign(range), 0);
+    return;
+  }
   if (CV.mode !== 'page' || (S.edit && S.edit.cover) || CV.dragging) return;
   if (performance.now() - cvLastDown.time < 500) return;
   if (S.pages.length) cvDrawPage();

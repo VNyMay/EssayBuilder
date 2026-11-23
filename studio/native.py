@@ -25,6 +25,7 @@ user32.IsZoomed.argtypes = [wt.HWND]
 user32.GetMonitorInfoW.argtypes = [wt.HANDLE, ctypes.c_void_p]
 user32.SendMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
 user32.SendMessageW.restype = ctypes.c_ssize_t
+user32.PostMessageW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
 comctl.DefSubclassProc.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM]
 comctl.DefSubclassProc.restype = ctypes.c_ssize_t
 comctl.SetWindowSubclass.argtypes = [wt.HWND, SUBCLASSPROC, ctypes.c_size_t, ctypes.c_size_t]
@@ -37,6 +38,7 @@ SWP_NOACTIVATE = 0x10
 SWP_FRAMECHANGED = 0x20
 SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE = 3, 6, 9
 WM_NCCALCSIZE = 0x0083
+WM_SYSCOMMAND, SC_MINIMIZE, SC_MAXIMIZE, SC_RESTORE = 0x0112, 0xF020, 0xF030, 0xF120
 SM_CXSIZEFRAME, SM_CXPADDEDBORDER = 32, 92
 MIN_WIDTH, MIN_HEIGHT = 980, 640
 
@@ -186,15 +188,16 @@ class Api:
             self._busy = False
 
     def minimize(self):
-        user32.ShowWindow(self._hwnd(), SW_MINIMIZE)
+        user32.PostMessageW(self._hwnd(), WM_SYSCOMMAND, SC_MINIMIZE, 0)
 
     def maximize_toggle(self):
         handle = self._hwnd()
         if self._full:
             self.fullscreen_toggle()
             return self.state()
-        user32.ShowWindow(handle, SW_RESTORE if user32.IsZoomed(handle) else SW_MAXIMIZE)
-        return self.state()
+        zoomed = user32.IsZoomed(handle)
+        user32.PostMessageW(handle, WM_SYSCOMMAND, SC_RESTORE if zoomed else SC_MAXIMIZE, 0)
+        return "normal" if zoomed else "maximized"
 
     def fullscreen_toggle(self):
         handle = self._hwnd()

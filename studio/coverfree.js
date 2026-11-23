@@ -55,6 +55,21 @@ function cvLine(box) {
 function cvLoad() {
   const all = lines();
   const found = [];
+  if (CV.target && CV.target.virtual) {
+    CV.color = '';
+    CV.boxes = [];
+    return;
+  }
+  if (CV.target) {
+    CV.color = '';
+    linesOf(CV.target).forEach((line) => {
+      const match = line.match(/^\s*(box|color)\s*:\s*(.*)$/i);
+      if (match && match[1].toLowerCase() === 'box') found.push(match[2]);
+      else if (match) CV.color = match[2].trim();
+    });
+    CV.boxes = found.map(cvParse).filter(Boolean);
+    return;
+  }
   if (S.front) {
     for (let i = S.front[0] - 1; i <= S.front[1] - 1 && i < all.length; i += 1) {
       const match = (all[i] || '').match(/^cover-box\s*:\s*(.*)$/i);
@@ -99,7 +114,38 @@ function setHeaderLines(key, values) {
   schedule(400);
 }
 
+function cvSaveOverlay() {
+  const target = CV.target;
+  const block = [':::overlay', ...CV.boxes.map((box) => `box: ${cvLine(box)}`), ':::'];
+  if (target.virtual) {
+    if (!CV.boxes.length) return;
+    const first = S.ranges.find((range) => range.start === target.before.start && range.kind === target.before.kind) || target.before;
+    const all = lines();
+    const at = first.start - 1;
+    all.splice(at, 0, ...block, '');
+    S.source = all.join('\n');
+    shiftAfter(at, block.length + 1);
+    const fresh = { id: `n${++S.seq}`, start: at + 1, end: at + block.length, kind: 'overlay' };
+    S.ranges.splice(S.ranges.indexOf(first), 0, fresh);
+    CV.target = fresh;
+  } else if (!CV.boxes.length) {
+    const next = S.ranges[S.ranges.indexOf(target) + 1];
+    remove(target);
+    CV.target = { virtual: true, kind: 'overlay', before: next };
+    return;
+  } else setRangeLines(target, block);
+  lockHits();
+  schedule(400);
+}
+
 function cvSave() {
+  if (CV.target && CV.target.kind === 'overlay') return cvSaveOverlay();
+  if (CV.target) {
+    setRangeLines(CV.target, [':::design', ...(CV.color ? [`color: ${CV.color}`] : []), ...CV.boxes.map((box) => `box: ${cvLine(box)}`), ':::']);
+    lockHits();
+    schedule(400);
+    return;
+  }
   setHeaderLines('cover-box', CV.boxes.map(cvLine));
 }
 
@@ -793,10 +839,13 @@ function cvInspect() {
   const box = CV.boxes[CV.sel];
   if (!box) {
     root.append(
-      section(
+      CV.target && CV.target.kind === 'overlay' ? '' : section(
         'Page',
-        line('Colour', colourPicker(headerValue('cover-color'), (value) => {
-          setHeader('cover-color', value);
+        line('Colour', colourPicker(CV.target ? CV.color : headerValue('cover-color'), (value) => {
+          if (CV.target) {
+            CV.color = value;
+            cvSave();
+          } else setHeader('cover-color', value);
           cvDraw();
         })),
       ),
