@@ -391,7 +391,7 @@ cvElement = function (box, index) {
   const el = cvScreenElement(box, index);
   if (CV.mode === 'page' && box.kind === 'text') {
     const shown = cvShow(box);
-    el.replaceChildren(inlineNodes(shown.replace(/\n/g, BREAK)));
+    el.replaceChildren(h('span', { class: 'cvb-flow' }, inlineNodes(shown.replace(/\n/g, BREAK))));
   }
   return el;
 };

@@ -274,7 +274,7 @@ figure.science svg { margin: 0 auto; }
 figure.map svg text { font-family: inherit; }
 
 figure.fig.science:not(.wrap):not(.al-left):not(.al-right), figure.fig.map:not(.wrap):not(.al-left):not(.al-right) { margin-left: auto; margin-right: auto; }
-.mk { position: absolute; left: 0; font-size: 3pt; line-height: 1; color: transparent; }
+.mk { position: absolute; left: 0; font-size: 3pt; line-height: 1; color: transparent; text-indent: 0; white-space: nowrap; }
 
 figure.tbl.wrap { margin-top: 2pt; margin-bottom: 8pt; }
 figure.tbl.wrap-right { float: right; margin-left: 16pt; margin-right: 0; }
@@ -374,3 +374,4 @@ figure.fig.wrap .cap, figure.tbl.wrap .cap { margin-left: 0; margin-right: 0; }
 .pn { position: relative; white-space: nowrap; }
 .ph { color: #9aa0a6; font-style: italic; font-weight: 400; letter-spacing: 0; text-transform: none; border-bottom: 1px dashed #c4c7c5; }
 .design-page { break-before: page; break-after: page; }
+.cvx-flow { display: block; }

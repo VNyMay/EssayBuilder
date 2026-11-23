@@ -678,7 +678,7 @@ class Compiler(*KITS):
             inner = ""
             if kind == "text":
                 body = fill(content.strip()).replace("\\n", "\n")
-                inner = "<br>".join(render_inline(piece, self) for piece in body.split("\n"))
+                inner = '<span class="cvx-flow">' + "<br>".join(render_inline(piece, self) for piece in body.split("\n")) + "</span>"
             elif kind == "image":
                 found = resolve(content.strip(), self.bases) if content.strip() else None
                 if found is None:
