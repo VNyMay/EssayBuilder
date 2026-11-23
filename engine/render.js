@@ -178,7 +178,7 @@ const css = fs
     const data = fs.readFileSync(path.join(dist, 'fonts', font)).toString('base64');
     return `url(data:font/woff2;base64,${data})`;
   });
-const quiet = mode === 'both' ? '<style>.probe{color:transparent !important;position:absolute;font-size:1px;line-height:0;white-space:nowrap;text-transform:none !important;letter-spacing:0 !important}</style>' : '';
+const quiet = mode === 'both' ? '<style>.probe{color:transparent !important;position:absolute;left:45% !important;top:3px !important;font-size:2px;line-height:1;white-space:nowrap;text-transform:none !important;letter-spacing:0 !important}</style>' : '';
 html = html.replace('</head>', `<style>${css}</style>\n<style>.katex{font-size:1.06em}</style>${quiet}\n</head>`);
 
 fs.writeFileSync(output, html);
