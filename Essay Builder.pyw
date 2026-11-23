@@ -65,20 +65,15 @@ def send(port, route, body):
     urllib.request.urlopen(request, timeout=10).read()
 
 
-def shortcut_target(name):
-    desktop = Path(os.environ.get("USERPROFILE", "~")).expanduser() / "Desktop"
-    return desktop / f"{name}.lnk"
-
-
 def make_shortcut():
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     runner = pythonw if pythonw.exists() else Path(sys.executable)
     script = (
-        "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{lnk}');"
+        "$d=[Environment]::GetFolderPath('Desktop');"
+        "$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'Essay Builder.lnk'));"
         "$s.TargetPath='{target}';$s.Arguments='\"{launcher}\"';"
         "$s.WorkingDirectory='{root}';$s.IconLocation='{icon}';$s.Save()"
     ).format(
-        lnk=shortcut_target("Essay Builder"),
         target=runner,
         launcher=ROOT / "Essay Builder.pyw",
         root=ROOT,
