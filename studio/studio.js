@@ -348,7 +348,7 @@ function layout() {
     div.style.height = `${page.h * S.scale}px`;
     const image = div.firstChild;
     if (image.getAttribute('src') !== page.url) image.src = page.url;
-    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-num, .page-design, .add-cover').forEach((node) => node.remove());
+    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-num, .page-design, .cover-toggle').forEach((node) => node.remove());
     if (S.arrivePage === i && S.pages.length) {
       S.arrivePage = null;
       div.classList.remove('arrive');
@@ -356,16 +356,28 @@ function layout() {
       div.classList.add('arrive');
       setTimeout(() => div.classList.remove('arrive'), 900);
     }
+    const gap = div.getBoundingClientRect().left - $('#scroll').getBoundingClientRect().left;
+    div.classList.toggle('tight', gap < 56);
+    div.style.setProperty('--inset', `${Math.max(10, 10 - gap)}px`);
     const coverOn = !/^(no|off|false)$/i.test(S.settings.cover || 'yes');
-    if (i === 0 && !coverOn) {
+    if (i === 0) {
       div.append(h('button', {
         type: 'button',
-        class: 'add-cover',
-        html: `${icon('plus', 14)}<span>Add cover</span>`,
+        class: `cover-toggle${coverOn ? ' on' : ''}`,
+        title: coverOn ? 'Turn the cover off' : 'Turn the cover on',
+        html: '<span class="switch"><i></i></span><span>Cover</span>',
         onclick: (event) => {
           event.stopPropagation();
-          setHeader('cover', 'yes');
-          if (!headerValue('cover-style')) setHeader('cover-style', 'classic');
+          event.currentTarget.classList.toggle('on');
+          setTimeout(() => {
+            commitHistory();
+            if (coverOn) setHeader('cover', 'no');
+            else {
+              setHeader('cover', 'yes');
+              if (!headerValue('cover-style')) setHeader('cover-style', 'classic');
+            }
+            commitHistory();
+          }, 180);
         },
       }));
     }
@@ -410,7 +422,8 @@ function layout() {
         addPageAfter(i);
       },
     }));
-    if (pageRanges(i).length || i > 0) {
+    div.classList.toggle('picked', S.pagePick === i);
+    if (pageRanges(i).length || i > 0 || coverIsOn()) {
       div.append(deleteButton(i));
     }
   });
@@ -495,6 +508,7 @@ function select(range) {
   closePanel();
   S.settingsOpen = false;
   S.sel = range;
+  unpickPage();
   if (range.kind === 'design' && typeof cvEnterDesign === 'function') return cvEnterDesign(range);
   if (TEXT_KINDS.has(range.kind) || isRichText(range)) openEditor(range);
   else openPanel(range);
@@ -502,6 +516,7 @@ function select(range) {
 }
 
 function deselect() {
+  unpickPage();
   closeEditor();
   closePanel();
   S.settingsOpen = false;
@@ -909,8 +924,19 @@ function pageRanges(pageIndex) {
   });
 }
 
+function coverIsOn() {
+  return Boolean(S.front) && !/^(no|off|false)$/i.test(S.settings.cover || 'yes');
+}
+
 function removePage(pageIndex) {
-  if (!S.pages.length || S.front && pageIndex === 0 && S.settings.cover === 'yes') return;
+  if (!S.pages.length) return;
+  if (pageIndex === 0 && coverIsOn()) {
+    commitHistory();
+    setHeader('cover', 'no');
+    commitHistory();
+    toast('Cover removed. Ctrl+Z brings it back.');
+    return;
+  }
   const doomed = pageRanges(pageIndex);
   if (doomed.length) {
     let before = S.ranges[S.ranges.indexOf(doomed[0]) - 1];
@@ -943,6 +969,69 @@ function pageWeight(pageIndex) {
   }, 0);
 }
 
+function animateRemovePage(pageIndex, page) {
+  const before = S.source;
+  if (page) {
+    page.style.setProperty('--h', `${page.offsetHeight}px`);
+    page.classList.add('leaving');
+    const previous = page.previousElementSibling;
+    const scroll = $('#scroll');
+    if (!page.nextElementSibling && previous && scroll) {
+      const top = scroll.scrollTop + previous.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 24;
+      scroll.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+  }
+  setTimeout(() => {
+    removePage(pageIndex);
+    if (S.source === before && page) page.classList.remove('leaving');
+  }, 560);
+}
+
+function pickPage(index) {
+  S.pagePick = index;
+  S.armed = null;
+  document.querySelectorAll('#pages > .page').forEach((div, i) => div.classList.toggle('picked', i === index));
+}
+
+function unpickPage() {
+  if (S.pagePick === null || S.pagePick === undefined) return;
+  S.pagePick = null;
+  S.armed = null;
+  document.querySelectorAll('#pages > .page.picked').forEach((div) => div.classList.remove('picked', 'armed'));
+}
+
+function pageText(index) {
+  const ranges = pageRanges(index).filter((range) => !['pagebreak'].includes(range.kind));
+  if (!ranges.length) return '';
+  const all = lines();
+  const first = leadingRanges(ranges[0]).reverse()[0] || ranges[0];
+  return all.slice(first.start - 1, ranges[ranges.length - 1].end).join('\n');
+}
+
+function confirmHeavy(index, label) {
+  if (pageWeight(index) <= 30 || (S.armed && S.armed.index === index && performance.now() - S.armed.time < 2500)) {
+    S.armed = null;
+    return true;
+  }
+  S.armed = { index, time: performance.now() };
+  const div = $('#pages').children[index];
+  if (div) {
+    div.classList.remove('armed');
+    void div.offsetWidth;
+    div.classList.add('armed');
+  }
+  toast(`This page has a lot on it. Press ${label} again to remove it.`);
+  return false;
+}
+
+function dropPickedPage(label) {
+  const index = S.pagePick;
+  if (index === null || index === undefined) return;
+  if (!confirmHeavy(index, label)) return;
+  unpickPage();
+  animateRemovePage(index, $('#pages').children[index]);
+}
+
 function deleteButton(pageIndex) {
   const heavy = pageWeight(pageIndex) > 30;
   const button = h('button', {
@@ -951,24 +1040,7 @@ function deleteButton(pageIndex) {
     title: heavy ? 'Hold to remove page' : 'Remove page',
     html: `${icon('trash', 15)}${heavy ? '<svg class="hold-ring" viewBox="0 0 34 34"><rect x="1" y="1" width="32" height="32" rx="11" pathLength="100"/></svg>' : ''}`,
   });
-  const go = () => {
-    const page = button.closest('.page');
-    const before = S.source;
-    if (page) {
-      page.style.setProperty('--h', `${page.offsetHeight}px`);
-      page.classList.add('leaving');
-      const previous = page.previousElementSibling;
-      const scroll = $('#scroll');
-      if (!page.nextElementSibling && previous && scroll) {
-        const top = scroll.scrollTop + previous.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 24;
-        scroll.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-      }
-    }
-    setTimeout(() => {
-      removePage(pageIndex);
-      if (S.source === before && page) page.classList.remove('leaving');
-    }, 560);
-  };
+  const go = () => animateRemovePage(pageIndex, button.closest('.page'));
   let timer = null;
   const stop = () => {
     clearTimeout(timer);
@@ -1947,7 +2019,23 @@ function bind() {
       conceal($('#palette'));
       conceal($('#issueList'));
     }
-    if (blank && !S.settingsOpen && (S.sel || S.edit || S.panel)) deselect();
+    const sheet = event.target.closest && event.target.closest('#pages > .page');
+    const onSheet = sheet && (event.target === sheet || (event.target.tagName === 'IMG' && event.target.parentNode === sheet));
+    if (blank && !S.settingsOpen && (S.sel || S.edit || S.panel)) {
+      deselect();
+      return;
+    }
+    if (onSheet && !S.settingsOpen && !(typeof CV !== 'undefined' && CV.mode === 'page')) {
+      const index = [...$('#pages').children].indexOf(sheet);
+      const rect = sheet.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / S.scale;
+      const size = S.pages[index];
+      if (size && (x < marginPt() * 0.8 || x > size.w - marginPt() * 0.8)) {
+        pickPage(index === S.pagePick ? null : index);
+        return;
+      }
+    }
+    if (S.pagePick !== null && S.pagePick !== undefined) unpickPage();
   });
   document.addEventListener('mousedown', (event) => {
     if (!event.target.closest('#palette, #insertBtn')) {
@@ -1996,6 +2084,9 @@ function bind() {
     } else if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key) && S.sel && !typing) {
       event.preventDefault();
       move(event.key === 'ArrowUp' ? -1 : 1);
+    } else if (['Delete', 'Backspace'].includes(event.key) && !typing && !S.edit && S.pagePick !== null && S.pagePick !== undefined) {
+      event.preventDefault();
+      dropPickedPage('Delete');
     } else if (event.key === 'Delete' && !typing && S.sel && !TEXT_KINDS.has(S.sel.kind)) {
       remove(S.sel);
     }
@@ -2019,7 +2110,23 @@ function bind() {
     const selection = window.getSelection();
     return !selection || selection.isCollapsed;
   };
+  const pagePicked = (event) => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
+    return !typing && !S.edit && S.pagePick !== null && S.pagePick !== undefined;
+  };
+  const clipPage = (event) => {
+    const text = pageText(S.pagePick);
+    if (!text) return false;
+    S.clip = { text, kind: 'para', page: true };
+    event.clipboardData.setData('text/plain', text);
+    return true;
+  };
   document.addEventListener('copy', (event) => {
+    if (pagePicked(event)) {
+      event.preventDefault();
+      if (clipPage(event)) toast('Page copied');
+      return;
+    }
     if (!blockClipboard(event)) return;
     event.preventDefault();
     S.clip = { text: linesOf(S.sel).join('\n'), kind: S.sel.kind };
@@ -2027,6 +2134,20 @@ function bind() {
     toast('Block copied');
   });
   document.addEventListener('cut', (event) => {
+    if (pagePicked(event)) {
+      event.preventDefault();
+      if (S.pagePick === 0 && coverIsOn()) {
+        unpickPage();
+        removePage(0);
+        return;
+      }
+      if (!confirmHeavy(S.pagePick, 'Ctrl+X')) return;
+      clipPage(event);
+      const index = S.pagePick;
+      unpickPage();
+      animateRemovePage(index, $('#pages').children[index]);
+      return;
+    }
     if (!blockClipboard(event)) return;
     event.preventDefault();
     S.clip = { text: linesOf(S.sel).join('\n'), kind: S.sel.kind };
@@ -2038,10 +2159,20 @@ function bind() {
   document.addEventListener('paste', (event) => {
     const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
     if (typing || S.edit || !S.pages.length || (typeof CV !== 'undefined' && CV.mode === 'page')) return;
+    if (S.pagePick !== null && S.pagePick !== undefined && !(S.clip && S.clip.page)) S.sel = lastRangeOn(S.pagePick, true);
     const text = (event.clipboardData.getData('text/plain') || '').replace(/\r/g, '');
     if (!text.trim()) return;
     event.preventDefault();
     commitHistory();
+    if (S.clip && S.clip.page && text === S.clip.text) {
+      const anchor = S.pagePick !== null && S.pagePick !== undefined ? lastRangeOn(S.pagePick, true) : S.sel || S.ranges[S.ranges.length - 1];
+      const all = lines();
+      const at = anchor ? anchor.end : all.length;
+      all.splice(at, 0, '', ':::pagebreak', '', ...S.clip.text.split('\n'));
+      unpickPage();
+      restoreSource(all.join('\n'));
+      return;
+    }
     if (S.clip && text === S.clip.text) insertLines(S.clip.text.split('\n'), S.clip.kind);
     else insertLines(text.trim().split(/\n\s*\n/).map((part) => part.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n').split('\n'), 'para');
     commitHistory();
