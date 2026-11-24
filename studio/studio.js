@@ -458,6 +458,22 @@ function toggleMulti(range) {
   paintMultiBar();
 }
 
+function pickThrough(range) {
+  const current = (S.edit && S.edit.range) || S.sel;
+  const anchor = S.ranges.find((item) => item.start === S.anchorStart) || current || range;
+  const from = S.ranges.indexOf(anchor);
+  const to = S.ranges.indexOf(range);
+  const [low, high] = from < to ? [from, to] : [to, from];
+  S.multi = new Set(S.ranges.slice(low, high + 1).filter((item) => (S.regions[item.id] || []).length).map((item) => item.start));
+  S.anchorStart = anchor.start;
+  closeEditor(true);
+  closePanel();
+  S.sel = null;
+  placeOverlays();
+  paintMultiHits();
+  paintMultiBar();
+}
+
 function clearMulti() {
   if (!S.multi) return;
   S.multi = null;
@@ -479,6 +495,22 @@ function restyleBlock(block, kind, key, value) {
     const kept = tokens.filter((item) => !item.startsWith(`${key}=`));
     if (next) kept.push(`${key}=${/\s/.test(next) ? `"${next}"` : next}`);
     return [`${match[1]}${match[2]}${kept.length ? ` {${kept.join(' ')}}` : ''}`, ...block.slice(1)];
+  }
+  if (kind === 'list' || kind === 'quote') {
+    const marker = kind === 'list' ? /^(\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?)(.*)$/ : /^(\s*>\s?)(.*)$/;
+    return block.map((line) => {
+      const match = line.match(marker);
+      if (!match || !match[2].trim()) return line;
+      const whole = match[2].match(/^\[(.*)\]\{([^{}]*)\}$/);
+      const inner = whole ? whole[1] : match[2];
+      const tokens = whole ? whole[2].match(/[A-Za-z][\w-]*="[^"]*"|\S+/g) || [] : [];
+      const own = tokens.find((item) => item.startsWith(`${key}=`));
+      const current = key === 'size' ? (own ? parseFloat(own.split('=')[1]) : base) : own ? own.slice(key.length + 1).replace(/"/g, '') : '';
+      const next = pickValue(current);
+      const kept = tokens.filter((item) => !item.startsWith(`${key}=`));
+      if (next) kept.push(`${key}=${/\s/.test(next) ? `"${next}"` : next}`);
+      return `${match[1]}${kept.length ? `[${inner}]{${kept.join(' ')}}` : inner}`;
+    });
   }
   if (kind === 'para') {
     const next = pickValue(base);
@@ -562,6 +594,22 @@ function drawHits() {
   const box = $('#pages');
   const side = Math.max(0, marginPt() - 10) * S.scale;
   const used = new Set();
+  const stacks = {};
+  S.ranges.forEach((range) => {
+    (S.regions[range.id] || []).forEach((span) => {
+      (stacks[span.page] = stacks[span.page] || []).push(span);
+    });
+  });
+  Object.values(stacks).forEach((list) => list.sort((a, b) => a.y0 - b.y0));
+  const room = (span) => {
+    const list = stacks[span.page] || [];
+    const at = list.indexOf(span);
+    const before = list[at - 1];
+    const after = list[at + 1];
+    const top = before && before.y1 > span.y0 - 6 ? Math.max((before.y1 + span.y0) / 2, before.y1) : span.y0 - 3;
+    const bottom = after && after.y0 < span.y1 + 6 ? Math.min((span.y1 + after.y0) / 2, after.y0) : span.y1 + 3;
+    return [Math.min(top, span.y0), Math.max(bottom, span.y1)];
+  };
   S.ranges.forEach((range) => {
     (S.regions[range.id] || []).forEach((span) => {
       const div = box.children[span.page];
@@ -569,18 +617,25 @@ function drawHits() {
       used.add(span.page);
       const page = S.pages[span.page];
       const blank = range.kind === 'blank';
-      const top = (blank ? marginPt() : Math.max(span.y0 - 3, 0)) * S.scale;
-      const bottom = (blank ? page.h - marginPt() : Math.min(span.y1 + 3, page.h - marginPt() * 0.55)) * S.scale;
+      const [near, far] = room(span);
+      const top = (blank ? marginPt() : Math.max(near, 0)) * S.scale;
+      const bottom = (blank ? page.h - marginPt() : Math.min(far, page.h - marginPt() * 0.55)) * S.scale;
       const hit = h('div', {
         class: `hit${blank ? ' blank' : ''}${S.sel === range ? ' sel' : ''}`,
         'data-id': range.id,
         style: `left:${side}px;right:${side}px;top:${top}px;height:${Math.max(bottom - top, 8)}px`,
         onclick: (event) => {
-          if (event.shiftKey || event.ctrlKey || event.metaKey) {
+          if (event.shiftKey) {
+            pickThrough(range);
+            return;
+          }
+          if (event.ctrlKey || event.metaKey) {
             toggleMulti(range);
+            S.anchorStart = range.start;
             return;
           }
           clearMulti();
+          S.anchorStart = range.start;
           select(range);
         },
       });

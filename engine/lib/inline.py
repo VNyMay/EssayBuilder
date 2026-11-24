@@ -15,6 +15,7 @@ CITE = re.compile(
     r"\[((?:-?@(?!(?:fig|tbl|eq|code|sec|def|thm|lem|prop|cor|ex|rem):)[A-Za-z][\w:.-]*)(?:\s*,\s*[^\];@]+?)?"
     r"(?:\s*;\s*-?@[A-Za-z][\w:.-]*(?:\s*,\s*[^\];@]+?)?)*)\]"
 )
+INNER_CITE = re.compile(CITE.pattern + r"(?![({])")
 NARRATIVE = re.compile(r"(?<![\w@/.])(@(?!(?:fig|tbl|eq|code|sec|def|thm|lem|prop|cor|ex|rem):)[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*)")
 SPECIAL = {"$": "&#36;", "<": "&lt;", ">": "&gt;"}
 HARD_BREAK = "\x02"
@@ -125,6 +126,9 @@ def render_inline(text, doc=None, where=""):
 
     text = TOKEN.sub(token, text)
     text = escape(text)
+
+    if doc is not None and hasattr(doc, "add_cite"):
+        text = INNER_CITE.sub(lambda match: keep(doc.add_cite(match.group(1), False, where)), text)
 
     def link(match):
         return keep(f'<a class="url" href="{attr(match.group(2))}">') + match.group(1) + keep("</a>")
