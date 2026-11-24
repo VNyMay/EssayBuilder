@@ -59,12 +59,32 @@ class State:
             items = []
         if isinstance(items, str):
             items = [items]
+        return self.everything()[:8]
+
+    def everything(self):
+        try:
+            items = json.loads(RECENT.read_text(encoding="utf-8-sig")) if RECENT.exists() else []
+        except (OSError, ValueError):
+            items = []
+        if isinstance(items, str):
+            items = [items]
         hidden = self.hidden()
         found = [item for item in items if isinstance(item, str) and Path(item).is_file() and item not in hidden]
         if ESSAYS.is_dir():
             own = sorted(ESSAYS.rglob("*.txt"), key=lambda file: file.stat().st_mtime, reverse=True)
             found += [str(file) for file in own if str(file) not in found and str(file) not in hidden]
-        return found[:8]
+        return found
+
+    def library(self):
+        out = []
+        for item in self.everything()[:500]:
+            path = Path(item)
+            try:
+                modified = path.stat().st_mtime
+            except OSError:
+                continue
+            out.append({"path": item, "name": path.stem, "folder": path.parent.name, "modified": modified})
+        return out
 
     def hidden(self):
         try:
@@ -84,18 +104,21 @@ class State:
 
     def trash(self, path):
         target = Path(path)
-        if str(target) not in self.recent() or target.suffix.lower() != ".txt" or not target.is_file():
-            raise ValueError("Only essays from the recent list can be deleted")
+        if str(target) not in self.everything() or target.suffix.lower() != ".txt" or not target.is_file():
+            raise ValueError("Only your own essays can be deleted")
         if self.path is not None and Path(self.path) == target:
             raise ValueError("Close this essay before deleting it")
         recycle(target)
+        versions = versions_folder(target)
+        if versions.is_dir():
+            try:
+                recycle(versions)
+            except OSError:
+                shutil.rmtree(versions, ignore_errors=True)
         self.forget(target)
 
     def backup_folder(self):
-        import hashlib
-
-        key = hashlib.sha1(str(self.path).lower().encode("utf-8")).hexdigest()[:8]
-        folder = BACKUPS / f"{re.sub(r'[^A-Za-z0-9 _-]+', '', self.path.stem)[:40]}-{key}"
+        folder = versions_folder(self.path)
         folder.mkdir(parents=True, exist_ok=True)
         return folder
 
@@ -131,6 +154,7 @@ class State:
             number += 1
             target = self.path.with_name(f"{stem} copy {number}.txt")
         shutil.copyfile(self.path, target)
+        fresh_versions(target)
         self.open(target)
 
     def save(self, source):
@@ -174,6 +198,7 @@ class State:
         except Exception as error:
             shutil.rmtree(folder, ignore_errors=True)
             raise ValueError("This Word file could not be read") from error
+        fresh_versions(target)
         self.notice = "Imported from Word. " + "; ".join(warnings).capitalize() if warnings else "Imported from Word"
         return target
 
@@ -204,6 +229,7 @@ class State:
         texts = sorted(folder.glob("*.txt"))
         if not texts:
             raise ValueError("No essay was found inside this PDF")
+        fresh_versions(texts[0].resolve())
         return texts[0]
 
     def open(self, path):
@@ -247,6 +273,7 @@ class State:
             number += 1
         path = ESSAYS / f"Untitled essay {number}.txt"
         path.write_text(STARTER, encoding="utf-8")
+        fresh_versions(path)
         self.open(path)
 
     def snapshot(self):
@@ -420,6 +447,20 @@ def font_lists():
     return FONT_LISTS
 
 
+def versions_folder(path):
+    import hashlib
+
+    path = Path(path)
+    key = hashlib.sha1(str(path).lower().encode("utf-8")).hexdigest()[:8]
+    return BACKUPS / f"{re.sub(r'[^A-Za-z0-9 _-]+', '', path.stem)[:40]}-{key}"
+
+
+def fresh_versions(path):
+    folder = versions_folder(Path(path).resolve())
+    if folder.is_dir():
+        shutil.rmtree(folder, ignore_errors=True)
+
+
 def recycle(path):
     if sys.platform == "win32":
         import ctypes
@@ -573,6 +614,8 @@ class Handler(BaseHTTPRequestHandler):
                 if chosen:
                     STATE.open(chosen)
                 return self.send_json(STATE.snapshot())
+            if route == "/api/library":
+                return self.send_json({"items": STATE.library()})
             if route == "/api/fonts":
                 return self.send_json(font_lists())
             if route in {"/api/forget", "/api/trash"}:

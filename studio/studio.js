@@ -2042,12 +2042,45 @@ function showStart(state) {
   renderOutline();
   $('#newEssay').innerHTML = `<span class="badge">${icon('newFile', 24)}</span><span>New essay</span>`;
   $('#openEssay').innerHTML = `<span class="badge">${icon('folder', 24)}</span><span>Open essay</span>`;
-  const items = state.recent || [];
-  $('#recentBox').hidden = !items.length;
+  const query = (S.recentQuery || '').trim().toLowerCase();
+  const everything = (S.showAll || query) && S.library;
+  const pool = everything ? S.library.filter((item) => !query || `${item.name} ${item.folder}`.toLowerCase().includes(query)).map((item) => item.path) : state.recent || [];
+  const items = query ? pool.slice(0, 60) : everything ? pool : pool.slice(0, 8);
+  document.querySelector('#recentBox .recent-title').textContent = S.showAll && !query ? 'All essays' : query ? 'Search' : 'Recent';
+  S.shownRecent = items;
+  $('#recentBox').hidden = !items.length && !query && !(state.recent || []).length;
+  const search = $('#recentSearch');
+  search.oninput = async () => {
+    S.recentQuery = search.value;
+    if (search.value.trim() && !S.library) {
+      const answer = await api('/api/library');
+      S.library = answer.items || [];
+    }
+    showStart(state);
+  };
+  search.onkeydown = (event) => {
+    if (event.key === 'Escape') {
+      search.value = '';
+      S.recentQuery = '';
+      showStart(state);
+    }
+  };
+  if (search.value !== (S.recentQuery || '')) search.value = S.recentQuery || '';
   bindTilt($('#recent'), 'button.sheet');
   bindTilt($('#start .tiles'), '.tile');
   $('#recent').replaceChildren(
-    ...items.slice(0, 8).map((path, index) => {
+    ...(query && !items.length ? [h('div', { class: 'recent-empty', text: 'No essays match' })] : []),
+    ...(!query && (S.showAll || (state.recent || []).length >= 8) ? [h('button', {
+      type: 'button',
+      class: 'sheet-more-all',
+      html: `${icon(S.showAll ? 'up' : 'folder', 22)}<span>${S.showAll ? 'Show less' : 'Show all essays'}</span>`,
+      onclick: async () => {
+        if (!S.showAll && !S.library) S.library = (await api('/api/library')).items || [];
+        S.showAll = !S.showAll;
+        showStart(state);
+      },
+    })] : []),
+    ...items.map((path, index) => {
       const parts = path.split(/[\\/]/);
       const name = (parts.pop() || '').replace(/\.(txt|pdf)$/i, '');
       const folder = parts.pop() || '';
@@ -2083,6 +2116,7 @@ function showStart(state) {
           try {
             const next = await api(value === 'trash' ? '/api/trash' : '/api/forget', { path });
             if (next.error) throw new Error(next.error.replace(/^\w+: /, ''));
+            S.library = null;
             toast(value === 'trash' ? 'Moved to the Recycle Bin' : 'Removed from the list');
             showStart(next);
           } catch (error) {
@@ -2105,7 +2139,7 @@ function showStart(state) {
 function paintRecentBar(state) {
   const bar = $('#recentBar');
   const button = $('#recentSelect');
-  const items = state.recent || [];
+  const items = S.shownRecent || state.recent || [];
   const picking = Boolean(S.recentPick);
   document.querySelector('#recentBox').classList.toggle('picking', picking);
   button.textContent = picking ? 'Done' : 'Select';
@@ -2121,6 +2155,7 @@ function paintRecentBar(state) {
     await new Promise((resolve) => setTimeout(resolve, 320));
     const next = await api(route, { paths });
     S.recentPick = null;
+    S.library = null;
     if (next.error) {
       toast(next.error.replace(/^\w+: /, ''), true);
       showStart(state);
@@ -2132,7 +2167,7 @@ function paintRecentBar(state) {
   bar.replaceChildren(
     h('span', { class: 'recent-count', text: count ? `${count} selected` : 'Click essays to select them' }),
     h('button', { type: 'button', class: 'pill ghost small', text: count === items.length ? 'Select none' : 'Select all', onclick: () => {
-      S.recentPick = count === items.length ? new Set() : new Set(items.slice(0, 8));
+      S.recentPick = count === items.length ? new Set() : new Set(items);
       showStart(state);
     } }),
     h('button', { type: 'button', class: 'pill ghost small', text: 'Remove from list', disabled: !count, onclick: () => act('/api/forget', count === 1 ? 'Removed from the list' : `${count} removed from the list`) }),

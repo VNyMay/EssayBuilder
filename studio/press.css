@@ -1855,3 +1855,62 @@
   color: var(--green);
   white-space: nowrap;
 }
+
+.recent-search {
+  flex: 1;
+  max-width: 320px;
+  height: 34px;
+  margin-left: auto;
+  padding: 0 14px 0 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px center;
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color 160ms ease, box-shadow 200ms ease, max-width 300ms cubic-bezier(0.3, 0.7, 0.2, 1.2);
+}
+
+.recent-search:focus {
+  outline: none;
+  max-width: 380px;
+  border-color: rgb(var(--accent-rgb) / 0.6);
+  box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 0.12);
+}
+
+.recent-empty {
+  grid-column: 1 / -1;
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.sheet-more-all {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  aspect-ratio: 1 / 1.25;
+  border-radius: 6px;
+  border: 2px dashed rgb(var(--accent-rgb) / 0.45);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--green);
+  font-weight: 700;
+  transition: translate 280ms cubic-bezier(0.3, 0.7, 0.2, 1.5), border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.sheet-more-all:hover {
+  translate: 0 -4px;
+  border-style: solid;
+  background: var(--surface);
+  box-shadow: 0 14px 28px -16px rgb(var(--shadow) / 0.5);
+}
+
+.sheet-more-all svg {
+  transition: rotate 360ms cubic-bezier(0.3, 0.7, 0.2, 1.6);
+}
+
+.sheet-more-all:hover svg {
+  rotate: -10deg;
+}
