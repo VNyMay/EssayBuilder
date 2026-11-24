@@ -24,6 +24,7 @@ ESSAYS = Path(os.environ.get("ESSAY_BUILDER_ESSAYS") or ROOT / "Essays")
 RECENT = DATA / "recent.json"
 HIDDEN = DATA / "hidden.json"
 BACKUPS = DATA / "backups"
+PREFS = DATA / "prefs.json"
 STARTER = "title: Untitled essay\nsubject:\ncover: no\ncontents: no\n---\n\n# Introduction\n\n"
 PNG_DPI = 144
 SMOOTH = [
@@ -502,6 +503,14 @@ def pick_file():
     return done.stdout.strip()
 
 
+def load_prefs():
+    try:
+        saved = json.loads(PREFS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {key: value for key, value in saved.items() if isinstance(key, str) and key.startswith("studio.") and isinstance(value, str)}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -576,6 +585,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_bytes(200, file.read_bytes(), "image/webp", {"Cache-Control": "max-age=86400"})
         name = "index.html" if route in {"/", ""} else route.lstrip("/")
         file = STUDIO / name
+        if name == "index.html" and file.is_file():
+            saved = json.dumps(load_prefs()).replace("</", "<\\/")
+            page = file.read_text(encoding="utf-8").replace("<head>", f"<head>\n<script>window.SAVED_PREFS = {saved};</script>", 1)
+            return self.send_bytes(200, page.encode("utf-8"), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
         if file.is_file() and file.parent == STUDIO and file.suffix in {".html", ".css", ".js", ".svg", ".png", ".ico"}:
             kind = mimetypes.guess_type(file.name)[0] or "text/plain"
             return self.send_bytes(200, file.read_bytes(), f"{kind}; charset=utf-8" if kind.startswith("text") or kind.endswith("javascript") else kind)
@@ -586,6 +599,10 @@ class Handler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(length) or b"{}")
         route = urlparse(self.path).path
         try:
+            if route == "/api/prefs":
+                clean = {str(key): str(value)[:2000] for key, value in body.items() if str(key).startswith("studio.")}
+                PREFS.write_text(json.dumps(clean, indent=1), encoding="utf-8")
+                return self.send_json({"ok": True})
             if route == "/api/link":
                 url = str(body.get("url", ""))
                 if re.match(r"^https?://[^\s]+$", url):
@@ -657,10 +674,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_bytes(404, b"not found", "text/plain")
 
 
+WINDOWS = []
+
+
 def watch(server):
     while True:
         time.sleep(3)
-        if STATE.seen and time.time() - STATE.last_ping > 25:
+        if any(process.poll() is None for process in WINDOWS):
+            continue
+        if STATE.seen and time.time() - STATE.last_ping > 150:
             server.shutdown()
             return
 
@@ -678,6 +700,7 @@ def launch_native(url):
     runner = Path(sys.executable).with_name("pythonw.exe")
     command = [str(runner if runner.exists() else sys.executable), str(STUDIO / "native.py"), url]
     process = subprocess.Popen(command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    WINDOWS.append(process)
     time.sleep(3.0)
     return process.poll() is None or process.returncode == 0
 
@@ -689,11 +712,13 @@ def launch_window(url):
         return False
     profile = setup.runtime.home().parent / "window"
     flags = [f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check"]
-    subprocess.Popen(
-        [found, f"--app={url}", "--window-size=1280,860", *flags, *SMOOTH],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
+    WINDOWS.append(
+        subprocess.Popen(
+            [found, f"--app={url}", "--window-size=1280,860", *flags, *SMOOTH],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
     )
     return True
 
