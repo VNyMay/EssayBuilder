@@ -1972,6 +1972,57 @@ function buildPalette() {
   });
 }
 
+function openHelpView(template, what, how) {
+  const close = () => {
+    view.remove();
+    document.removeEventListener('keydown', keys, true);
+  };
+  const keys = (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    close();
+  };
+  const view = h(
+    'div',
+    { class: 'help-view' },
+    h(
+      'div',
+      { class: 'help-view-card' },
+      h('div', { class: 'help-view-sample' }, h('img', { src: `previews/${template.id}.webp`, alt: '', draggable: 'false' })),
+      h(
+        'div',
+        { class: 'help-view-side' },
+        h('div', { class: 'help-title', html: `${icon(template.icon, 24)}<span>${template.label}</span>` }),
+        h('div', { class: 'help-tag', text: 'What it is' }),
+        h('p', { class: 'help-what', text: what }),
+        how ? h('div', { class: 'help-tag', text: 'How to use it' }) : null,
+        how ? h('p', { class: 'help-how', text: how }) : null,
+        h(
+          'div',
+          { class: 'help-actions' },
+          h('button', {
+            type: 'button',
+            class: 'pill solid small',
+            html: `${icon('plus', 15)}<span>Insert</span>`,
+            onclick: () => {
+              close();
+              insertTemplate(template);
+            },
+          }),
+          h('button', { type: 'button', class: 'pill ghost small', text: 'Close', onclick: close }),
+        ),
+      ),
+    ),
+  );
+  view.addEventListener('mousedown', (event) => {
+    event.stopPropagation();
+    if (event.target === view) close();
+  });
+  document.addEventListener('keydown', keys, true);
+  document.body.append(view);
+}
+
 function closeHelpCard() {
   const card = $('#palette .help-card');
   if (card) card.remove();
@@ -1991,6 +2042,8 @@ function openHelpCard(tile, template) {
     sample,
     h('div', {}, h('div', { class: 'help-tag', text: 'What it is' }), h('p', { class: 'help-what', text: what }), how ? h('div', { class: 'help-tag', text: 'How to use it' }) : null, how ? h('p', { class: 'help-how', text: how }) : null),
   );
+  sample.title = 'See it bigger';
+  sample.addEventListener('click', () => openHelpView(template, what, how));
   sample.firstChild.addEventListener('error', () => {
     sample.remove();
     body.classList.add('plain');

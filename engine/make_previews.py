@@ -38,20 +38,20 @@ HEAD = ["title: Preview", "cover: no", "contents: no", "page-numbers: no", "word
 def crop(pdf, target):
     doc = fitz.open(pdf)
     page = doc[0]
-    pixmap = page.get_pixmap(matrix=fitz.Matrix(2.2, 2.2))
+    pixmap = page.get_pixmap(matrix=fitz.Matrix(4, 4))
     image = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
     box = ImageChops.difference(image, Image.new("RGB", image.size, "white")).point(lambda v: 255 if v > 18 else 0).getbbox()
     doc.close()
     if not box:
         return False
-    pad = 26
+    pad = 44
     left, top, right, bottom = max(0, box[0] - pad), max(0, box[1] - pad), min(image.width, box[2] + pad), min(image.height, box[3] + pad)
     picture = image.crop((left, top, right, bottom))
-    if picture.width > 1100:
-        picture = picture.resize((1100, round(picture.height * 1100 / picture.width)), Image.LANCZOS)
-    if picture.height > 900:
-        picture = picture.crop((0, 0, picture.width, 900))
-    picture.save(target, "WEBP", quality=82, method=6)
+    if picture.width > 2000:
+        picture = picture.resize((2000, round(picture.height * 2000 / picture.width)), Image.LANCZOS)
+    if picture.height > 2400:
+        picture = picture.crop((0, 0, picture.width, 2400))
+    picture.save(target, "WEBP", quality=90, method=6)
     return True
 
 
