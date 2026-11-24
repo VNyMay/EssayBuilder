@@ -2,49 +2,64 @@
 
 <h1 align="center">Essay Builder</h1>
 
-Write your essay on real pages and export a perfect PDF. Cover, contents, page numbers and word count are done for you.
+<p align="center"><b>Write your essay on real pages. Get a perfect PDF.</b><br>
+The cover, contents page, page numbers and word count are all done for you.</p>
 
-Made for IB students, works for any long document.
+Made for IB students (EE, IA, TOK), but it works for any long piece of writing.
 
-## What it can do
+## Why you'll like it
 
-- ✍️ Type straight onto the page, like Google Docs
-- 📄 Formal IB cover, or design your own
-- 🧮 Maths without LaTeX: just type `sqrt(x)/2`
-- 🧪 Chemistry, molecules, circuits, sheet music
-- 📊 Charts, tables, diagrams and real maps
-- 📚 Citations in APA, MLA, Harvard, Chicago or IEEE
-- 💾 Saves by itself, keeps older versions, Ctrl+Z works
-- 📥 Bring in drafts from Word or Google Docs (.docx)
+- ✍️ **Type right on the page.** What you see is exactly the PDF you hand in.
+- 📄 **A proper IB cover**, or design your own.
+- 🧮 **Maths without LaTeX.** Just type `sqrt(x)/2` or `x^2`.
+- 🧪 **Science made easy.** Chemical equations, molecules, circuits, forces, Punnett squares and more.
+- 📊 **Charts, tables, diagrams and real maps**, drawn from what you type.
+- 💼 **Business, economics and computer science diagrams**, from SWOT and supply and demand to UML and truth tables.
+- 📚 **References done for you** in APA, MLA, Harvard, Chicago or IEEE. Switch style with one click.
+- 💾 **Saves by itself** and keeps older versions, so you can always go back. Ctrl+Z works too.
+- 📥 **Bring in your draft** from Word or Google Docs (.docx).
 
 ## Get it
 
-**Windows 10 / 11:** download `EssayBuilder-Setup.exe` from [Releases](../../releases), run it, done.
+### Windows 10 / 11
 
-**Mac / Linux:** open Terminal, paste this and press Enter:
+Download `EssayBuilder-Setup.exe` from [Releases](../../releases), run it, and you're done. 🎉
+
+### Mac / Linux
+
+Open Terminal, paste this line and press Enter:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/VNyMay/EssayBuilder/main/install.sh | bash
 ```
 
-It downloads everything it needs (Python, Node.js, Chrome and the libraries) without asking for your password, then puts **Essay Builder** in Applications (Mac) or your apps menu (Linux), with an icon on the Desktop. Run the same line again to update.
+That's it. It downloads everything it needs by itself (no password needed) and adds **Essay Builder** to your Applications (Mac) or apps menu (Linux), with an icon on your Desktop. The first start takes a few minutes; after that it opens in seconds. Run the same line again any time to update.
 
 <details>
-<summary>Other ways</summary>
+<summary>Other ways to run it</summary>
 
 **From a downloaded copy:** run `bash install.sh` inside the folder.
 
-**Docker:** run `docker compose up -d` in this folder and open http://localhost:8787.
+**Docker:** run `docker compose up -d` in the folder, then open http://localhost:8787.
 
 **By hand:** with Python 3.10+, Node.js 18+ and Chrome or Edge installed, run `python3 studio/serve.py`.
 </details>
 
-## Tips
+## First steps
 
-- **Ctrl+K** finds any action
-- **Insert** adds figures, tables, maps and more
-- **Export PDF** asks where to save
-- If you couldn't understand the app, you can upload the file `AI Prompt.txt` to any AI and ask your questions, can help you :)
+The first time you open Essay Builder, you pick a look and a short tour shows you around. A few things worth knowing:
+
+- **Insert** adds tables, charts, maps, equations and lots more. Not sure what something is? Press **? Help** and tap any block to see a real example, what it's for and how to use it.
+- **Point between two blocks** and press **+** to add something exactly there.
+- **Drag on an empty spot** to select several blocks at once.
+- **Hover a page** to add a new one, duplicate it or drag it somewhere else.
+- **Ctrl+K** finds any action, so you never have to hunt through menus.
+- **Export PDF** saves your finished essay wherever you like.
+
+## Stuck? Ask an AI 🤖
+
+Upload the file `AI Prompt.txt` to any AI chat (ChatGPT, Claude, Gemini…) and ask it anything about Essay Builder. It knows every feature, so it can explain how something works, or even turn your notes into a ready-to-open essay file for you.
+
 ## Licence
 
-MIT, see [LICENSE](LICENSE). Open source parts are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT, see [LICENSE](LICENSE). The open source parts we use are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

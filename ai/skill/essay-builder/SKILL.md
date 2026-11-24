@@ -554,6 +554,7 @@ numbers: latex
 | `cover` / `contents` | `no` removes the cover page / contents page | `yes` |
 | `page-numbers` | `no` hides page numbers | `yes` |
 | `page-numbering` | `body`: the first section is page 1, the cover and contents pages are not numbered. `continuous`: every page counts from the first one as it really sits in the PDF, so with a cover and a contents page the Introduction is page 3 (the cover counts as 1 but shows no number; the contents list uses the same numbers) | `body` |
+| `:::numbering` (block) | put `:::numbering hide`, `skip`, `start`, `restart 5`, `roman`, `Roman`, `letters` or `numbers` (words can be combined) just before the first block of a page: `hide` = no number on that page, `skip` = that page is not counted, `start` = numbering begins here (earlier pages unnumbered), `restart N` = count from N here, a style word changes the style from that page on | |
 | `word-count` | `auto` (counted), `off` (not shown on the cover), or a number to print | `auto` |
 | `word-count-label` | Text before the count on the cover | `Word count` |
 | `word-limit` | e.g. `4000`: the build warns when exceeded | none |
@@ -617,6 +618,8 @@ cover-color: #1f4e79
 - A blank line separates paragraphs. Lines inside one paragraph are joined; end a line with `\\` to force a line break.
 - A literal dollar sign: `\$5`. (A lone `$` before a number such as `$4.5m` is already safe.) Other escapes: `\*`, `\_`, `\#`, `\[`, `\@`, `\\`.
 - `:::pagebreak` starts a new page. `:::spacer 10mm` adds vertical space.
+- `:::design` makes a full page laid out freely, like the free cover: one `box: kind | settings | content` line per box (same kinds and settings as `cover-box`) and an optional `color: #hex` line for the page colour, closed with `:::`. Use it for section dividers, posters or appendix title pages.
+- `:::overlay` (same `box:` lines, closed with `:::`) placed just before the first block of a page draws those boxes on top of that normal page, which still flows as usual: stickers, arrows, callouts, a coloured band.
 
 ### Headings
 
