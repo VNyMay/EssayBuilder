@@ -1268,8 +1268,7 @@ async function insertTemplate(template) {
     return;
   }
   if (template.kind === 'bibliography') {
-    const style = (S.settings.citations || 'apa').toLowerCase();
-    const title = style === 'mla' ? 'Works Cited' : style === 'chicago' ? 'Bibliography' : 'References';
+    const title = citationTitle(headerValue('citations') || S.settings.citations);
     insertLines([`# ${title} {nonumber}`, '', ...template.lines], 'heading');
     return;
   }
@@ -1364,6 +1363,7 @@ function renderPanel() {
     'div',
     { class: 'panel-head' },
     h('span', { text: schema ? schema.label : prettyKey(range.kind) }),
+    panelHelpButton(range.kind),
     h('button', { class: 'round', html: icon('close', 16), title: 'Close', onclick: deselect }),
   );
   const body = h('div', { class: 'panel-body', 'data-rid': String(range.id) });
@@ -1497,7 +1497,13 @@ const SETTING_FIELDS = [
   { key: 'contents-dots', label: 'Dot leaders', spec: 'y' },
   { key: 'list-of-figures', label: 'List of figures', spec: 'y', off: true },
   { key: 'list-of-tables', label: 'List of tables', spec: 'y', off: true },
+  { group: 'References' },
+  { key: 'citations', label: 'Citation style', spec: [{ value: 'apa', label: 'APA 7' }, { value: 'mla', label: 'MLA 9' }, { value: 'harvard', label: 'Harvard' }, { value: 'chicago', label: 'Chicago' }, { value: 'ieee', label: 'IEEE' }] },
 ];
+
+function citationTitle(style) {
+  return { mla: 'Works Cited', chicago: 'Bibliography' }[String(style || 'apa').toLowerCase()] || 'References';
+}
 
 function headerValue(key) {
   if (S.front) {
@@ -1510,6 +1516,24 @@ function headerValue(key) {
   }
   if (key === 'title') return S.title;
   return S.settings[key] || '';
+}
+
+function setCitationStyle(value) {
+  const before = citationTitle(headerValue('citations'));
+  setHeader('citations', value);
+  const after = citationTitle(value);
+  if (before === after) return;
+  const all = lines();
+  let changed = false;
+  all.forEach((line, index) => {
+    const match = line.match(/^#\s+(References|Works Cited|Bibliography)(\s*\{[^{}]*\})?\s*$/);
+    if (!match) return;
+    all[index] = `# ${after}${match[2] || ''}`;
+    changed = true;
+  });
+  if (!changed) return;
+  S.source = all.join('\n');
+  schedule(150);
 }
 
 function setHeader(key, value) {
@@ -1574,7 +1598,7 @@ function openSettings() {
     } else if (item.spec === 'font') {
       field = h('div', { class: 'field' }, fontPicker(current, (value) => setHeader(item.key, value), { empty: item.key === 'font' ? 'Cambria (default)' : 'Same as text' }));
     } else {
-      field = inputFor(row, item.spec, () => setHeader(item.key, row.value));
+      field = inputFor(row, item.spec, () => (item.key === 'citations' ? setCitationStyle(row.value) : setHeader(item.key, row.value)));
     }
     body.append(h('div', { class: 'row' }, h('label', { text: item.label }), field, h('span')));
   });
@@ -1939,7 +1963,7 @@ function buildPalette() {
       grid.previousElementSibling.hidden = empty;
     });
   });
-  const help = h('button', { type: 'button', class: 'palette-help', title: 'What each block does', text: '?' });
+  const help = h('button', { type: 'button', class: 'palette-help', title: 'What each block does', html: '<b>?</b><span>Help</span>' });
   help.addEventListener('click', () => {
     palette.classList.toggle('helping');
     help.classList.toggle('on', palette.classList.contains('helping'));
@@ -2010,6 +2034,7 @@ function openHelpView(template, what, how) {
               insertTemplate(template);
             },
           }),
+          moreHelpButton(template.id, close),
           h('button', { type: 'button', class: 'pill ghost small', text: 'Close', onclick: close }),
         ),
       ),
@@ -2057,6 +2082,7 @@ function openHelpCard(tile, template) {
       'div',
       { class: 'help-actions' },
       h('button', { type: 'button', class: 'pill solid small', html: `${icon('plus', 15)}<span>Insert</span>`, onclick: () => insertTemplate(template) }),
+      moreHelpButton(template.id),
       h('button', { type: 'button', class: 'pill ghost small', text: 'Close', onclick: closeHelpCard }),
     ),
   );

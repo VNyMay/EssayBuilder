@@ -3,6 +3,7 @@ function registerKit(spec) {
     const options = kit.options || [];
     const keys = { ...SHARED, ...(kit.keys || {}) };
     options.forEach((option) => {
+      if (option.type === 'header') return;
       keys[option.key] = option.type === 'switch' ? 'y' : option.type === 'number' ? 'n' : option.type === 'choice' ? option.choices.map((choice) => choice[0]) : 't';
     });
     BLOCKS[kit.kind] = { label: kit.label, keys, body: kit.bodyLabel || 'Content' };
@@ -15,7 +16,9 @@ function registerKit(spec) {
       options.forEach((option) => {
         const current = rowGet(model, option.key, option.value ?? '');
         let control;
-        if (option.type === 'switch') {
+        if (option.type === 'header') {
+          control = segmented(option.choices.map((choice) => ({ value: choice[0], label: choice[1] })), (headerValue(option.key) || option.value || '').toLowerCase(), (value) => (option.key === 'citations' ? setCitationStyle(value) : setHeader(option.key, value)));
+        } else if (option.type === 'switch') {
           control = switchField(['yes', 'true', 'on'].includes(String(current).toLowerCase()), (on) => {
             rowSet(model, option.key, on ? 'yes' : 'no');
             commitPanel(150);

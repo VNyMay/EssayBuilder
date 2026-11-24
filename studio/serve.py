@@ -586,6 +586,11 @@ class Handler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(length) or b"{}")
         route = urlparse(self.path).path
         try:
+            if route == "/api/link":
+                url = str(body.get("url", ""))
+                if re.match(r"^https?://[^\s]+$", url):
+                    webbrowser.open(url)
+                return self.send_json({"ok": True})
             if route == "/api/render":
                 return self.send_json(STATE.render(body["source"], body.get("have", ""), body.get("dpi") or PNG_DPI))
             if route == "/api/sharpen":
