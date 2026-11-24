@@ -727,7 +727,7 @@ class Compiler(*KITS):
     def attach_numbers(self, start):
         for index in range(start, len(self.out)):
             chunk = self.out[index]
-            if re.match(r"<(?:h[1-6]|p|figure|div|ul|ol|blockquote|table|pre)\b", chunk):
+            if re.match(r"<(?:h[1-6]|p|figure|div|ul|ol|dl|blockquote|table|pre)\b", chunk):
                 cut = chunk.index(">") + 1
                 spans = "".join(f'<span class="pn" id="{ident}"></span>' for ident in self.pending_numbers)
                 self.out[index] = chunk[:cut] + spans + chunk[cut:]
@@ -748,7 +748,7 @@ class Compiler(*KITS):
             if re.match(r"<h[1-6]\b", chunk):
                 self.out.insert(index, mark)
                 break
-            if re.match(r"<(?:p|figure|div|ul|ol|blockquote|table|pre)\b", chunk):
+            if re.match(r"<(?:p|figure|div|ul|ol|dl|blockquote|table|pre)\b", chunk):
                 cut = chunk.index(">") + 1
                 self.out[index] = chunk[:cut] + mark + chunk[cut:]
                 break
