@@ -247,10 +247,7 @@ function chartPanel(model, body, range) {
         },
       }));
     } else if (model.body.some((item) => item.trim())) {
-      dataBody.push(dataGrid(model.body, (lines) => {
-        model.body = lines;
-        commitPanel(700);
-      }));
+      dataBody.push(h('div', { class: 'data-hint', html: `${icon('table', 15)}<span>Edit the data under the chart</span>` }));
     } else {
       dataBody.push(h('div', { class: 'inline-row' },
         fileChooser({ value: '', accept: '.csv,.tsv,.xlsx,.json', label: 'Choose data file', onPick: (path) => {
@@ -262,6 +259,7 @@ function chartPanel(model, body, range) {
           model.body = ['| x | y |', '|---|---|', '| 1 | 2 |', '| 2 | 4 |'];
           commitPanel(250);
           renderPanel();
+          if (typeof openSheet === 'function') openSheet(S.panel.range);
         } }),
       ));
     }

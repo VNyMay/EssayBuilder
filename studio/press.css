@@ -2935,3 +2935,77 @@ body.page-dragging * {
   width: 34px;
   height: 34px;
 }
+
+.page-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  animation: ghost-out 240ms ease-out both;
+}
+
+@keyframes ghost-out {
+  to { opacity: 0; }
+}
+
+.editor.rich.inplace,
+.editor,
+.sheet:not(.below) {
+  animation: spot-in 240ms ease-out both;
+}
+
+@keyframes spot-in {
+  from { box-shadow: 0 0 0 0 rgb(var(--accent-rgb) / 0), 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / 0); }
+}
+
+.sheet.below {
+  z-index: 6;
+  padding: 8px 10px 10px 22px;
+  box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 0.35), 0 18px 40px -20px rgb(0 0 0 / 0.45);
+  animation: sheet-drop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+.sheet.below .sheet-bar {
+  position: static;
+  margin: 0 0 8px -12px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+@keyframes sheet-drop {
+  from { opacity: 0; translate: 0 -8px; }
+}
+
+.sheet .sheet-name {
+  padding: 0 8px;
+  font-family: var(--f-hand);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.hit.fresh {
+  animation: block-glow 1.3s ease-out both;
+}
+
+@keyframes block-glow {
+  0% { background: rgb(var(--accent-rgb) / 0.22); outline: 2px solid rgb(var(--accent-rgb) / 0.7); outline-offset: -1px; }
+  100% { background: transparent; outline: 2px solid rgb(var(--accent-rgb) / 0); outline-offset: -1px; }
+}
+
+.data-hint {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(var(--accent-rgb) / 0.07);
+  color: var(--green);
+  font-size: 13.5px;
+  font-weight: 600;
+}

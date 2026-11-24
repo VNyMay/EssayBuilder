@@ -1,7 +1,14 @@
 const SHEET = { root: null, grid: null, range: null, anchor: null, picked: new Set(), active: null, timer: 0 };
 
+function sheetMode(range) {
+  if (!range || !S.panel || S.panel.range !== range || rowGet(S.panel.model, 'src')) return null;
+  if (['table', 'pipetable'].includes(range.kind)) return 'over';
+  if (range.kind === 'chart' && rowGet(S.panel.model, 'type') !== 'function' && S.panel.model.body.some((line) => line.trim())) return 'below';
+  return null;
+}
+
 function sheetable(range) {
-  return Boolean(range && ['table', 'pipetable'].includes(range.kind) && S.panel && S.panel.range === range && !rowGet(S.panel.model, 'src'));
+  return Boolean(sheetMode(range));
 }
 
 function cellKey(r, c) {
@@ -205,7 +212,7 @@ function sheetKeys(event) {
   }
 }
 
-function sheetBar() {
+function sheetBar(mode) {
   const tool = (html, title, action, extra = '') => {
     const button = h('button', { type: 'button', class: `fmt-btn ${extra}`.trim(), html, title });
     button.addEventListener('mousedown', (event) => event.preventDefault());
@@ -227,6 +234,16 @@ function sheetBar() {
   [size, font].forEach((item) => item.addEventListener('mousedown', (event) => {
     if (event.target.tagName !== 'INPUT') event.preventDefault();
   }));
+  const shape = [
+    tool('<span class="shape">+ Row ↑</span>', 'Insert row above', () => changeShape('rowAbove')),
+    tool('<span class="shape">+ Row ↓</span>', 'Insert row below', () => changeShape('rowBelow')),
+    tool('<span class="shape">+ Col ←</span>', 'Insert column left', () => changeShape('colLeft')),
+    tool('<span class="shape">+ Col →</span>', 'Insert column right', () => changeShape('colRight')),
+    sep(),
+    tool('<span class="shape">− Row</span>', 'Delete rows', () => changeShape('delRows'), 'danger'),
+    tool('<span class="shape">− Col</span>', 'Delete columns', () => changeShape('delCols'), 'danger'),
+  ];
+  if (mode === 'below') return h('div', { class: 'fmtbar sheet-bar' }, h('span', { class: 'sheet-name', text: 'Chart data' }), sep(), ...shape);
   return h(
     'div',
     { class: 'fmtbar sheet-bar' },
@@ -244,13 +261,7 @@ function sheetBar() {
     tool(icon('alignCenter', 16), 'Centre column', () => alignColumns('center')),
     tool(icon('alignRight', 16), 'Align column right', () => alignColumns('right')),
     sep(),
-    tool('<span class="shape">+ Row ↑</span>', 'Insert row above', () => changeShape('rowAbove')),
-    tool('<span class="shape">+ Row ↓</span>', 'Insert row below', () => changeShape('rowBelow')),
-    tool('<span class="shape">+ Col ←</span>', 'Insert column left', () => changeShape('colLeft')),
-    tool('<span class="shape">+ Col →</span>', 'Insert column right', () => changeShape('colRight')),
-    sep(),
-    tool('<span class="shape">− Row</span>', 'Delete rows', () => changeShape('delRows'), 'danger'),
-    tool('<span class="shape">− Col</span>', 'Delete columns', () => changeShape('delCols'), 'danger'),
+    ...shape,
     tool(icon('close', 14), 'Clear formatting', () => restyle({ key: 'size', value: '', clear: true })),
   );
 }
@@ -288,13 +299,15 @@ function positionSheet() {
   if (!span) return;
   const div = $('#pages').children[span.page];
   if (SHEET.root.parentNode !== div) div.append(SHEET.root);
+  const below = SHEET.mode === 'below';
   markEditing(div);
-  div.classList.add('sheeting');
+  if (!below) div.classList.add('sheeting');
   const page = S.pages[span.page];
+  const last = (S.regions[SHEET.range.id] || []).slice(-1)[0] || span;
   SHEET.root.style.left = `${marginPt() * S.scale}px`;
   SHEET.root.style.width = `${(page.w - 2 * marginPt()) * S.scale}px`;
-  SHEET.root.style.top = `${span.y0 * S.scale}px`;
-  SHEET.root.style.minHeight = `${(span.y1 - span.y0) * S.scale}px`;
+  SHEET.root.style.top = `${(below ? last.y1 + 14 : span.y0) * S.scale}px`;
+  SHEET.root.style.minHeight = below ? '0' : `${(span.y1 - span.y0) * S.scale}px`;
   SHEET.root.style.fontFamily = docFont();
   SHEET.root.style.fontSize = `${(parseFloat(S.settings['font-size']) || 12) * 0.92 * S.scale}px`;
   SHEET.root.style.setProperty('--pt', `${S.scale}px`);
@@ -307,9 +320,10 @@ function openSheet(range) {
   if (!grid.rows.length) return;
   SHEET.grid = grid;
   SHEET.range = range;
+  SHEET.mode = sheetMode(range);
   SHEET.picked = new Set();
   SHEET.active = null;
-  SHEET.root = h('div', { class: 'sheet' }, sheetBar(), h('div', { class: 'sheet-scroll' }, h('table', { class: 'sheet-table' })));
+  SHEET.root = h('div', { class: `sheet${SHEET.mode === 'below' ? ' below' : ''}` }, sheetBar(SHEET.mode), h('div', { class: 'sheet-scroll' }, h('table', { class: 'sheet-table' })));
   const table = SHEET.root.querySelector('table');
   table.addEventListener('input', () => sheetCommit());
   table.addEventListener('keydown', sheetKeys);

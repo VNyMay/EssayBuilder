@@ -162,9 +162,11 @@ table.data th {
   line-height: 1.3;
   padding: 5pt 5pt;
   vertical-align: bottom;
-  text-align: center;
+  text-align: left;
   border-bottom: 0.8pt solid var(--rule);
 }
+table.data th.r { text-align: right; }
+table.data th.c, table.data th.sp { text-align: center; }
 table.data td { padding: 2.6pt 6pt; }
 figure.tbl table.data[style*="auto"] td, figure.tbl table.data[style*="auto"] th { padding-left: 16pt; padding-right: 16pt; }
 table.data td.r, table.data td.c, table.data td.k { white-space: nowrap; }

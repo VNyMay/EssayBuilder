@@ -1366,7 +1366,7 @@ class Compiler(*KITS):
         if header_on:
             out.append("<thead>")
             for r in range(head_rows):
-                tags = [merged(r, i, "th") for i in range(width_cols)]
+                tags = [merged(r, i, "th", classes[i] if i < len(classes) else "") for i in range(width_cols)]
                 out.append("<tr>" + "".join(f"{t}{self.inline(rows[r][i], line)}</th>" for i, t in enumerate(tags) if t) + "</tr>")
             out.append("</thead>")
         out.append("<tbody>")

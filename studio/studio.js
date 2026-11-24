@@ -305,6 +305,10 @@ async function applyResult(result, sent) {
   if (!localStorage.getItem('studio.toured')) setTimeout(() => startTour(), 600);
   if (S.focusNew && S.sel) {
     S.focusNew = false;
+    S.glow = S.sel.id;
+    setTimeout(() => {
+      S.glow = null;
+    }, 1400);
     if (TEXT_KINDS.has(S.sel.kind) || isRichText(S.sel)) openEditor(S.sel, S.focusSelectAll !== false);
     S.focusSelectAll = true;
     scrollToRange(S.sel);
@@ -353,7 +357,15 @@ function layout() {
     div.style.width = `${page.w * S.scale}px`;
     div.style.height = `${page.h * S.scale}px`;
     const image = div.firstChild;
-    if (image.getAttribute('src') !== page.url) image.src = page.url;
+    if (image.getAttribute('src') !== page.url) {
+      if (image.getAttribute('src') && image.complete) {
+        const ghost = image.cloneNode();
+        ghost.className = 'page-ghost';
+        div.append(ghost);
+        setTimeout(() => ghost.remove(), 260);
+      }
+      image.src = page.url;
+    }
     div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-tool, .page-num, .page-design, .cover-toggle').forEach((node) => node.remove());
     if (S.arrivePage === i && S.pages.length) {
       S.arrivePage = null;
@@ -641,6 +653,7 @@ function drawHits() {
         },
       });
       if (S.multi && S.multi.has(range.start)) hit.classList.add('multi');
+      if (S.glow !== undefined && S.glow !== null && S.glow === range.id) hit.classList.add('fresh');
       div.append(hit);
     });
   });
