@@ -356,7 +356,7 @@ function dataGrid(lines, onChange) {
   const build = () => {
     const width = Math.max(...grid.rows.map((row) => row.length));
     grid.rows = grid.rows.map((row) => [...row, ...Array(width - row.length).fill('')]);
-    const table = h('div', { class: 'cells', style: `grid-template-columns:repeat(${width},minmax(64px,1fr)) 24px` });
+    const table = h('div', { class: 'cells', style: `grid-template-columns:repeat(${width},minmax(104px,1fr)) 24px` });
     for (let c = 0; c < width; c += 1) {
       table.append(h('button', {
         type: 'button',

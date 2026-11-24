@@ -25,6 +25,8 @@ RECENT = DATA / "recent.json"
 HIDDEN = DATA / "hidden.json"
 BACKUPS = DATA / "backups"
 PREFS = DATA / "prefs.json"
+THUMBS = DATA / "thumbs"
+LINKS = DATA / "exports.json"
 STARTER = "title: Untitled essay\nsubject:\ncover: no\ncontents: no\n---\n\n# Introduction\n\n"
 PNG_DPI = 144
 SMOOTH = [
@@ -72,7 +74,8 @@ class State:
         hidden = self.hidden()
         found = [item for item in items if isinstance(item, str) and Path(item).is_file() and item not in hidden]
         if ESSAYS.is_dir():
-            own = sorted(ESSAYS.rglob("*.txt"), key=lambda file: file.stat().st_mtime, reverse=True)
+            skip = {BACKUPS.resolve(), DATA.resolve()}
+            own = sorted((file for file in ESSAYS.rglob("*.txt") if not skip & set(file.resolve().parents)), key=lambda file: file.stat().st_mtime, reverse=True)
             found += [str(file) for file in own if str(file) not in found and str(file) not in hidden]
         return found
 
@@ -84,7 +87,7 @@ class State:
                 modified = path.stat().st_mtime
             except OSError:
                 continue
-            out.append({"path": item, "name": path.stem, "folder": path.parent.name, "modified": modified})
+            out.append({"path": item, "name": path.stem, "folder": path.parent.name, "modified": modified, "thumb": thumb_url(item)})
         return out
 
     def hidden(self):
@@ -209,6 +212,11 @@ class State:
 
         import pymupdf
 
+        saved = load_links()
+        for essay, linked in saved["links"].items():
+            if linked and Path(linked).resolve() == pdf.resolve() and Path(essay).is_file():
+                return Path(essay)
+
         with pymupdf.open(pdf) as doc:
             if "essay-project.zip" not in doc.embfile_names():
                 raise ValueError("This PDF was not made by Essay Builder, so it cannot be edited")
@@ -231,6 +239,8 @@ class State:
         if not texts:
             raise ValueError("No essay was found inside this PDF")
         fresh_versions(texts[0].resolve())
+        saved["links"][str(texts[0].resolve())] = str(pdf.resolve())
+        save_links(saved)
         return texts[0]
 
     def open(self, path):
@@ -279,7 +289,8 @@ class State:
 
     def snapshot(self):
         if self.path is None:
-            return {"open": False, "recent": self.recent()}
+            recent = self.recent()
+            return {"open": False, "recent": recent, "details": details(recent)}
         notice, self.notice = getattr(self, "notice", None), None
         return {
             "open": True,
@@ -288,6 +299,7 @@ class State:
             "name": self.path.name,
             "source": self.path.read_text(encoding="utf-8-sig"),
             "recent": self.recent(),
+            "pdf": load_links()["links"].get(str(self.path), ""),
         }
 
     def page_key(self, doc, page):
@@ -356,6 +368,7 @@ class State:
                 dpi = max(96, min(300, int(dpi or PNG_DPI)))
                 pages, names = self.rasterise(output, version, dpi)
                 self.last_pdf = output
+                self.make_thumb(output)
                 result["dpi"] = dpi
                 self.kept = (self.kept + [names])[-3:]
                 result["pages"] = pages
@@ -373,6 +386,16 @@ class State:
                 result.pop("sizes", None)
                 self.clean(version)
             return result
+
+    def make_thumb(self, pdf):
+        import pymupdf
+
+        try:
+            THUMBS.mkdir(parents=True, exist_ok=True)
+            with pymupdf.open(pdf) as doc:
+                doc[0].get_pixmap(matrix=pymupdf.Matrix(0.62, 0.62)).save(str(THUMBS / thumb_name(self.path)))
+        except Exception:
+            pass
 
     def clean(self, keep):
         for file in self.work.iterdir():
@@ -503,6 +526,46 @@ def pick_file():
     return done.stdout.strip()
 
 
+def thumb_name(path):
+    import hashlib
+
+    return hashlib.sha1(str(path).lower().encode("utf-8")).hexdigest()[:16] + ".png"
+
+
+def thumb_url(path):
+    file = THUMBS / thumb_name(path)
+    if not file.is_file():
+        return ""
+    return f"/thumb/{file.name}?t={int(file.stat().st_mtime)}"
+
+
+def details(paths):
+    out = {}
+    for item in paths:
+        try:
+            modified = Path(item).stat().st_mtime
+        except OSError:
+            modified = 0
+        out[item] = {"thumb": thumb_url(item), "modified": modified}
+    return out
+
+
+def load_links():
+    try:
+        saved = json.loads(LINKS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        saved = {}
+    if not isinstance(saved, dict):
+        saved = {}
+    saved.setdefault("links", {})
+    saved.setdefault("folder", "")
+    return saved
+
+
+def save_links(saved):
+    LINKS.write_text(json.dumps(saved, indent=1), encoding="utf-8")
+
+
 def load_prefs():
     try:
         saved = json.loads(PREFS.read_text(encoding="utf-8"))
@@ -579,6 +642,11 @@ class Handler(BaseHTTPRequestHandler):
             file = (STUDIO / "typefaces" / Path(route).name).resolve()
             if file.is_file() and file.suffix == ".woff2":
                 return self.send_bytes(200, file.read_bytes(), "font/woff2", {"Cache-Control": "max-age=86400"})
+        if route.startswith("/thumb/"):
+            file = (THUMBS / Path(route).name).resolve()
+            if file.parent == THUMBS.resolve() and file.suffix == ".png" and file.is_file():
+                return self.send_bytes(200, file.read_bytes(), "image/png", {"Cache-Control": "max-age=31536000"})
+            return self.send_bytes(404, b"not found", "text/plain")
         if route.startswith("/previews/"):
             file = (STUDIO / "previews" / Path(route).name).resolve()
             if file.is_file() and file.suffix == ".webp":
@@ -662,7 +730,18 @@ class Handler(BaseHTTPRequestHandler):
             if route == "/api/copy_export":
                 source = STATE.work / "export" / Path(body["name"]).name
                 shutil.copyfile(source, body["path"])
+                saved = load_links()
+                saved["links"][str(STATE.path)] = str(Path(body["path"]).resolve())
+                save_links(saved)
                 return self.send_json({"ok": True})
+            if route == "/api/export_target":
+                saved = load_links()
+                return self.send_json({"path": saved["links"].get(str(STATE.path), ""), "folder": saved.get("folder", "")})
+            if route == "/api/pdf_folder":
+                saved = load_links()
+                saved["folder"] = str(body.get("folder") or "")
+                save_links(saved)
+                return self.send_json({"folder": saved["folder"]})
             if route == "/api/upload":
                 return self.send_json({"path": STATE.upload(body["name"], body["data"])})
             if route == "/api/reveal" and STATE.path:

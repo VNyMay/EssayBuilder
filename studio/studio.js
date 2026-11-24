@@ -440,6 +440,7 @@ function layout() {
   placeOverlays();
   if (typeof cvAfterLayout === 'function') cvAfterLayout();
   if (zoomPick) zoomPick.setLabel(`${Math.round((S.scale / (96 / 72)) * 100)}%`);
+  if (typeof positionSheet === 'function') positionSheet();
 }
 
 function toggleMulti(range) {
@@ -741,6 +742,7 @@ function positionEditor() {
   if (!span) return;
   const div = $('#pages').children[span.page];
   if (ta.parentNode !== div) div.append(ta);
+  markEditing(div);
   const style = editorStyle(range);
   const place = inPlace(range) && ta.classList.contains('rich');
   const padX = place ? 0 : 14;
@@ -780,6 +782,13 @@ function positionEditor() {
   if (typeof paintCaret === 'function') requestAnimationFrame(paintCaret);
 }
 
+function markEditing(div) {
+  document.querySelectorAll('#pages > .page.editing').forEach((page) => {
+    if (page !== div) page.classList.remove('editing');
+  });
+  if (div) div.classList.add('editing');
+}
+
 function clearReflow() {
   document.querySelectorAll('.reflow, .mask').forEach((node) => node.remove());
 }
@@ -791,7 +800,15 @@ function reflow(div, span, ta) {
   const bottom = (page.h - marginPt()) * S.scale;
   const top = (span.t !== undefined ? span.t : span.y0) * S.scale;
   const delta = ta.offsetHeight - (S.edit.base || ta.offsetHeight);
-  if (spans.length !== 1 || bottom <= top) return;
+  if (spans.length !== 1 || bottom <= top) {
+    spans.forEach((other, index) => {
+      const sheet = $('#pages').children[other.page];
+      if (!sheet) return;
+      const from = index === 0 ? top : other.y0 * S.scale;
+      sheet.append(h('div', { class: 'mask', style: `top:${from}px;height:${Math.max(other.y1 * S.scale - from + 4, 0)}px` }));
+    });
+    return;
+  }
   const edge = top + ta.offsetHeight;
   div.append(h('div', { class: 'mask', style: `top:${top}px;height:${Math.max(bottom - top, 0)}px` }));
   if (edge < bottom) {
@@ -846,6 +863,7 @@ function closeEditor(silent = false) {
   const keepPage = Boolean(S.edit.blank);
   S.edit = null;
   clearReflow();
+  markEditing(null);
   const empty = !(ta.value !== undefined ? ta.value : ta.textContent).trim();
   ta.remove();
   if (bar) bar.remove();
@@ -854,6 +872,7 @@ function closeEditor(silent = false) {
 }
 
 function closePanel() {
+  if (typeof closeSheet === 'function') closeSheet();
   S.panel = null;
   if (!S.settingsOpen) conceal($('#panel'));
 }
@@ -1334,6 +1353,7 @@ function openPanel(range) {
   S.settingsOpen = false;
   S.panel = { range, model: parseBlock(range.kind, linesOf(range)) };
   renderPanel();
+  if (typeof openSheet === 'function') openSheet(range);
 }
 
 function commitPanel(delay) {
@@ -1629,6 +1649,30 @@ function setHeader(key, value) {
   schedule(500);
 }
 
+function pdfFolderRow(body) {
+  const label = h('span', { class: 'folder-name' });
+  const pick = h('button', { type: 'button', class: 'pill ghost small folder-pick', html: icon('folder', 15) }, label);
+  const clear = h('button', { type: 'button', class: 'round', title: 'Ask each time', html: icon('close', 14) });
+  const paint = (folder) => {
+    label.textContent = folder ? folder.split(/[\\/]/).filter(Boolean).pop() : 'Ask each time';
+    pick.title = folder || 'Choose where your PDFs go';
+    clear.hidden = !folder;
+  };
+  pick.addEventListener('click', async () => {
+    const native = nativeApi();
+    if (!native || !native.choose_folder) {
+      toast('Choosing a folder works in the desktop app', true);
+      return;
+    }
+    const folder = await native.choose_folder();
+    if (!folder) return;
+    paint((await api('/api/pdf_folder', { folder })).folder);
+  });
+  clear.addEventListener('click', async () => paint((await api('/api/pdf_folder', { folder: '' })).folder));
+  api('/api/export_target').then((where) => paint(where.folder || '')).catch(() => paint(''));
+  body.append(h('div', { class: 'row' }, h('label', { text: 'PDF folder' }), h('div', { class: 'field folder-field' }, pick, clear), h('span')));
+}
+
 function openSettings() {
   closeEditor(true);
   S.panel = null;
@@ -1657,6 +1701,7 @@ function openSettings() {
     }
     body.append(h('div', { class: 'row' }, h('label', { text: item.label }), field, h('span')));
   });
+  pdfFolderRow(body);
   body.append(h('div', { class: 'row' }, h('label', { text: 'Copy' }), h('button', { type: 'button', class: 'pill ghost small', html: `${icon('copy', 15)}<span>Make a copy</span>`, onclick: makeCopy }), h('span')));
   body.append(h('div', { class: 'row' }, h('label', { text: 'Versions' }), h('button', { type: 'button', class: 'pill ghost small', html: `${icon('clock', 15)}<span>Show</span>`, onclick: openVersions }), h('span')));
   body.append(h('div', { class: 'row' }, h('label', { text: 'Keep' }), segmented(
@@ -1923,7 +1968,11 @@ async function exportPdf() {
   let target = null;
   const native = nativeApi();
   if (native && native.choose_save) {
-    target = await native.choose_save(`${base}.pdf`);
+    const where = await api('/api/export_target').catch(() => ({}));
+    const last = String(where.path || '');
+    const parts = last.split(/[\\/]/);
+    const lastName = parts.pop();
+    target = last ? await native.choose_save(lastName, parts.join('\\')) : await native.choose_save(`${base}.pdf`, where.folder || '');
     if (!target) return;
   } else if (window.showSaveFilePicker) {
     try {
@@ -2244,6 +2293,19 @@ function bindTilt(box, selector) {
   });
 }
 
+function essayInfo(state, path) {
+  return (state.details && state.details[path]) || (S.library || []).find((item) => item.path === path) || {};
+}
+
+function timeAgo(seconds) {
+  const gap = Math.max(0, Date.now() / 1000 - seconds);
+  if (gap < 60) return 'just now';
+  if (gap < 3600) return `${Math.floor(gap / 60)} min ago`;
+  if (gap < 86400) return `${Math.floor(gap / 3600)} h ago`;
+  if (gap < 86400 * 7) return `${Math.floor(gap / 86400)} d ago`;
+  return new Date(seconds * 1000).toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
+
 function showStart(state) {
   reveal($('#start'));
   document.documentElement.classList.add('home');
@@ -2254,7 +2316,25 @@ function showStart(state) {
   const query = (S.recentQuery || '').trim().toLowerCase();
   const everything = (S.showAll || query) && S.library;
   const pool = everything ? S.library.filter((item) => !query || `${item.name} ${item.folder}`.toLowerCase().includes(query)).map((item) => item.path) : state.recent || [];
-  const items = query ? pool.slice(0, 60) : everything ? pool : pool.slice(0, 8);
+  const picked = query ? pool.slice(0, 60) : everything ? pool : pool.slice(0, 8);
+  const order = localStorage.getItem('studio.recentSort') || 'opened';
+  const nameOf = (path) => (path.split(/[\\/]/).pop() || '').toLowerCase();
+  const items = order === 'name' ? [...picked].sort((a, b) => nameOf(a).localeCompare(nameOf(b))) : order === 'edited' ? [...picked].sort((a, b) => (essayInfo(state, b).modified || 0) - (essayInfo(state, a).modified || 0)) : picked;
+  const listView = localStorage.getItem('studio.recentView') === 'list';
+  $('#recent').classList.toggle('as-list', listView);
+  const viewButton = $('#recentView');
+  viewButton.innerHTML = icon(listView ? 'columns' : 'list', 16);
+  viewButton.title = listView ? 'Grid view' : 'List view';
+  viewButton.onclick = () => {
+    localStorage.setItem('studio.recentView', listView ? 'grid' : 'list');
+    showStart(state);
+  };
+  const sortButton = $('#recentSort');
+  sortButton.textContent = { opened: 'Last opened', edited: 'Last edited', name: 'Name' }[order];
+  sortButton.onclick = () => showMenu(sortButton, [{ value: 'opened', label: 'Last opened' }, { value: 'edited', label: 'Last edited' }, { value: 'name', label: 'Name' }], order, (value) => {
+    localStorage.setItem('studio.recentSort', value);
+    showStart(state);
+  });
   document.querySelector('#recentBox .recent-title').textContent = S.showAll && !query ? 'All essays' : query ? 'Search' : 'Recent';
   S.shownRecent = items;
   $('#recentBox').hidden = !items.length && !query && !(state.recent || []).length;
@@ -2294,11 +2374,14 @@ function showStart(state) {
       const name = (parts.pop() || '').replace(/\.(txt|pdf)$/i, '');
       const folder = parts.pop() || '';
       const turn = ((name.length * 37 + index * 53) % 9) / 2 - 2;
+      const info = essayInfo(state, path);
       const card = h('button', {
-        class: `sheet${S.recentPick && S.recentPick.has(path) ? ' picked' : ''}`,
+        class: `sheet${info.thumb ? ' has-thumb' : ''}${S.recentPick && S.recentPick.has(path) ? ' picked' : ''}`,
         'data-path': path,
         style: `--r:${turn.toFixed(1)}deg;--i:${index}`,
-        html: `<span class="sheet-title"></span><span class="sheet-lines"></span><span class="sheet-where"></span><span class="sheet-check">${icon('check', 16)}</span>`,
+        html: info.thumb
+          ? `<span class="sheet-thumb"><img alt="" draggable="false" loading="lazy" src="${info.thumb}"></span><span class="sheet-label"><span class="sheet-title"></span><span class="sheet-where"></span></span><span class="sheet-check">${icon('check', 16)}</span>`
+          : `<span class="sheet-title"></span><span class="sheet-lines"></span><span class="sheet-where"></span><span class="sheet-check">${icon('check', 16)}</span>`,
         onclick: (event) => {
           if (S.recentPick || event.ctrlKey || event.shiftKey || event.metaKey) {
             if (!S.recentPick) S.recentPick = new Set();
@@ -2312,7 +2395,7 @@ function showStart(state) {
         },
       });
       card.querySelector('.sheet-title').textContent = name;
-      card.querySelector('.sheet-where').textContent = folder;
+      card.querySelector('.sheet-where').textContent = info.modified ? `${folder} · ${timeAgo(info.modified)}` : folder;
       const more = h('span', { class: 'sheet-more', role: 'button', title: 'More', html: icon('more', 18) });
       more.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -2550,15 +2633,6 @@ function bind() {
     } else if ((event.ctrlKey || event.metaKey) && key === 'y') {
       event.preventDefault();
       undo(1);
-    } else if ((event.ctrlKey || event.metaKey) && ['=', '+'].includes(event.key)) {
-      event.preventDefault();
-      zoomStep(1);
-    } else if ((event.ctrlKey || event.metaKey) && event.key === '-') {
-      event.preventDefault();
-      zoomStep(-1);
-    } else if ((event.ctrlKey || event.metaKey) && event.key === '0') {
-      event.preventDefault();
-      setZoom('fit');
     } else if (event.key === 'Escape') {
       if (openMenu) closeMenu();
       else if (!$('#appearance').hidden) conceal($('#appearance'));

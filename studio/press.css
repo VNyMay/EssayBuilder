@@ -2708,3 +2708,230 @@ body.page-dragging * {
   border-color: rgb(var(--accent-rgb) / 0.5);
   background: rgb(var(--accent-rgb) / 0.06);
 }
+
+.sheet {
+  position: absolute;
+  z-index: 6;
+  box-sizing: border-box;
+  padding: 8px 6px 10px 22px;
+  margin-left: -22px;
+  border-radius: 6px;
+  background: #fff;
+  color: #141414;
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.5), 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / 0.3);
+}
+
+.sheet .sheet-bar {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  flex-wrap: wrap;
+  max-width: calc(100% + 40px);
+}
+
+.sheet .shape {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheet-scroll {
+  overflow-x: auto;
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  line-height: 1.35;
+}
+
+.sheet-table td {
+  min-width: 3em;
+  padding: 0.35em 0.6em;
+  border: 1px solid #e3e6e8;
+  outline: none;
+  vertical-align: top;
+  caret-color: var(--green);
+  cursor: text;
+}
+
+.sheet-table tr.head td {
+  font-weight: 700;
+  border-bottom: 1.5px solid #4a4a4a;
+}
+
+.sheet-table td:focus {
+  box-shadow: inset 0 0 0 2px rgb(var(--accent-rgb) / 0.75);
+}
+
+.sheet-table td.picked {
+  background: rgb(var(--accent-rgb) / 0.14);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.5);
+}
+
+.sheet.picking .sheet-table td.picked ::selection {
+  background: transparent;
+}
+
+.sheet-table .sheet-handles th {
+  height: 9px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sheet-table .row-handle {
+  width: 12px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sheet-table .corner {
+  width: 12px;
+}
+
+.sheet-table .row-handle:hover,
+.sheet-table .col-handle:hover,
+.sheet-table .corner:hover {
+  background: rgb(var(--accent-rgb) / 0.35);
+  border-radius: 4px;
+}
+
+.sheet-table .sheet-handles th:not(.corner),
+.sheet-table .row-handle {
+  background: rgb(var(--accent-rgb) / 0.08);
+  border-radius: 4px;
+}
+
+.page.sheeting .tool,
+.page.sheeting .resize-ghost,
+.page.sheeting .knob,
+.page.sheeting .grip {
+  display: none !important;
+}
+
+#recent button.sheet.has-thumb {
+  aspect-ratio: auto;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+#recent button.sheet.has-thumb::after {
+  display: none;
+}
+
+.sheet .sheet-thumb {
+  display: block;
+  aspect-ratio: 1 / 1.1;
+  overflow: hidden;
+  border-bottom: 1px solid #e6e9e7;
+  background: #fff;
+}
+
+.sheet .sheet-thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: scale 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#recent button.sheet.has-thumb:hover .sheet-thumb img {
+  scale: 1.04;
+}
+
+.sheet .sheet-label {
+  display: grid;
+  gap: 5px;
+  padding: 9px 11px 10px;
+}
+
+.sheet.has-thumb .sheet-title {
+  font-size: 13.5px;
+  -webkit-line-clamp: 1;
+}
+
+.sheet.has-thumb .sheet-where {
+  font: 500 12px/1.2 var(--f-body, inherit);
+  color: var(--muted);
+}
+
+#recent.as-list {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+#recent.as-list button.sheet,
+#recent.as-list button.sheet.has-thumb {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  aspect-ratio: auto;
+  min-height: 0;
+  padding: 8px 12px;
+  rotate: 0deg;
+  border-radius: 10px;
+  animation-duration: 280ms;
+}
+
+#recent.as-list button.sheet:hover {
+  translate: 0 -2px;
+}
+
+#recent.as-list button.sheet::after,
+#recent.as-list .sheet-lines {
+  display: none;
+}
+
+#recent.as-list .sheet-thumb {
+  flex: none;
+  width: 44px;
+  aspect-ratio: 1 / 1.3;
+  border: 1px solid #e6e9e7;
+  border-radius: 3px;
+}
+
+#recent.as-list .sheet-label {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+}
+
+#recent.as-list .sheet-title {
+  -webkit-line-clamp: 1;
+}
+
+#recent.as-list button.sheet:not(.has-thumb) .sheet-title {
+  flex: 1;
+}
+
+#recent.as-list .sheet-more-all {
+  aspect-ratio: auto;
+  min-height: 48px;
+}
+
+.folder-field {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.folder-pick {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 190px;
+}
+
+.folder-pick .folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#recentView {
+  width: 34px;
+  height: 34px;
+}

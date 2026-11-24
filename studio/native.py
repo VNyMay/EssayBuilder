@@ -4,6 +4,7 @@ import os
 import sys
 import threading
 import time
+from pathlib import Path
 
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -222,8 +223,15 @@ class Api:
     def close(self):
         self._window.destroy()
 
-    def choose_save(self, name):
-        picked = self._window.create_file_dialog(webview.SAVE_DIALOG, save_filename=name, file_types=("PDF (*.pdf)",))
+    def choose_save(self, name, directory=""):
+        folder = directory if directory and Path(directory).is_dir() else ""
+        picked = self._window.create_file_dialog(webview.SAVE_DIALOG, directory=folder, save_filename=name, file_types=("PDF (*.pdf)",))
+        if not picked:
+            return None
+        return str(picked[0] if isinstance(picked, (list, tuple)) else picked)
+
+    def choose_folder(self):
+        picked = self._window.create_file_dialog(webview.FOLDER_DIALOG)
         if not picked:
             return None
         return str(picked[0] if isinstance(picked, (list, tuple)) else picked)
@@ -246,6 +254,7 @@ def main():
         easy_drag=False,
         background_color="#f4f7f5",
         js_api=api,
+        zoomable=True,
     )
     api._window = window
     window.events.shown += lambda: api._install()

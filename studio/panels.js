@@ -116,11 +116,6 @@ function tablePanel(model, body, range) {
         renderPanel();
       },
     })));
-  } else {
-    body.append(section('Data', dataGrid(model.body, (lines) => {
-      model.body = lines;
-      commitPanel(700);
-    })));
   }
   const decimals = rowGet(model, 'decimals');
   const numeric = decimals === '' || /^\d+$/.test(decimals);
