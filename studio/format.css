@@ -140,3 +140,8 @@
 
 .fmtbar { transform: scale(var(--ui)); transform-origin: left bottom; }
 .tool { transform: scale(var(--ui)); transform-origin: right bottom; }
+
+.fmtbar .fmt-btn.on {
+  background: rgb(var(--accent-rgb) / 0.14);
+  color: var(--green);
+}

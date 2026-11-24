@@ -170,6 +170,17 @@ function wrapEmphasis(inner, mark) {
   return core ? `${lead}${mark}${core}${mark}${trail}` : inner;
 }
 
+function styledMd(node, inner) {
+  const style = node.style;
+  const tag = node.tagName;
+  let out = inner;
+  if (!style || !out.trim()) return out;
+  if (/^(bold|bolder|[6-9]00)$/.test(style.fontWeight) && tag !== 'B' && tag !== 'STRONG') out = wrapEmphasis(out, '**');
+  if (style.fontStyle === 'italic' && tag !== 'I' && tag !== 'EM') out = wrapEmphasis(out, '*');
+  if (/underline/.test(style.textDecorationLine || style.textDecoration || '') && tag !== 'U') out = `[${out}]{underline}`;
+  return out;
+}
+
 function nodesToMd(parent) {
   let out = '';
   parent.childNodes.forEach((node) => {
@@ -183,7 +194,7 @@ function nodesToMd(parent) {
       out += node.dataset.src;
       return;
     }
-    const inner = nodesToMd(node);
+    const inner = node.classList.contains('fmt') || node.classList.contains('rlink') ? nodesToMd(node) : styledMd(node, nodesToMd(node));
     if (tag === 'BR') out += '\\\\\n';
     else if (tag === 'B' || tag === 'STRONG') out += wrapEmphasis(inner, '**');
     else if (tag === 'I' || tag === 'EM') out += wrapEmphasis(inner, '*');
@@ -252,11 +263,74 @@ function selectWord() {
 }
 
 function execFormat(command) {
-  restoreSelection();
-  selectWord();
+  const selection = window.getSelection();
+  if (!(selection.rangeCount && S.edit.ta.contains(selection.anchorNode))) restoreSelection();
+  const collapsed = !selection.rangeCount || selection.getRangeAt(0).collapsed;
   document.execCommand(command);
-  savedRange = window.getSelection().rangeCount ? window.getSelection().getRangeAt(0).cloneRange() : savedRange;
-  commitRich();
+  savedRange = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : savedRange;
+  if (!collapsed) commitRich();
+  paintCaret();
+}
+
+function caretBox(range) {
+  const rects = range.getClientRects();
+  if (rects.length) return rects[rects.length - 1];
+  const node = range.startContainer;
+  const offset = range.startOffset;
+  if (node.nodeType === 3 && offset > 0 && node.nodeValue[offset - 1] !== '\n') {
+    const probe = document.createRange();
+    probe.setStart(node, offset - 1);
+    probe.setEnd(node, offset);
+    const rect = probe.getBoundingClientRect();
+    return { left: rect.right, top: rect.top, height: rect.height };
+  }
+  if (node.nodeType === 3 && offset < node.nodeValue.length && node.nodeValue[offset] !== '\n') {
+    const probe = document.createRange();
+    probe.setStart(node, offset);
+    probe.setEnd(node, offset + 1);
+    const rect = probe.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, height: rect.height };
+  }
+  return null;
+}
+
+function paintCaret() {
+  let caret = document.getElementById('typeCaret');
+  const el = S.edit && S.edit.rich && !S.edit.cover ? S.edit.ta : null;
+  const selection = window.getSelection();
+  const live = el && document.activeElement === el && selection.rangeCount && selection.getRangeAt(0).collapsed && el.contains(selection.anchorNode);
+  if (!live) {
+    if (caret) caret.hidden = true;
+    if (el) el.classList.remove('own-caret');
+    return;
+  }
+  if (!caret) {
+    caret = h('div', { id: 'typeCaret' });
+    $('#scroll').append(caret);
+  }
+  const box = caretBox(selection.getRangeAt(0));
+  if (!box || !box.height) {
+    caret.hidden = true;
+    el.classList.remove('own-caret');
+    return;
+  }
+  const bold = document.queryCommandState('bold');
+  const italic = document.queryCommandState('italic');
+  const underline = document.queryCommandState('underline');
+  caret.hidden = false;
+  caret.className = `${bold ? 'bold' : ''}${italic ? ' italic' : ''}${underline ? ' underline' : ''}`;
+  caret.style.left = `${box.left}px`;
+  caret.style.top = `${box.top}px`;
+  caret.style.height = `${box.height}px`;
+  caret.style.setProperty('--ink', getComputedStyle(el).color);
+  caret.style.animation = 'none';
+  void caret.offsetWidth;
+  caret.style.animation = '';
+  el.classList.add('own-caret');
+  ['bold', 'italic', 'underline'].forEach((name, index) => {
+    const button = document.querySelector(`.fmtbar .is-${name}`);
+    if (button) button.classList.toggle('on', [bold, italic, underline][index]);
+  });
 }
 
 function selectionEmpty() {
@@ -534,9 +608,9 @@ function mountRichBar() {
   const mathBtn = tool('Σ', 'Equation (Ctrl+M)', () => richMathPalette(mathBtn), 'math');
   const bar = h('div', { class: 'fmtbar' });
   bar.append(
-    tool('<b>B</b>', 'Bold (Ctrl+B)', () => execFormat('bold')),
-    tool('<i>I</i>', 'Italic (Ctrl+I)', () => execFormat('italic')),
-    tool('<u>U</u>', 'Underline (Ctrl+U)', () => execFormat('underline')),
+    tool('<b>B</b>', 'Bold (Ctrl+B)', () => execFormat('bold'), 'is-bold'),
+    tool('<i>I</i>', 'Italic (Ctrl+I)', () => execFormat('italic'), 'is-italic'),
+    tool('<u>U</u>', 'Underline (Ctrl+U)', () => execFormat('underline'), 'is-underline'),
     tool('<s>S</s>', 'Strikethrough (Ctrl+Shift+X)', () => execFormat('strikeThrough')),
     tool('x<sup>2</sup>', 'Superscript (Ctrl+Shift+=)', () => execFormat('superscript')),
     tool('x<sub>2</sub>', 'Subscript (Ctrl+=)', () => execFormat('subscript')),
@@ -744,11 +818,23 @@ function openRich(range, selectAll) {
     commitRich();
   });
   el.addEventListener('keydown', richKeys);
+  let fitting = 0;
+  new MutationObserver(() => {
+    cancelAnimationFrame(fitting);
+    fitting = requestAnimationFrame(() => {
+      if (S.edit && S.edit.ta === el) positionEditor();
+    });
+  }).observe(el, { childList: true, subtree: true, characterData: true });
   el.addEventListener('paste', (event) => {
     event.preventDefault();
-    const text = (event.clipboardData || window.clipboardData).getData('text/plain').replace(/\s+/g, ' ');
-    document.execCommand('insertText', false, text);
+    const text = (event.clipboardData || window.clipboardData).getData('text/plain').replace(/\r\n?/g, '\n').replace(/[ \t\u00a0]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    text.split('\n').forEach((part, index) => {
+      if (index) document.execCommand('insertLineBreak');
+      if (part) document.execCommand('insertText', false, part);
+    });
   });
+  el.addEventListener('blur', () => requestAnimationFrame(paintCaret));
+  el.addEventListener('focus', () => requestAnimationFrame(paintCaret));
   el.addEventListener('click', (event) => {
     const node = event.target.closest && event.target.closest('.chip');
     const link = event.target.closest && event.target.closest('.rlink');
@@ -786,6 +872,7 @@ function trackSelection() {
   }
   const selection = window.getSelection();
   if (selection.rangeCount && S.edit.ta.contains(selection.anchorNode)) savedRange = selection.getRangeAt(0).cloneRange();
+  requestAnimationFrame(paintCaret);
 }
 
 function currentAlign() {

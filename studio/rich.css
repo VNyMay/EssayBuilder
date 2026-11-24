@@ -179,3 +179,44 @@
 .editor.rich.inplace .rlink {
   color: inherit;
 }
+
+.editor.rich.own-caret {
+  caret-color: transparent;
+}
+
+#typeCaret {
+  position: fixed;
+  z-index: 30;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink, #1b1b1b);
+  pointer-events: none;
+  animation: caret-blink 1.06s steps(1) infinite;
+}
+
+#typeCaret.bold {
+  width: 3.4px;
+  margin-left: -1.7px;
+}
+
+#typeCaret.italic {
+  transform: skewX(-14deg);
+  transform-origin: bottom;
+}
+
+#typeCaret.underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ink, #1b1b1b);
+}
+
+@keyframes caret-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

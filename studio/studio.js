@@ -722,6 +722,7 @@ function positionEditor() {
     ta.style.top = `${above >= 6 ? above : span.y1 * S.scale + gap}px`;
   }
   placeFormatBar();
+  if (typeof paintCaret === 'function') requestAnimationFrame(paintCaret);
 }
 
 function clearReflow() {
@@ -1945,6 +1946,12 @@ function buildPalette() {
     closeHelpCard();
   });
   palette.append(h('div', { class: 'palette-head' }, search, help));
+  new MutationObserver(() => {
+    if (!palette.hidden || !palette.classList.contains('helping')) return;
+    palette.classList.remove('helping');
+    help.classList.remove('on');
+    closeHelpCard();
+  }).observe(palette, { attributes: true, attributeFilter: ['hidden'] });
   const tints = ['#fbbc04', '#ea4335', '#4285f4', '#34a853', '#a142f4', '#24c1e0', '#fa7b17', '#5856d6', '#f538a0', '#00a9a5', '#ff9500', '#af52de'];
   groups.forEach((name, groupIndex) => {
     const items = TEMPLATES.filter((template) => template.group === name);
@@ -1977,12 +1984,22 @@ function openHelpCard(tile, template) {
   closeHelpCard();
   if (again) return;
   const [what, how] = HELP[template.id] || HELP[template.kind] || [template.label, ''];
+  const sample = h('div', { class: 'help-sample' }, h('img', { src: `previews/${template.id}.webp`, alt: '', draggable: 'false' }));
+  const body = h(
+    'div',
+    { class: 'help-body' },
+    sample,
+    h('div', {}, h('div', { class: 'help-tag', text: 'What it is' }), h('p', { class: 'help-what', text: what }), how ? h('div', { class: 'help-tag', text: 'How to use it' }) : null, how ? h('p', { class: 'help-how', text: how }) : null),
+  );
+  sample.firstChild.addEventListener('error', () => {
+    sample.remove();
+    body.classList.add('plain');
+  });
   const card = h(
     'div',
     { class: 'help-card' },
     h('div', { class: 'help-title', html: `${icon(template.icon, 22)}<span>${template.label}</span>` }),
-    h('p', { class: 'help-what', text: what }),
-    how ? h('p', { class: 'help-how', text: how }) : null,
+    body,
     h(
       'div',
       { class: 'help-actions' },

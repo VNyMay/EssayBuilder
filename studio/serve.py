@@ -570,6 +570,10 @@ class Handler(BaseHTTPRequestHandler):
             file = (STUDIO / "typefaces" / Path(route).name).resolve()
             if file.is_file() and file.suffix == ".woff2":
                 return self.send_bytes(200, file.read_bytes(), "font/woff2", {"Cache-Control": "max-age=86400"})
+        if route.startswith("/previews/"):
+            file = (STUDIO / "previews" / Path(route).name).resolve()
+            if file.is_file() and file.suffix == ".webp":
+                return self.send_bytes(200, file.read_bytes(), "image/webp", {"Cache-Control": "max-age=86400"})
         name = "index.html" if route in {"/", ""} else route.lstrip("/")
         file = STUDIO / name
         if file.is_file() and file.parent == STUDIO and file.suffix in {".html", ".css", ".js", ".svg", ".png", ".ico"}:

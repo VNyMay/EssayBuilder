@@ -10,34 +10,57 @@ const ARROW_STYLES = [
 
 const TOUR_STEPS = [
   {
-    title: 'Type right on the page',
-    text: 'Click any paragraph and write. The bar above it styles your text.',
-    show: () => {
-      const range = S.ranges.find((item) => item.kind === 'para') || S.ranges.find((item) => TEXT_KINDS.has(item.kind));
-      if (!range) return;
-      scrollToRange(range);
-      openEditor(range);
-    },
-    hide: () => closeEditor(true),
-    points: [() => S.edit && S.edit.ta, () => $('.fmtbar')],
+    title: 'This is Essay Builder',
+    text: 'Write your essay on real pages. What you see here is exactly the PDF you hand in, with the cover, contents and page numbers done for you.',
+    centre: true,
   },
   {
-    title: 'Add anything',
-    text: 'Pick a block, or press ? to see what each one does.',
+    title: 'Write on the page',
+    text: 'Click any paragraph and type. Ctrl+B, Ctrl+I and Ctrl+U style what you type next.',
+    show: () => tourEdit(),
+    hide: () => deselect(),
+    points: [() => S.edit && S.edit.ta, () => $('.fmtbar .is-bold')],
+  },
+  {
+    title: 'Add a block',
+    text: 'Tables, charts, maps, equations and more. Press ? to see an example of each one first.',
     show: () => reveal($('#palette')),
     hide: () => conceal($('#palette')),
     points: [() => [...document.querySelectorAll('#palette .palette-grid button')].find((tile) => tile.title === 'Chart'), () => $('#palette .palette-help')],
   },
   {
-    title: 'Find anything',
-    text: 'Press Ctrl+K and type what you want to do.',
+    title: 'Or add it right here',
+    text: 'Point between two blocks and press + to add something exactly there.',
     show: () => {
-      cmdOpen();
-      CMD.input.value = 'chart';
-      cmdFilter();
+      const strip = [...document.querySelectorAll('#pages .ins')].find((item) => item.getBoundingClientRect().top > 120);
+      if (strip) {
+        strip.classList.add('tour-show');
+        TOUR.shown = strip;
+      }
     },
-    hide: () => cmdClose(),
-    points: [() => CMD.input, () => CMD.list && CMD.list.querySelector('.cmd-row')],
+    hide: () => TOUR.shown && TOUR.shown.classList.remove('tour-show'),
+    points: [() => TOUR.shown && TOUR.shown.querySelector('.ins-plus')],
+  },
+  {
+    title: 'Move, copy or delete',
+    text: 'Drag the handle to move a block, or use the arrows, copy and bin on its bar.',
+    show: () => tourEdit(),
+    hide: () => deselect(),
+    points: [() => $('#pages .grip'), () => unionOf(['Move up', 'Move down', 'Duplicate', 'Delete'].map((title) => $(`.fmtbar [title="${title}"]`)))],
+  },
+  {
+    title: 'Pages',
+    text: 'Add a page, duplicate one, or drag it somewhere else. A chapter that runs over several pages moves together.',
+    show: () => {
+      const page = [...$('#pages').children].find((item) => item.querySelector('.page-move'));
+      if (!page) return;
+      page.classList.add('tour-tools');
+      TOUR.page = page;
+      const scroll = $('#scroll');
+      scroll.scrollTop += page.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 120;
+    },
+    hide: () => TOUR.page && TOUR.page.classList.remove('tour-tools'),
+    points: [() => TOUR.page && TOUR.page.querySelector('.page-dup'), () => TOUR.page && TOUR.page.querySelector('.page-move'), () => TOUR.page && TOUR.page.querySelector('.page-add')],
   },
   {
     title: 'Select many at once',
@@ -46,16 +69,35 @@ const TOUR_STEPS = [
     hide: () => endMarqueeDemo(),
     points: [() => TOUR.demo],
   },
-  { title: 'Make your cover', text: 'A formal IB cover, or design your own.', points: [() => $('#coverBtn')] },
-  { title: 'It saves by itself', text: 'Click here to go back to older versions.', points: [() => $('#statusPill')] },
-  { title: 'Get your PDF', text: 'Contents, page numbers and word count are done for you.', points: [() => $('#export')] },
+  { title: 'Get your PDF', text: 'It saves by itself as you go. Export when you are ready.', points: [() => $('#export')] },
 ];
+
+function tourEdit() {
+  const range = S.ranges.find((item) => item.kind === 'para') || S.ranges.find((item) => TEXT_KINDS.has(item.kind));
+  if (!range) return;
+  scrollToRange(range);
+  select(range);
+}
 
 const TOUR = { index: 0, root: null, demo: null, arrows: 0 };
 
+function unionOf(items) {
+  const rects = items.filter(Boolean).map((item) => item.getBoundingClientRect());
+  if (!rects.length) return null;
+  const left = Math.min(...rects.map((r) => r.left));
+  const top = Math.min(...rects.map((r) => r.top));
+  const right = Math.max(...rects.map((r) => r.right));
+  const bottom = Math.max(...rects.map((r) => r.bottom));
+  return { getBoundingClientRect: () => ({ left, top, right, bottom, width: right - left, height: bottom - top }) };
+}
+
 function demoMarquee() {
-  const page = [...$('#pages').children][pageInView()];
-  const hits = [...(page || document).querySelectorAll('.hit[data-id]')].slice(0, 3);
+  const first = document.querySelector('#pages .hit[data-id]');
+  if (!first) return;
+  const page = first.closest('.page');
+  const scroll = $('#scroll');
+  scroll.scrollTop += first.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 160;
+  const hits = [...page.querySelectorAll('.hit[data-id]')].slice(0, 3);
   if (!hits.length) return;
   const rects = hits.map((hit) => hit.getBoundingClientRect());
   const left = Math.min(...rects.map((r) => r.left)) - 26;
@@ -146,6 +188,7 @@ function rectOf(item) {
   if (!item || !item.getBoundingClientRect) return null;
   const r = item.getBoundingClientRect();
   if (!r.width && !r.height) return null;
+  if (r.bottom < 40 || r.top > window.innerHeight - 20 || r.right < 0 || r.left > window.innerWidth) return null;
   return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
 }
 
@@ -189,6 +232,7 @@ async function paintTour() {
   const root = TOUR.root;
   if (!root) return;
   root.replaceChildren();
+  if (step.centre) return paintCentre(step);
   if (step.show) step.show();
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const measure = () => step.points.map((get) => rectOf(get())).filter(Boolean);
@@ -211,20 +255,7 @@ async function paintTour() {
     right: Math.max(...holes.map((r) => r.left + r.width)),
     bottom: Math.max(...holes.map((r) => r.top + r.height)),
   };
-  const last = TOUR.index === TOUR_STEPS.length - 1;
-  const note = h(
-    'div',
-    { class: 'tour-note', style: `rotate:${TOUR.index % 2 ? 1.4 : -1.6}deg` },
-    h('div', { class: 'tour-title', text: step.title }),
-    h('div', { class: 'tour-text', text: step.text }),
-    h(
-      'div',
-      { class: 'tour-foot' },
-      h('div', { class: 'tour-dots' }, ...TOUR_STEPS.map((_, index) => h('span', { class: index === TOUR.index ? 'on' : '' }))),
-      last ? null : h('button', { type: 'button', class: 'tour-skip', text: 'Skip', onclick: endTour }),
-      h('button', { type: 'button', class: 'tour-next', text: last ? 'Got it' : 'Next', onclick: nextTour }),
-    ),
-  );
+  const note = tourNote(step);
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'tour-arrow');
   svg.setAttribute('width', width);
@@ -255,6 +286,36 @@ async function paintTour() {
     group.innerHTML = `<g class="halo"><path d="${path.line}"/>${head}</g><g class="ink"><path d="${path.line}"/>${head}</g>`;
     svg.append(group);
   });
+}
+
+function tourNote(step, extra) {
+  const last = TOUR.index === TOUR_STEPS.length - 1;
+  return h(
+    'div',
+    { class: `tour-note${extra ? ` ${extra}` : ''}`, style: `rotate:${TOUR.index % 2 ? 1.4 : -1.6}deg` },
+    extra ? h('img', { class: 'tour-logo', src: 'logo.png', alt: '' }) : null,
+    h('div', { class: 'tour-title', text: step.title }),
+    h('div', { class: 'tour-text', text: step.text }),
+    h(
+      'div',
+      { class: 'tour-foot' },
+      h('div', { class: 'tour-dots' }, ...TOUR_STEPS.map((_, index) => h('span', { class: index === TOUR.index ? 'on' : '' }))),
+      last ? null : h('button', { type: 'button', class: 'tour-skip', text: 'Skip', onclick: endTour }),
+      h('button', { type: 'button', class: 'tour-next', text: last ? 'Got it' : TOUR.index ? 'Next' : 'Show me', onclick: nextTour }),
+    ),
+  );
+}
+
+function paintCentre(step) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'tour-arrow');
+  svg.setAttribute('width', window.innerWidth);
+  svg.setAttribute('height', window.innerHeight);
+  svg.innerHTML = '<rect class="tour-dim" width="100%" height="100%"/>';
+  const note = tourNote(step, 'welcome');
+  TOUR.root.replaceChildren(svg, note);
+  note.style.left = `${(window.innerWidth - note.offsetWidth) / 2}px`;
+  note.style.top = `${(window.innerHeight - note.offsetHeight) / 2}px`;
 }
 
 function leaveStep() {

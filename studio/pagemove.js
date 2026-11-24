@@ -160,6 +160,7 @@ function startPageDrag(event, index) {
     timer = step ? requestAnimationFrame(edge) : null;
   };
   const move = (pointer) => {
+    if (!pointer.buttons) return up();
     last = pointer;
     if (!moved && Math.abs(pointer.clientY - event.clientY) < 8) return;
     moved = true;
@@ -171,6 +172,7 @@ function startPageDrag(event, index) {
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
     window.removeEventListener('keydown', cancel, true);
+    window.removeEventListener('blur', up);
     if (timer) cancelAnimationFrame(timer);
     line.remove();
     lifted.forEach((div) => div.classList.remove('lifting'));
@@ -185,4 +187,5 @@ function startPageDrag(event, index) {
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up);
   window.addEventListener('keydown', cancel, true);
+  window.addEventListener('blur', up, { once: true });
 }

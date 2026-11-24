@@ -286,6 +286,7 @@ function startMarquee(event) {
     timer = step ? requestAnimationFrame(edge) : null;
   };
   const move = (moved) => {
+    if (!moved.buttons) return up();
     last = moved;
     if (!box) {
       if (Math.hypot(moved.clientX - origin.x, moved.clientY + scroll.scrollTop - origin.y) < 6) return;
@@ -304,6 +305,7 @@ function startMarquee(event) {
   const up = () => {
     window.removeEventListener('mousemove', move);
     window.removeEventListener('mouseup', up);
+    window.removeEventListener('blur', up);
     if (timer) cancelAnimationFrame(timer);
     if (!box) {
       if (!kept.size && S.multi) clearMulti();
@@ -320,4 +322,5 @@ function startMarquee(event) {
   };
   window.addEventListener('mousemove', move);
   window.addEventListener('mouseup', up);
+  window.addEventListener('blur', up, { once: true });
 }
