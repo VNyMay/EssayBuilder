@@ -1,8 +1,9 @@
 const HELP = {
   heading: ['Starts a new section with a numbered title that goes into the contents page.', 'Type the title on the page. Use the H1, H2, H3 buttons to change its level.'],
   subheading: ['A smaller title inside a section.', 'Type the title on the page. It is numbered under the section above it.'],
+  subsubheading: ['A small heading inside a sub-section, without a number and not in the contents page.', 'Type the title on the page. Use the H1, H2, H3 buttons to change its level.'],
   paragraph: ['Normal writing.', 'Click it and type. Ctrl+B / I / U style the text, @ adds equations, links, blocks and more.'],
-  list: ['Bullet points or a numbered list.', 'Write one item per line.'],
+  list: ['Bullet points or a numbered list, with sub-points.', 'Type 1. or - and a space to start one. Enter adds an item, Tab indents it, Shift+Tab moves it back.'],
   image: ['A picture, photo or screenshot with a caption.', 'Pick a file from your computer, then set the caption and size in the panel.'],
   table: ['Data in rows and columns with a numbered caption.', 'Edit the cells in the panel.'],
   chart: ['A line, bar, pie or scatter chart drawn from your numbers.', 'Type or paste the data in the panel and choose the chart type.'],

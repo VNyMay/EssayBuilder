@@ -238,7 +238,7 @@ function commitRich() {
     return;
   }
   const { ta: el, prefix, tail } = S.edit;
-  const body = bodyMd(el);
+  const body = S.edit.list ? listMd(el) : bodyMd(el);
   const text = S.edit.blank && !body.trim() ? ':::blank' : `${prefix}${body}${tail}`;
   setRangeLines(S.edit.range, text.split('\n'));
   positionEditor();
@@ -633,6 +633,9 @@ function mountRichBar() {
     tool(icon('alignRight', 16), 'Align right (Ctrl+R)', () => setAlign('right')),
     tool(icon('alignJustify', 16), 'Justify (Ctrl+J)', () => setAlign('justify')),
     h('span', { class: 'fmt-sep' }),
+    tool(icon('list', 16), 'Bullet list (type - and a space)', () => toggleList(false), 'is-bullets'),
+    tool('<span class="num-glyph">1.</span>', 'Numbered list (type 1. and a space)', () => toggleList(true), 'is-numbers'),
+    h('span', { class: 'fmt-sep' }),
     tool(icon('up', 16), 'Move up', () => move(-1)),
     tool(icon('down', 16), 'Move down', () => move(1)),
     tool(icon('copy', 16), 'Duplicate', () => duplicate()),
@@ -721,6 +724,7 @@ function richKeys(event) {
     event.preventDefault();
     return openInline();
   }
+  if (S.edit && S.edit.list && !mod && (key === 'Tab' || key === 'Enter') && listKeys(event)) return;
   if (key === 'Enter') {
     event.preventDefault();
     document.execCommand('insertLineBreak');
@@ -805,8 +809,12 @@ function openRich(range, selectAll) {
   }
   const el = h('div', { class: 'editor rich', contenteditable: 'true', spellcheck: 'false' });
   el.style.setProperty('--pt', `${S.scale}px`);
-  el.append(inlineNodes(body));
-  S.edit = { range, ta: el, rich: true, prefix, tail, blank };
+  if (range.kind === 'list') {
+    prefix = '';
+    tail = '';
+    el.append(listDom(listItems(lines)));
+  } else el.append(inlineNodes(body));
+  S.edit = { range, ta: el, rich: true, prefix, tail, blank, list: range.kind === 'list' };
   savedRange = null;
   el.style.textAlign = currentAlign();
   el.addEventListener('input', () => {
@@ -815,6 +823,7 @@ function openRich(range, selectAll) {
       openSlash();
       return;
     }
+    listAutoformat(el);
     commitRich();
   });
   el.addEventListener('keydown', richKeys);

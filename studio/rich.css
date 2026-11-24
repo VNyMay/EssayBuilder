@@ -220,3 +220,27 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+.editor.rich ul,
+.editor.rich ol {
+  margin: 0;
+  padding-left: 1.6em;
+}
+
+.editor.rich li {
+  margin: 0 0 calc(3 * var(--pt, 1px));
+}
+
+.editor.rich li > ul,
+.editor.rich li > ol,
+.editor.rich ul > ul,
+.editor.rich ol > ol,
+.editor.rich ul > ol,
+.editor.rich ol > ul {
+  margin-top: calc(3 * var(--pt, 1px));
+}
+
+.fmtbar .num-glyph {
+  font-size: 13px;
+  font-weight: 700;
+}

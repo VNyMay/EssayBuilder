@@ -731,7 +731,7 @@ function editorStyle(range) {
 }
 
 function inPlace(range) {
-  return (range.kind === 'para' || range.kind === 'blank' || isRichText(range));
+  return (range.kind === 'para' || range.kind === 'blank' || range.kind === 'list' || isRichText(range));
 }
 
 function positionEditor() {
@@ -807,7 +807,7 @@ function fitEditor(ta) {
 
 function openEditor(range, selectAll = false) {
   if (!firstSpan(range)) return;
-  if ((['para', 'heading', 'blank'].includes(range.kind) || isRichText(range)) && typeof openRich === 'function') return openRich(range, selectAll);
+  if ((['para', 'heading', 'blank', 'list'].includes(range.kind) || isRichText(range)) && typeof openRich === 'function') return openRich(range, selectAll);
   const ta = h('textarea', { class: 'editor', spellcheck: 'false' });
   ta.value = linesOf(range).join('\n');
   S.edit = { range, ta };
