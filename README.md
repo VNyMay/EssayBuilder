@@ -44,7 +44,7 @@ It downloads everything it needs (Python, Node.js, Chrome and the libraries) wit
 - **Ctrl+K** finds any action
 - **Insert** adds figures, tables, maps and more
 - **Export PDF** asks where to save
-
+- If you couldn't understand the app, you can upload the file `AI Prompt.txt` to any AI and ask your questions, can help you :)
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Open source parts are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
