@@ -232,7 +232,7 @@ class Api:
 def main():
     url = sys.argv[1]
     try:
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("EssayBuilder.Studio")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("VNyMay.EssayBuilder")
     except Exception:
         pass
     api = Api()

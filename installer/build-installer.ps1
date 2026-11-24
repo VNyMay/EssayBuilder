@@ -39,6 +39,18 @@ New-Item -ItemType Directory $site -Force | Out-Null
 python -m pip install --disable-pip-version-check --quiet --target $site -r (Join-Path $repo "engine\requirements.txt")
 if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 
+Write-Host "Making Essay Builder.exe..."
+$tools = Join-Path $here "tools"
+$rcedit = Join-Path $tools "node_modules\rcedit\bin\rcedit-x64.exe"
+if (-not (Test-Path $rcedit)) {
+    npm install --no-audit --no-fund --loglevel=error --prefix $tools rcedit@4 | Out-Null
+    if (-not (Test-Path $rcedit)) { throw "rcedit could not be installed" }
+}
+$exe = Join-Path $target "Essay Builder.exe"
+Copy-Item (Join-Path $target "pythonw.exe") $exe
+& $rcedit $exe --set-icon (Join-Path $repo "studio\icon.ico") --set-version-string "FileDescription" "Essay Builder" --set-version-string "ProductName" "Essay Builder" --set-version-string "CompanyName" "VNyMay" --set-version-string "LegalCopyright" "Copyright (c) 2026 VNyMay" --set-version-string "InternalName" "Essay Builder" --set-version-string "OriginalFilename" "Essay Builder.exe" --set-file-version "1.0.0" --set-product-version "1.0.0"
+if ($LASTEXITCODE -ne 0) { throw "rcedit failed" }
+
 Write-Host "Bundling Node.js..."
 $node = (Get-Command node).Source
 New-Item -ItemType Directory (Join-Path $app "node") | Out-Null

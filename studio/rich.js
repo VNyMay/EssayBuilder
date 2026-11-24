@@ -259,6 +259,54 @@ function execFormat(command) {
   commitRich();
 }
 
+function selectionEmpty() {
+  restoreSelection();
+  const selection = window.getSelection();
+  return !selection.rangeCount || selection.getRangeAt(0).collapsed || !S.edit.ta.contains(selection.anchorNode);
+}
+
+function blockSize() {
+  const edit = S.edit;
+  const base = parseFloat(S.settings['font-size']) || 12;
+  if (edit.range.kind === 'heading') {
+    const token = headTokens().find((item) => item.startsWith('size='));
+    if (token) return parseFloat(token.slice(5));
+    return [20, 14, 12][Math.min(2, (edit.prefix.match(/#/g) || []).length - 1)] || base;
+  }
+  const line = (edit.prefix || '').split('\n').find((item) => /^size\s*:/i.test(item));
+  return line ? parseFloat(line.split(':')[1]) : base;
+}
+
+function blockOption(key, value) {
+  const edit = S.edit;
+  if (!edit || edit.cover || !edit.range) return false;
+  const kind = edit.range.kind;
+  const shown = value && /\s/.test(value) ? `"${value}"` : value;
+  if (kind === 'heading') {
+    const tokens = headTokens().filter((item) => !item.startsWith(`${key}=`));
+    if (value) tokens.push(`${key}=${shown}`);
+    edit.tail = tokens.length ? ` {${tokens.join(' ')}}` : '';
+  } else if (['para', 'text', 'blank'].includes(kind)) {
+    const own = (edit.prefix || '').startsWith(':::text');
+    let head = own ? edit.prefix.replace(/\n---\n$/, '').split('\n') : [':::text'];
+    head = head.filter((line) => !new RegExp(`^${key}\\s*:`, 'i').test(line));
+    if (value) head.push(`${key}: ${value}`);
+    if (head.length === 1 && !edit.blank) {
+      edit.prefix = '';
+      edit.tail = '';
+    } else {
+      edit.prefix = `${head.join('\n')}\n---\n`;
+      edit.tail = '\n:::';
+    }
+  } else {
+    return false;
+  }
+  if (key === 'size') edit.ta.style.fontSize = value ? `${parseFloat(value) * S.scale}px` : '';
+  if (key === 'font') edit.ta.style.fontFamily = value ? `"${value}", ${docFont()}` : '';
+  commitRich();
+  return true;
+}
+
 function applyFmt(edit) {
   const { ta: el } = S.edit;
   restoreSelection();
@@ -316,6 +364,12 @@ function currentPoints() {
 
 function stepSize(direction) {
   const list = SIZE_LIST.map(Number);
+  if (selectionEmpty() && !S.edit.cover) {
+    const current = blockSize();
+    const next = direction > 0 ? list.find((size) => size > current + 0.01) : [...list].reverse().find((size) => size < current - 0.01);
+    if (next) blockOption('size', String(next));
+    return;
+  }
   const now = currentPoints();
   let index = list.findIndex((value) => value >= now - 0.4);
   if (index < 0) index = list.length - 1;
@@ -464,9 +518,13 @@ function mountRichBar() {
     label: 'Size',
     keep: true,
     className: 'fmt-drop',
-    onPick: (value) => applyFmt((list) => setKey(list, 'size', value || null)),
+    onPick: (value) => {
+      if (selectionEmpty() && blockOption('size', value)) return;
+      applyFmt((list) => setKey(list, 'size', value || null));
+    },
   });
   const font = fontPicker('', (value) => {
+    if (selectionEmpty() && blockOption('font', value)) return;
     restoreSelection();
     applyFmt((list) => setKey(list, 'font', value || null));
   }, { keep: true, className: 'fmt-drop wide', empty: 'Font' });
@@ -589,10 +647,7 @@ function richKeys(event) {
     event.preventDefault();
     return openInline();
   }
-  if (key === 'Enter' && mod) {
-    event.preventDefault();
-    splitParagraph();
-  } else if (key === 'Enter') {
+  if (key === 'Enter') {
     event.preventDefault();
     document.execCommand('insertLineBreak');
   } else if (key === '/' && !mod && !event.shiftKey && (!S.edit.ta.textContent.trim() || window.getSelection().toString() === S.edit.ta.textContent)) {

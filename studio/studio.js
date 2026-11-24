@@ -435,6 +435,122 @@ function layout() {
   if (zoomPick) zoomPick.setLabel(`${Math.round((S.scale / (96 / 72)) * 100)}%`);
 }
 
+function toggleMulti(range) {
+  if (!S.multi) S.multi = new Set();
+  if (S.edit && S.edit.range && !S.multi.size && S.edit.range !== range) S.multi.add(S.edit.range.start);
+  if (S.sel && !S.multi.size && S.sel !== range) S.multi.add(S.sel.start);
+  if (S.multi.has(range.start)) S.multi.delete(range.start);
+  else S.multi.add(range.start);
+  closeEditor(true);
+  closePanel();
+  S.sel = null;
+  document.querySelectorAll('.hit').forEach((hit) => {
+    const item = S.ranges.find((candidate) => String(candidate.id) === hit.dataset.id);
+    hit.classList.toggle('multi', Boolean(item && S.multi.has(item.start)));
+  });
+  paintMultiBar();
+}
+
+function clearMulti() {
+  if (!S.multi) return;
+  S.multi = null;
+  document.querySelectorAll('.hit.multi').forEach((hit) => hit.classList.remove('multi'));
+  paintMultiBar();
+}
+
+function restyleBlock(block, kind, key, value) {
+  const base = parseFloat(S.settings['font-size']) || 12;
+  const pickValue = (current) => (typeof value === 'function' ? value(current) : value);
+  if (kind === 'heading') {
+    const match = block[0].match(/^(#{1,3}\s+)(.*?)((?<!\])\s*\{([^{}]*)\})?\s*$/);
+    if (!match) return block;
+    const tokens = (match[4] || '').trim().split(/\s+/).filter(Boolean);
+    const own = tokens.find((item) => item.startsWith(`${key}=`));
+    const level = match[1].trim().length;
+    const current = own ? parseFloat(own.split('=')[1]) : [20, 14, 12][level - 1];
+    const next = pickValue(current);
+    const kept = tokens.filter((item) => !item.startsWith(`${key}=`));
+    if (next) kept.push(`${key}=${/\s/.test(next) ? `"${next}"` : next}`);
+    return [`${match[1]}${match[2]}${kept.length ? ` {${kept.join(' ')}}` : ''}`, ...block.slice(1)];
+  }
+  if (kind === 'para') {
+    const next = pickValue(base);
+    return next ? [':::text', `${key}: ${next}`, '---', ...block, ':::'] : block;
+  }
+  if (kind === 'text') {
+    const split = block.findIndex((line) => line.trim() === '---');
+    if (split < 0) return block;
+    const head = block.slice(0, split);
+    const line = head.find((item) => new RegExp(`^${key}\\s*:`, 'i').test(item));
+    const current = line ? parseFloat(line.split(':')[1]) : base;
+    const next = pickValue(key === 'size' ? current : line);
+    const kept = head.filter((item) => !new RegExp(`^${key}\\s*:`, 'i').test(item));
+    if (next) kept.push(`${key}: ${next}`);
+    return [...kept, ...block.slice(split)];
+  }
+  return block;
+}
+
+function styleBlocks(key, value) {
+  if (!S.multi || !S.multi.size) return;
+  const all = lines();
+  const picked = S.ranges.filter((range) => S.multi.has(range.start)).sort((a, b) => a.start - b.start);
+  let delta = 0;
+  const next = new Set();
+  picked.forEach((range) => {
+    const from = range.start - 1 + delta;
+    const block = all.slice(from, range.end + delta);
+    const out = restyleBlock(block, range.kind, key, value);
+    all.splice(from, block.length, ...out);
+    next.add(from + 1);
+    delta += out.length - block.length;
+  });
+  S.multi = next;
+  restoreSource(all.join('\n'));
+  paintMultiBar();
+}
+
+function deleteBlocks() {
+  if (!S.multi || !S.multi.size) return;
+  const all = lines();
+  S.ranges.filter((range) => S.multi.has(range.start)).sort((a, b) => b.start - a.start).forEach((range) => {
+    let count = range.end - range.start + 1;
+    if (all[range.end] !== undefined && !all[range.end].trim()) count += 1;
+    all.splice(range.start - 1, count);
+  });
+  S.multi = null;
+  restoreSource(all.join('\n'));
+  paintMultiBar();
+  toast('Blocks deleted. Ctrl+Z brings them back.');
+}
+
+function paintMultiBar() {
+  let bar = $('#multiBar');
+  if (!S.multi || !S.multi.size) {
+    if (bar) conceal(bar, true);
+    return;
+  }
+  if (!bar) {
+    bar = h('div', { id: 'multiBar', class: 'multi-bar' });
+    document.body.append(bar);
+  }
+  const count = S.multi.size;
+  const step = (direction) => (current) => {
+    const list = SIZE_LIST.map(Number);
+    return String((direction > 0 ? list.find((size) => size > current + 0.01) : [...list].reverse().find((size) => size < current - 0.01)) || current);
+  };
+  bar.replaceChildren(
+    h('span', { class: 'multi-count', text: `${count} ${count === 1 ? 'block' : 'blocks'}` }),
+    fontPicker('', (value) => styleBlocks('font', value), { empty: 'Font' }),
+    h('button', { type: 'button', class: 'pill ghost small', title: 'Smaller (Ctrl+Shift+<)', text: 'A−', onclick: () => styleBlocks('size', step(-1)) }),
+    h('button', { type: 'button', class: 'pill ghost small', title: 'Bigger (Ctrl+Shift+>)', text: 'A+', onclick: () => styleBlocks('size', step(1)) }),
+    dropdown({ choices: SIZE_LIST.map((size) => ({ value: size, label: `${size} pt` })), value: '', label: 'Size', onPick: (value) => styleBlocks('size', value) }),
+    h('button', { type: 'button', class: 'pill small danger-pill', html: `${icon('trash', 14)}<span>Delete</span>`, onclick: deleteBlocks }),
+    h('button', { type: 'button', class: 'round', title: 'Clear selection (Esc)', html: icon('close', 15), onclick: clearMulti }),
+  );
+  reveal(bar);
+}
+
 function drawHits() {
   const box = $('#pages');
   const side = Math.max(0, marginPt() - 10) * S.scale;
@@ -452,8 +568,16 @@ function drawHits() {
         class: `hit${blank ? ' blank' : ''}${S.sel === range ? ' sel' : ''}`,
         'data-id': range.id,
         style: `left:${side}px;right:${side}px;top:${top}px;height:${Math.max(bottom - top, 8)}px`,
-        onclick: () => select(range),
+        onclick: (event) => {
+          if (event.shiftKey || event.ctrlKey || event.metaKey) {
+            toggleMulti(range);
+            return;
+          }
+          clearMulti();
+          select(range);
+        },
       });
+      if (S.multi && S.multi.has(range.start)) hit.classList.add('multi');
       div.append(hit);
     });
   });
@@ -1350,6 +1474,8 @@ const SETTING_FIELDS = [
   { key: 'contents-depth', label: 'Depth', spec: [{ value: '', label: 'Sections + sub-sections' }, { value: '1', label: 'Sections only' }] },
   { key: 'contents-numbers', label: 'Numbers', spec: 'y' },
   { key: 'contents-dots', label: 'Dot leaders', spec: 'y' },
+  { key: 'list-of-figures', label: 'List of figures', spec: 'y', off: true },
+  { key: 'list-of-tables', label: 'List of tables', spec: 'y', off: true },
 ];
 
 function headerValue(key) {
@@ -1420,7 +1546,7 @@ function openSettings() {
       return;
     }
     const current = headerValue(item.key);
-    const row = { value: item.spec === 'y' ? (/^(no|off|false)$/i.test(current) ? 'no' : 'yes') : current };
+    const row = { value: item.spec === 'y' ? (item.off ? (/^(yes|on|true)$/i.test(current) ? 'yes' : 'no') : /^(no|off|false)$/i.test(current) ? 'no' : 'yes') : current };
     let field;
     if (item.spec === 'c') {
       field = h('div', { class: 'field' }, colourButton(/^#[0-9a-f]{6}$/i.test(current) ? current : '', (value) => setHeader(item.key, value), item.key !== 'accent'));
@@ -2162,6 +2288,14 @@ function bind() {
     } else if ((event.ctrlKey || event.metaKey) && key === 'z') {
       event.preventDefault();
       undo(event.shiftKey ? 1 : -1);
+    } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && ['Period', 'Comma'].includes(event.code) && !typing && !S.edit && S.multi && S.multi.size) {
+      event.preventDefault();
+      const list = SIZE_LIST.map(Number);
+      const up = event.code === 'Period';
+      styleBlocks('size', (current) => String((up ? list.find((size) => size > current + 0.01) : [...list].reverse().find((size) => size < current - 0.01)) || current));
+    } else if (['Delete', 'Backspace'].includes(event.key) && !typing && !S.edit && S.multi && S.multi.size) {
+      event.preventDefault();
+      deleteBlocks();
     } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Enter') {
       event.preventDefault();
       addPageAfter(pageInView());
@@ -2185,6 +2319,7 @@ function bind() {
         conceal($('#palette'));
         conceal($('#issueList'));
       } else if (S.edit) closeEditor();
+      else if (S.multi && S.multi.size) clearMulti();
       else deselect();
     } else if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key) && S.sel && !typing) {
       event.preventDefault();

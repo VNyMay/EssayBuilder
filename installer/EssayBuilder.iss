@@ -5,7 +5,14 @@
 AppId={{B7E3A1D2-4C58-4F0B-9A7E-5D2C6F1E8A34}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher={#AppName}
+AppPublisher=VNyMay
+AppPublisherURL=https://github.com/VNyMay/EssayBuilder
+AppSupportURL=https://github.com/VNyMay/EssayBuilder/issues
+AppCopyright=Copyright (c) 2026 VNyMay
+VersionInfoCompany=VNyMay
+VersionInfoDescription=Essay Builder Setup
+VersionInfoProductName=Essay Builder
+VersionInfoVersion={#AppVersion}
 DefaultDirName={autopf}\{#AppName}
 DisableProgramGroupPage=yes
 DisableDirPage=auto
@@ -36,11 +43,11 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "build\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\studio\icon.ico"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\studio\icon.ico"; Tasks: desktopicon
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\python\Essay Builder.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\studio\icon.ico"; AppUserModelID: "VNyMay.EssayBuilder"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\python\Essay Builder.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\studio\icon.ico"; AppUserModelID: "VNyMay.EssayBuilder"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; Description: "Start {#AppName}"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\python\Essay Builder.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; Description: "Start {#AppName}"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\engine\fonts"

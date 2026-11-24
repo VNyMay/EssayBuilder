@@ -25,6 +25,12 @@ CONFIG = DATA / "launcher.json"
 GREEN = "#027554"
 
 if sys.platform == "win32":
+    import ctypes
+
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("VNyMay.EssayBuilder")
+    except (AttributeError, OSError):
+        pass
     original = subprocess.Popen.__init__
 
     def quiet(self, *args, **kwargs):
