@@ -219,7 +219,7 @@ async function run() {
     schedule(250);
     return;
   }
-  await applyResult(result);
+  await applyResult(result, sent);
 }
 
 function parseIssues(result) {
@@ -251,7 +251,7 @@ function loadImage(url) {
   });
 }
 
-async function applyResult(result) {
+async function applyResult(result, sent) {
   S.issues = parseIssues(result);
   renderIssues();
   if (result.fatal || (result.errors && result.errors.length)) {
@@ -263,6 +263,10 @@ async function applyResult(result) {
   if (result.fontCss !== undefined) applyFontCss(result.fontCss);
   S.fontStamp = result.fontStamp || S.fontStamp;
   await Promise.all(result.pages.map((page) => loadImage(page.url)));
+  if (sent !== undefined && S.source !== sent) {
+    schedule(250);
+    return;
+  }
   const start = S.pendingStart != null ? S.pendingStart : S.sel ? S.sel.start : null;
   S.pendingStart = null;
   S.labels = result.labels || {};
@@ -298,6 +302,7 @@ async function applyResult(result) {
     S.edit.base = null;
     positionEditor();
   }
+  if (!localStorage.getItem('studio.toured')) setTimeout(() => startTour(), 600);
   if (S.focusNew && S.sel) {
     S.focusNew = false;
     if (TEXT_KINDS.has(S.sel.kind) || isRichText(S.sel)) openEditor(S.sel, S.focusSelectAll !== false);
@@ -338,6 +343,7 @@ function layout() {
   const box = $('#pages');
   S.scale = S.zoom === 'fit' ? fitScale() : S.zoom === 'page' ? pageScale() : S.zoom;
   while (box.children.length > S.pages.length) box.lastChild.remove();
+  const groups = S.regions && S.ranges.length ? pageGroups() : [];
   S.pages.forEach((page, i) => {
     let div = box.children[i];
     if (!div) {
@@ -348,7 +354,7 @@ function layout() {
     div.style.height = `${page.h * S.scale}px`;
     const image = div.firstChild;
     if (image.getAttribute('src') !== page.url) image.src = page.url;
-    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-num, .page-design, .cover-toggle').forEach((node) => node.remove());
+    div.querySelectorAll('.hit, .tool, .ins, .grip, .ins-marker, .reflow, .mask, .page-add, .page-del, .page-tool, .page-num, .page-design, .cover-toggle').forEach((node) => node.remove());
     if (S.arrivePage === i && S.pages.length) {
       S.arrivePage = null;
       div.classList.remove('arrive');
@@ -426,6 +432,7 @@ function layout() {
     if (pageRanges(i).length || i > 0 || coverIsOn()) {
       div.append(deleteButton(i));
     }
+    div.append(...pageTools(i, groups));
   });
   drawHits();
   drawOverlayViews();
@@ -875,7 +882,7 @@ function insertLines(block, kind) {
   if (anchor && anchor.kind === 'blank' && kind !== 'blank') return fillBlank(anchor, block, kind);
   if (target && target.where === 'replace') return replaceWith(target.range, block, kind);
   if (target && target.where === 'before') return insertBefore(target.range, block, kind);
-  const after = target ? target.range : S.sel || S.ranges[S.ranges.length - 1] || null;
+  const after = target ? target.range : S.sel || rangeAtView();
   const all = lines();
   let at = after ? after.end : S.front ? S.front[1] : all.length;
   if (!after && !S.front) while (at > 0 && !all[at - 1].trim()) at -= 1;
@@ -1039,6 +1046,13 @@ function pageInView() {
     if (div.offsetTop <= middle) index = i;
   });
   return Math.min(index, S.pages.length - 1);
+}
+
+function rangeAtView() {
+  if (!S.ranges.length || !S.regions) return S.ranges[S.ranges.length - 1] || null;
+  const page = pageInView();
+  const seen = S.ranges.filter((range) => (S.regions[range.id] || []).some((span) => span.page <= page));
+  return seen.length ? seen[seen.length - 1] : null;
 }
 
 function pageRanges(pageIndex) {
@@ -1250,6 +1264,12 @@ async function insertTemplate(template) {
     if (!file) return;
     const path = await upload(file);
     if (path) insertLines([':::figure', `src: ${path}`, 'caption: Figure caption.', 'width: 70%', ':::'], 'figure');
+    return;
+  }
+  if (template.kind === 'bibliography') {
+    const style = (S.settings.citations || 'apa').toLowerCase();
+    const title = style === 'mla' ? 'Works Cited' : style === 'chicago' ? 'Bibliography' : 'References';
+    insertLines([`# ${title} {nonumber}`, '', ...template.lines], 'heading');
     return;
   }
   insertLines(template.lines.slice(), template.kind);
@@ -1907,9 +1927,10 @@ function buildPalette() {
   const groups = [...base, ...extra, 'Layout'];
   const search = h('input', { type: 'text', class: 'palette-search', spellcheck: 'false', placeholder: 'Search blocks' });
   search.addEventListener('input', () => {
+    closeHelpCard();
     const term = search.value.trim().toLowerCase();
     palette.querySelectorAll('.palette-grid button').forEach((tile) => {
-      tile.hidden = term !== '' && !tile.title.toLowerCase().includes(term);
+      tile.hidden = term !== '' && !templateMatches(tile.template, term);
     });
     palette.querySelectorAll('.palette-grid').forEach((grid) => {
       const empty = ![...grid.children].some((tile) => !tile.hidden);
@@ -1917,7 +1938,13 @@ function buildPalette() {
       grid.previousElementSibling.hidden = empty;
     });
   });
-  palette.append(search);
+  const help = h('button', { type: 'button', class: 'palette-help', title: 'What each block does', text: '?' });
+  help.addEventListener('click', () => {
+    palette.classList.toggle('helping');
+    help.classList.toggle('on', palette.classList.contains('helping'));
+    closeHelpCard();
+  });
+  palette.append(h('div', { class: 'palette-head' }, search, help));
   const tints = ['#fbbc04', '#ea4335', '#4285f4', '#34a853', '#a142f4', '#24c1e0', '#fa7b17', '#5856d6', '#f538a0', '#00a9a5', '#ff9500', '#af52de'];
   groups.forEach((name, groupIndex) => {
     const items = TEMPLATES.filter((template) => template.group === name);
@@ -1925,17 +1952,48 @@ function buildPalette() {
     palette.append(h('div', { class: 'palette-group', text: name }));
     const grid = h('div', { class: 'palette-grid' });
     items.forEach((template, index) => {
-      grid.append(
-        h('button', {
-          html: `${icon(template.icon, 26)}<span>${template.label}</span>`,
-          title: template.label,
-          style: `--tint:${name === 'Layout' ? '#d9dee6' : tints[groupIndex % tints.length]};--i:${Math.min(index, 14)}`,
-          onclick: () => insertTemplate(template),
-        }),
-      );
+      const tile = h('button', {
+        html: `${icon(template.icon, 26)}<span>${template.label}</span>`,
+        title: template.label,
+        style: `--tint:${name === 'Layout' ? '#d9dee6' : tints[groupIndex % tints.length]};--i:${Math.min(index, 14)}`,
+        onclick: () => (palette.classList.contains('helping') ? openHelpCard(tile, template) : insertTemplate(template)),
+      });
+      tile.template = template;
+      grid.append(tile);
     });
     palette.append(grid);
   });
+}
+
+function closeHelpCard() {
+  const card = $('#palette .help-card');
+  if (card) card.remove();
+  document.querySelectorAll('#palette .palette-grid button.asked').forEach((tile) => tile.classList.remove('asked'));
+}
+
+function openHelpCard(tile, template) {
+  const palette = $('#palette');
+  const again = tile.classList.contains('asked');
+  closeHelpCard();
+  if (again) return;
+  const [what, how] = HELP[template.id] || HELP[template.kind] || [template.label, ''];
+  const card = h(
+    'div',
+    { class: 'help-card' },
+    h('div', { class: 'help-title', html: `${icon(template.icon, 22)}<span>${template.label}</span>` }),
+    h('p', { class: 'help-what', text: what }),
+    how ? h('p', { class: 'help-how', text: how }) : null,
+    h(
+      'div',
+      { class: 'help-actions' },
+      h('button', { type: 'button', class: 'pill solid small', html: `${icon('plus', 15)}<span>Insert</span>`, onclick: () => insertTemplate(template) }),
+      h('button', { type: 'button', class: 'pill ghost small', text: 'Close', onclick: closeHelpCard }),
+    ),
+  );
+  tile.classList.add('asked');
+  tile.parentNode.after(card);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (palette.contains(card)) card.style.setProperty('--arrow', `${tile.offsetLeft + tile.offsetWidth / 2 - card.offsetLeft}px`);
 }
 
 function zoomStep(direction) {
@@ -2287,19 +2345,23 @@ function bind() {
     }
     const sheet = event.target.closest && event.target.closest('#pages > .page');
     const onSheet = sheet && (event.target === sheet || (event.target.tagName === 'IMG' && event.target.parentNode === sheet));
-    if (blank && !S.settingsOpen && (S.sel || S.edit || S.panel)) {
-      deselect();
-      return;
-    }
+    let margin = false;
     if (onSheet && !S.settingsOpen && !(typeof CV !== 'undefined' && CV.mode === 'page')) {
       const index = [...$('#pages').children].indexOf(sheet);
       const rect = sheet.getBoundingClientRect();
       const x = (event.clientX - rect.left) / S.scale;
       const size = S.pages[index];
-      if (size && (x < marginPt() * 0.8 || x > size.w - marginPt() * 0.8)) {
-        pickPage(index === S.pagePick ? null : index);
-        return;
-      }
+      margin = Boolean(size && (x < marginPt() * 0.8 || x > size.w - marginPt() * 0.8));
+    }
+    if (blank && !margin && !(typeof CV !== 'undefined' && CV.mode === 'page')) startMarquee(event);
+    if (blank && !S.settingsOpen && (S.sel || S.edit || S.panel)) {
+      deselect();
+      return;
+    }
+    if (margin) {
+      const index = [...$('#pages').children].indexOf(sheet);
+      pickPage(index === S.pagePick ? null : index);
+      return;
     }
     if (S.pagePick !== null && S.pagePick !== undefined) unpickPage();
   });
@@ -2488,6 +2550,7 @@ async function main() {
   loadPlaces();
   const state = await (await fetch('/api/state')).json();
   load(state);
+  pickTheme();
 }
 
 main();

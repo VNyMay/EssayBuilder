@@ -673,8 +673,26 @@ def launch_native(url):
     return process.poll() is None or process.returncode == 0
 
 
+def launch_window(url):
+    try:
+        found = setup.browser()
+    except RuntimeError:
+        return False
+    profile = setup.runtime.home().parent / "window"
+    flags = [f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check"]
+    subprocess.Popen(
+        [found, f"--app={url}", "--window-size=1280,860", *flags, *SMOOTH],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    return True
+
+
 def launch(url):
     if launch_native(url):
+        return
+    if sys.platform != "win32" and launch_window(url):
         return
     for name in ("chrome", "msedge"):
         found = shutil.which(name)

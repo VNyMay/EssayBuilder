@@ -119,6 +119,11 @@ def splash():
         except Exception:
             pass
     root = tk.Tk()
+    if sys.platform != "win32":
+        try:
+            root.iconphoto(True, tk.PhotoImage(file=str(STUDIO / "icon.png")))
+        except tk.TclError:
+            pass
     root.overrideredirect(True)
     root.attributes("-topmost", True)
     scale = max(1.0, root.winfo_fpixels("1i") / 96)
@@ -136,12 +141,20 @@ def splash():
         edge = picture.getchannel("A")
         flat = Image.new("RGB", picture.size, "white")
         flat.paste(picture, mask=edge)
-        base = Image.new("RGB", picture.size, KEY)
-        base.paste(flat, mask=edge.point(lambda value: 255 if value >= 128 else 0))
-        photo = ImageTk.PhotoImage(base)
+        if sys.platform == "win32":
+            base = Image.new("RGB", picture.size, KEY)
+            base.paste(flat, mask=edge.point(lambda value: 255 if value >= 128 else 0))
+            photo = ImageTk.PhotoImage(base)
+            root.wm_attributes("-transparentcolor", key)
+        elif sys.platform == "darwin":
+            root.wm_attributes("-transparent", True)
+            canvas.configure(bg="systemTransparent")
+            photo = ImageTk.PhotoImage(picture)
+        else:
+            canvas.configure(bg="white")
+            photo = ImageTk.PhotoImage(flat)
         canvas.image = photo
         canvas.create_image(0, 0, image=photo, anchor="nw")
-        root.wm_attributes("-transparentcolor", key)
     except Exception:
         canvas.configure(bg="white")
         canvas.create_text(width // 2, round(110 * scale), text="Essay Builder", font=("Segoe UI", 18, "bold"), fill="#0c1f18")
@@ -185,7 +198,9 @@ def main():
             from lib import setup
 
             outcome["note"] = "Preparing, the first start can take a minute"
+            outcome["setup"] = setup.runtime.NOTE
             setup.ensure()
+            outcome.pop("setup")
             outcome["note"] = "Opening"
             server, url = serve.create(essay)
             LOCK.write_text(json.dumps({"port": server.server_address[1]}), encoding="utf-8")
@@ -198,7 +213,8 @@ def main():
         outcome["done"] = True
 
     def poll():
-        status.config(text=outcome["note"])
+        live = outcome.get("setup")
+        status.config(text=live["text"] if live and live["text"] else outcome["note"])
         if outcome.get("done"):
             root.quit()
         else:

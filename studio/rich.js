@@ -174,7 +174,7 @@ function nodesToMd(parent) {
   let out = '';
   parent.childNodes.forEach((node) => {
     if (node.nodeType === 3) {
-      out += escapeText(node.nodeValue);
+      out += escapeText(node.nodeValue).replace(/\r?\n/g, '\\\\\n');
       return;
     }
     if (node.nodeType !== 1) return;
@@ -851,6 +851,7 @@ function inlineItems() {
   items.push({ label: 'Link', hint: 'web address', run: () => newLink() });
   items.push({ label: 'Footnote', hint: 'note at the page foot', run: () => newNote() });
   items.push({ label: 'Symbols', hint: 'Greek, operators', run: () => richMathPalette(S.edit.bar.querySelector('.math')) });
+  TEMPLATES.forEach((template) => items.push({ label: template.label, hint: template.group, template, run: () => inlineBlock(template) }));
   return items;
 }
 
@@ -868,7 +869,10 @@ function caretRect() {
 function paintInline() {
   const state = S.inline;
   const query = state.query.toLowerCase();
-  state.shown = inlineItems().filter((item) => !query || item.label.toLowerCase().includes(query) || item.hint.toLowerCase().includes(query));
+  const all = inlineItems();
+  const basic = all.filter((item) => !item.template && (!query || item.label.toLowerCase().includes(query) || item.hint.toLowerCase().includes(query)));
+  const blocks = query ? all.filter((item) => item.template && templateMatches(item.template, query)).slice(0, 12) : [];
+  state.shown = [...basic, ...blocks];
   state.active = Math.min(state.active, Math.max(state.shown.length - 1, 0));
   state.node.replaceChildren(
     h('div', { class: 'inline-query', text: `@${state.query}` }),
@@ -904,6 +908,13 @@ function openInline() {
   node.style.left = `${Math.max(8, rect ? rect.left : 100) / k}px`;
   node.style.top = `${(rect ? rect.bottom + 6 : 100) / k}px`;
   paintInline();
+}
+
+function inlineBlock(template) {
+  if (!S.edit || !S.edit.range) return insertTemplate(template);
+  const empty = !S.edit.ta.textContent.trim();
+  S.target = { range: S.edit.range, where: empty ? 'replace' : 'after' };
+  insertTemplate(template);
 }
 
 function closeInline() {

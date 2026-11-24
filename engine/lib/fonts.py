@@ -17,10 +17,12 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import time
 import urllib.request
+from functools import lru_cache
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
@@ -50,6 +52,94 @@ def parse_family(value):
     return (parts[0], parts[1:]) if parts else ("", [])
 
 
+FONT_FOLDERS = [
+    Path("/System/Library/Fonts"),
+    Path("/Library/Fonts"),
+    Path.home() / "Library" / "Fonts",
+    Path("/usr/share/fonts"),
+    Path("/usr/local/share/fonts"),
+    Path.home() / ".local" / "share" / "fonts",
+    Path.home() / ".fonts",
+]
+STYLE_WORDS = re.compile(r"bold|italic|light|black|thin|medium|heavy|oblique|condensed|semi|extra|ultra|narrow", re.I)
+
+
+def name_records(handle, offset):
+    handle.seek(offset)
+    head = handle.read(12)
+    if len(head) < 12:
+        return []
+    count = struct.unpack(">H", head[4:6])[0]
+    entries = handle.read(16 * count)
+    for index in range(count):
+        tag, _, start, length = struct.unpack(">4sIII", entries[16 * index : 16 * index + 16])
+        if tag == b"name":
+            break
+    else:
+        return []
+    handle.seek(start)
+    table = handle.read(length)
+    if len(table) < 6:
+        return []
+    _, total, storage = struct.unpack(">HHH", table[:6])
+    records = []
+    for index in range(total):
+        row = table[6 + 12 * index : 18 + 12 * index]
+        if len(row) < 12:
+            break
+        platform_id, _, language, name_id, size, at = struct.unpack(">HHHHHH", row)
+        if name_id not in (1, 16):
+            continue
+        raw = table[storage + at : storage + at + size]
+        if platform_id in (0, 3):
+            text, english = raw.decode("utf-16-be", "ignore"), platform_id == 0 or language == 0x409
+        elif platform_id == 1:
+            text, english = raw.decode("mac_roman", "ignore"), language == 0
+        else:
+            continue
+        records.append((name_id == 16, english, text.strip()))
+    return records
+
+
+def font_families(path):
+    try:
+        with open(path, "rb") as handle:
+            tag = handle.read(4)
+            if tag == b"ttcf":
+                handle.seek(8)
+                count = struct.unpack(">I", handle.read(4))[0]
+                offsets = struct.unpack(f">{count}I", handle.read(4 * count))
+            else:
+                offsets = (0,)
+            families = []
+            for offset in offsets:
+                records = [record for record in name_records(handle, offset) if record[2]]
+                if records:
+                    families.append(max(records, key=lambda record: (record[1], record[0]))[2])
+            return families
+    except (OSError, struct.error, ValueError):
+        return []
+
+
+@lru_cache(maxsize=1)
+def local_fonts():
+    found = {}
+    for folder in FONT_FOLDERS:
+        if not folder.is_dir():
+            continue
+        for path in folder.rglob("*"):
+            if path.suffix.lower() not in {".ttf", ".otf", ".ttc"}:
+                continue
+            for family in font_families(path):
+                if not family or family.startswith("."):
+                    continue
+                current = found.get(family.lower())
+                rank = (path.suffix.lower() == ".ttc", bool(STYLE_WORDS.search(path.stem)), len(path.stem))
+                if current is None or rank < current[2]:
+                    found[family.lower()] = (family, path, rank)
+    return {key: (family, path) for key, (family, path, _) in found.items()}
+
+
 def find_system(family):
     """Path of an installed font file with this family name, or None."""
     if sys.platform == "win32":
@@ -66,12 +156,8 @@ def find_system(family):
                 name, file, _ = winreg.EnumValue(fonts, i)
                 if re.split(r" \(| & ", name)[0].lower() == family.lower():
                     return Path(file) if Path(file).is_absolute() else folder / file
-    wanted = family.lower().replace(" ", "")
-    for folder in [Path("/Library/Fonts"), Path.home() / "Library" / "Fonts", Path("/usr/share/fonts")]:
-        for path in folder.rglob("*") if folder.is_dir() else []:
-            if path.suffix.lower() in {".ttf", ".ttc", ".otf"} and path.stem.lower().replace(" ", "") == wanted:
-                return path
-    return None
+    found = local_fonts().get(family.lower())
+    return found[1] if found else None
 
 
 def system_families():
@@ -96,10 +182,7 @@ def system_families():
                     if family and not family.startswith("@"):
                         names.add(family)
     else:
-        for folder in [Path("/Library/Fonts"), Path.home() / "Library" / "Fonts", Path("/usr/share/fonts")]:
-            for path in folder.rglob("*") if folder.is_dir() else []:
-                if path.suffix.lower() in {".ttf", ".otf"}:
-                    names.add(re.split(r"[-_]", path.stem)[0])
+        names.update(family for family, _ in local_fonts().values())
     return sorted(names, key=str.lower)
 
 

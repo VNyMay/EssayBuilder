@@ -243,3 +243,81 @@ function replaceWith(target, block, kind) {
   target.kind = kind;
   finishInsert(target, kind);
 }
+
+function paintMultiHits() {
+  document.querySelectorAll('.hit').forEach((hit) => {
+    const item = S.ranges.find((candidate) => String(candidate.id) === hit.dataset.id);
+    hit.classList.toggle('multi', Boolean(item && S.multi && S.multi.has(item.start)));
+  });
+}
+
+function startMarquee(event) {
+  if (event.button !== 0 || S.locked || S.settingsOpen || !S.pages.length) return;
+  const scroll = $('#scroll');
+  const frame = scroll.getBoundingClientRect();
+  const origin = { x: event.clientX, y: event.clientY + scroll.scrollTop };
+  const kept = new Set(event.shiftKey || event.ctrlKey || event.metaKey ? S.multi || [] : []);
+  let box = null;
+  let last = event;
+  let timer = null;
+  const paint = () => {
+    const top = Math.min(origin.y - scroll.scrollTop, last.clientY);
+    const bottom = Math.max(origin.y - scroll.scrollTop, last.clientY);
+    const left = Math.min(origin.x, last.clientX);
+    const right = Math.max(origin.x, last.clientX);
+    box.style.cssText = `left:${left}px;top:${Math.max(top, frame.top)}px;width:${right - left}px;height:${Math.min(bottom, frame.bottom) - Math.max(top, frame.top)}px`;
+    const picked = new Set(kept);
+    document.querySelectorAll('#pages .hit[data-id]').forEach((hit) => {
+      const r = hit.getBoundingClientRect();
+      if (r.right < left || r.left > right || r.bottom < top || r.top > bottom) return;
+      const item = S.ranges.find((candidate) => String(candidate.id) === hit.dataset.id);
+      if (item) picked.add(item.start);
+    });
+    S.multi = picked.size ? picked : null;
+    paintMultiHits();
+    paintMultiBar();
+  };
+  const edge = () => {
+    const step = last.clientY > frame.bottom - 36 ? 22 : last.clientY < frame.top + 36 ? -22 : 0;
+    if (step) {
+      scroll.scrollTop += step;
+      paint();
+    }
+    timer = step ? requestAnimationFrame(edge) : null;
+  };
+  const move = (moved) => {
+    last = moved;
+    if (!box) {
+      if (Math.hypot(moved.clientX - origin.x, moved.clientY + scroll.scrollTop - origin.y) < 6) return;
+      box = h('div', { class: 'marquee' });
+      scroll.append(box);
+      closeEditor(true);
+      closePanel();
+      S.sel = null;
+      placeOverlays();
+      document.body.classList.add('marqueeing');
+    }
+    moved.preventDefault();
+    paint();
+    if (!timer) edge();
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    if (timer) cancelAnimationFrame(timer);
+    if (!box) {
+      if (!kept.size && S.multi) clearMulti();
+      return;
+    }
+    box.remove();
+    document.body.classList.remove('marqueeing');
+    const swallow = (click) => {
+      click.stopPropagation();
+      click.preventDefault();
+    };
+    window.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+}

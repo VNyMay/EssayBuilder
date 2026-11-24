@@ -15,11 +15,11 @@ registerKit({
     },
     {
       kind: 'landscape',
-      label: 'Landscape pages',
-      icon: 'table',
+      label: 'Landscape page',
+      icon: 'landscape',
       bodyTitle: 'Content',
-      hint: 'A wide table or figure on landscape pages.',
-      template: [':::landscape', 'Table: A wide table.', '| A | B | C | D |', '| 1 | 2 | 3 | 4 |', ':::'],
+      hint: 'A sideways page for wide tables or figures.',
+      template: [':::landscape', ':::'],
     },
     {
       kind: 'abstract',

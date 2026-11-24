@@ -8,6 +8,7 @@ printed and copied to the clipboard on Windows. Only the Python standard library
 """
 import csv
 import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -191,6 +192,13 @@ def build(files):
 
 def to_clipboard(text):
     if os.name != "nt":
+        for command in (["pbcopy"], ["wl-copy"], ["xclip", "-selection", "clipboard"], ["xsel", "-ib"]):
+            if shutil.which(command[0]):
+                try:
+                    subprocess.run(command, input=text.encode("utf-8"), check=True, timeout=30)
+                    return True
+                except (subprocess.SubprocessError, OSError):
+                    continue
         return False
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:

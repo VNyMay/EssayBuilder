@@ -3,6 +3,7 @@ import base64
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -11,6 +12,50 @@ from pathlib import Path
 from .setup import browser, browser_flags
 
 TIMEOUT = 90
+JOB = {}
+
+
+def tie_to_app(process):
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        if "handle" not in JOB:
+
+            class Limits(ctypes.Structure):
+                _fields_ = [
+                    ("PerProcessUserTimeLimit", ctypes.c_int64),
+                    ("PerJobUserTimeLimit", ctypes.c_int64),
+                    ("LimitFlags", wintypes.DWORD),
+                    ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t),
+                    ("ActiveProcessLimit", wintypes.DWORD),
+                    ("Affinity", ctypes.c_size_t),
+                    ("PriorityClass", wintypes.DWORD),
+                    ("SchedulingClass", wintypes.DWORD),
+                ]
+
+            class Counters(ctypes.Structure):
+                _fields_ = [(name, ctypes.c_uint64) for name in ("R", "W", "O", "RT", "WT", "OT")]
+
+            class Extended(ctypes.Structure):
+                _fields_ = [
+                    ("BasicLimitInformation", Limits),
+                    ("IoInfo", Counters),
+                    ("ProcessMemoryLimit", ctypes.c_size_t),
+                    ("JobMemoryLimit", ctypes.c_size_t),
+                    ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                    ("PeakJobMemoryUsed", ctypes.c_size_t),
+                ]
+
+            kernel.CreateJobObjectW.restype = wintypes.HANDLE
+            handle = kernel.CreateJobObjectW(None, None)
+            info = Extended()
+            info.BasicLimitInformation.LimitFlags = 0x2000
+            kernel.SetInformationJobObject(handle, 9, ctypes.byref(info), ctypes.sizeof(info))
+            JOB["handle"] = handle
+        kernel.AssignProcessToJobObject(wintypes.HANDLE(JOB["handle"]), wintypes.HANDLE(int(process._handle)))
 
 
 class Session:
@@ -49,6 +94,7 @@ class Session:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        tie_to_app(self.process)
         marker = self.profile / "DevToolsActivePort"
         deadline = time.time() + 15
         while not marker.exists() and time.time() < deadline:

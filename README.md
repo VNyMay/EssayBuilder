@@ -21,24 +21,22 @@ Made for IB students, works for any long document.
 
 **Windows 10 / 11:** download `EssayBuilder-Setup.exe` from [Releases](../../releases), run it, done.
 
-**Mac / Linux:** install [Docker](https://www.docker.com/products/docker-desktop/), then in this folder run:
+**Mac / Linux:** open Terminal, paste this and press Enter:
 
 ```
-docker compose up -d
+curl -fsSL https://raw.githubusercontent.com/VNyMay/EssayBuilder/main/install.sh | bash
 ```
 
-and open http://localhost:8787 in your browser.
+It downloads everything it needs (Python, Node.js, Chrome and the libraries) without asking for your password, then puts **Essay Builder** in Applications (Mac) or your apps menu (Linux), with an icon on the Desktop. Run the same line again to update.
 
 <details>
-<summary>Run from source instead</summary>
+<summary>Other ways</summary>
 
-You need Python 3.10+, Node.js 18+ and Chrome or Edge.
+**From a downloaded copy:** run `bash install.sh` inside the folder.
 
-```
-python studio/serve.py
-```
+**Docker:** run `docker compose up -d` in this folder and open http://localhost:8787.
 
-The first start downloads what it needs.
+**By hand:** with Python 3.10+, Node.js 18+ and Chrome or Edge installed, run `python3 studio/serve.py`.
 </details>
 
 ## Tips

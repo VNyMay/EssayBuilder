@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from . import runtime
+
 HERE = Path(__file__).resolve().parent.parent
 MODULES = HERE / "node_modules"
 
@@ -48,6 +50,7 @@ def python_packages():
     if not missing:
         return
     say(f"installing Python packages: {', '.join(package for _, package, _ in missing)}")
+    runtime.NOTE["text"] = "Installing Python packages"
     for _, package, needed in missing:
         try:
             run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "-q", package])
@@ -61,6 +64,12 @@ def python_packages():
 def node_modules():
     node, npm = shutil.which("node"), shutil.which("npm")
     ready = all(path.is_file() for path in NODE_FILES)
+    if sys.platform != "win32" and not (node and runtime.works(node)):
+        try:
+            runtime.node()
+        except (OSError, ValueError, StopIteration) as error:
+            say(f"could not download Node.js: {error}")
+        node, npm = shutil.which("node"), shutil.which("npm")
     if not node or (not npm and not ready):
         if sys.platform == "win32" and shutil.which("winget"):
             say("Node.js is missing - installing it with winget")
@@ -74,6 +83,7 @@ def node_modules():
     if ready:
         return
     say("installing the JavaScript libraries (KaTeX, Mermaid, maps, JetBrains Mono) - first run only")
+    runtime.NOTE["text"] = "Installing libraries"
     try:
         run([npm, "install", "--no-audit", "--no-fund", "--loglevel=error"], cwd=HERE)
     except subprocess.CalledProcessError:
@@ -89,6 +99,8 @@ def browser():
         found.append(base / "Microsoft" / "Edge" / "Application" / "msedge.exe")
     found.append("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
     found.append("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge")
+    found.append(Path.home() / "Applications" / "Google Chrome.app" / "Contents" / "MacOS" / "Google Chrome")
+    found.append(runtime.chrome_path())
 
     for path in found:
         if path and Path(path).is_file():
@@ -112,4 +124,10 @@ def ensure():
     try:
         browser()
     except RuntimeError as error:
-        sys.exit(str(error))
+        if sys.platform == "win32":
+            sys.exit(str(error))
+        try:
+            if runtime.chrome() is None:
+                sys.exit(f"{error}. Install Chromium with your package manager.")
+        except (OSError, ValueError, StopIteration, KeyError) as failure:
+            sys.exit(f"{error}. Download failed: {failure}")

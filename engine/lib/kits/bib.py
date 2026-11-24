@@ -118,6 +118,8 @@ class Kit:
                 paragraphs.append(f'<p class="ref num"><span class="refnum">[{e.number}]</span> {body}</p>')
             else:
                 paragraphs.append(f'<p class="ref">{body}</p>')
+        if not paragraphs and self.studio:
+            paragraphs.append('<p class="ref"><span class="ph">No sources cited yet</span></p>')
         if not self.bib_all:
             for key, e in entries.items():
                 if e not in cited and entries:

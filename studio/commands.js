@@ -24,6 +24,16 @@ const CMD_WORDS = {
   supplydemand: 'economics curve',
 };
 
+function templateWords(template) {
+  return `${template.label} ${template.group} ${template.id || ''} ${template.kind || ''} ${CMD_WORDS[template.id] || ''}`.toLowerCase();
+}
+
+function templateMatches(template, term) {
+  const words = term.toLowerCase().split(/\s+/).filter(Boolean);
+  const hay = templateWords(template).split(/[^a-z0-9]+/).filter(Boolean);
+  return words.every((word) => hay.some((part) => part.startsWith(word)));
+}
+
 function cmdItems() {
   const items = [];
   const open = Boolean(S.name) && !document.documentElement.classList.contains('home');
@@ -44,6 +54,7 @@ function cmdItems() {
     add('All essays', 'Essay', () => goHome(), 'home back menu', 'home');
     add('New page', 'Essay', () => addPageAfter(pageInView()), 'blank page add break', 'newFile');
     add('Outline', 'View', () => toggleOutline(), 'headings navigation contents', 'list');
+    add('Show the tour', 'Help', () => startTour(true), 'guide tutorial help how start basics', 'sparkle');
     add('Undo', 'Edit', () => undo(-1), 'back', 'undo');
     add('Redo', 'Edit', () => undo(1), 'forward', 'redo');
     [['Fit width', 'fit'], ['Fit page', 'page'], ['75%', 0.75 * (96 / 72)], ['100%', 96 / 72], ['125%', 1.25 * (96 / 72)], ['150%', 1.5 * (96 / 72)], ['200%', 2 * (96 / 72)]].forEach(([label, value]) => {
