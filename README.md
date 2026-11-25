@@ -7,18 +7,6 @@ The cover, contents page, page numbers and word count are all done for you.</p>
 
 Made for IB students (EE, IA, TOK), but it works for any long piece of writing.
 
-## Why you'll like it
-
-- ✍️ **Type right on the page.** What you see is exactly the PDF you hand in.
-- 📄 **A proper IB cover**, or design your own.
-- 🧮 **Maths without LaTeX.** Just type `sqrt(x)/2` or `x^2`.
-- 🧪 **Science made easy.** Chemical equations, molecules, circuits, forces, Punnett squares and more.
-- 📊 **Charts, tables, diagrams and real maps**, drawn from what you type.
-- 💼 **Business, economics and computer science diagrams**, from SWOT and supply and demand to UML and truth tables.
-- 📚 **References done for you** in APA, MLA, Harvard, Chicago or IEEE. Switch style with one click.
-- 💾 **Saves by itself** and keeps older versions, so you can always go back. Ctrl+Z works too.
-- 📥 **Bring in your draft** from Word or Google Docs (.docx).
-
 ## Get it
 
 ### Windows 10 / 11
