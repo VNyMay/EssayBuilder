@@ -309,7 +309,7 @@ async function applyResult(result, sent) {
     setTimeout(() => {
       S.glow = null;
     }, 1400);
-    if (TEXT_KINDS.has(S.sel.kind) || isRichText(S.sel)) openEditor(S.sel, S.focusSelectAll !== false);
+    if (TEXT_KINDS.has(S.sel.kind) || isRichText(S.sel) || isProse(S.sel)) openEditor(S.sel, S.focusSelectAll !== false);
     S.focusSelectAll = true;
     scrollToRange(S.sel);
   }
@@ -440,7 +440,7 @@ function layout() {
         addPageAfter(i);
       },
     }));
-    div.classList.toggle('picked', S.pagePick === i);
+    div.classList.toggle('picked', Boolean(S.pagePicks && S.pagePicks.has(i)));
     if (pageRanges(i).length || i > 0 || coverIsOn()) {
       div.append(deleteButton(i));
     }
@@ -577,6 +577,7 @@ function deleteBlocks() {
 }
 
 function paintMultiBar() {
+  spotSoon();
   let bar = $('#multiBar');
   if (!S.multi || !S.multi.size) {
     if (bar) conceal(bar, true);
@@ -689,6 +690,7 @@ function placeOverlays() {
     div.append(tool);
   }
   if (S.edit) positionEditor();
+  spotSoon();
 }
 
 function keep(event) {
@@ -703,7 +705,10 @@ function scrollToRange(range) {
 }
 
 function select(range) {
-  if (S.sel === range && (S.edit || S.panel)) return;
+  if (S.sel === range && (S.edit || S.panel)) {
+    if (!S.edit && S.panel && isProse(range)) openEditor(range);
+    return;
+  }
   closeEditor();
   closePanel();
   S.settingsOpen = false;
@@ -711,7 +716,10 @@ function select(range) {
   unpickPage();
   if (range.kind === 'design' && typeof cvEnterDesign === 'function') return cvEnterDesign(range);
   if (TEXT_KINDS.has(range.kind) || isRichText(range)) openEditor(range);
-  else openPanel(range);
+  else {
+    openPanel(range);
+    if (isProse(range)) openEditor(range);
+  }
   placeOverlays();
 }
 
@@ -757,14 +765,16 @@ function positionEditor() {
   if (ta.parentNode !== div) div.append(ta);
   markEditing(div);
   const style = editorStyle(range);
-  const place = inPlace(range) && ta.classList.contains('rich');
+  const prose = Boolean(S.edit.prose);
+  const place = (inPlace(range) && ta.classList.contains('rich')) || prose;
   const padX = place ? 0 : 14;
   const left = marginPt() * S.scale - padX;
   const width = (S.pages[span.page].w - 2 * marginPt()) * S.scale + 2 * padX;
   ta.classList.toggle('inplace', place);
+  ta.classList.toggle('prose', prose);
   ta.style.left = `${left}px`;
   ta.style.width = `${width}px`;
-  const textTop = span.t !== undefined ? span.t : span.y0;
+  const textTop = prose ? span.y0 : span.t !== undefined ? span.t : span.y0;
   ta.style.top = `${textTop * S.scale}px`;
   ta.style.fontFamily = docFont();
   ta.style.fontSize = `${style.size}px`;
@@ -773,10 +783,11 @@ function positionEditor() {
   ta.style.lineHeight = style.height;
   if (place) {
     const explicit = /^align\s*:/im.test(S.edit.prefix || '');
-    if (!explicit) ta.style.textAlign = String(S.settings.justify || 'yes').toLowerCase() === 'no' ? 'left' : 'justify';
+    if (!explicit) ta.style.textAlign = S.edit.byLine || String(S.settings.justify || 'yes').toLowerCase() === 'no' ? 'left' : 'justify';
     const indent = String(S.settings['paragraph-indent'] || '').trim();
     ta.style.textIndent = indent && !/^(no|none|0)$/i.test(indent) && range.kind === 'para' ? `calc(${parseFloat(indent) || 0} * ${/em$/.test(indent) ? style.size : 1}px)` : '0';
-    ta.style.minHeight = `${style.size * style.height}px`;
+    ta.style.minHeight = `${prose ? Math.max((span.y1 - span.y0) * S.scale, style.size * style.height) : style.size * style.height}px`;
+    if (prose) proseColumns(ta, range, S.edit.model);
   } else {
     ta.style.minHeight = `${style.size * style.height * 2}px`;
   }
@@ -800,6 +811,61 @@ function markEditing(div) {
     if (page !== div) page.classList.remove('editing');
   });
   if (div) div.classList.add('editing');
+  spotSoon();
+}
+
+let spotFrame = 0;
+
+function spotSoon() {
+  cancelAnimationFrame(spotFrame);
+  spotFrame = requestAnimationFrame(drawSpot);
+}
+
+function spotHoles() {
+  const scroll = $('#scroll');
+  const holes = [];
+  const add = (node, pad = 8, left = pad) => {
+    if (!node || !node.isConnected || !node.offsetWidth) return;
+    let x = 0;
+    let y = 0;
+    let el = node;
+    while (el && el !== scroll) {
+      x += el.offsetLeft;
+      y += el.offsetTop;
+      el = el.offsetParent;
+    }
+    if (el !== scroll) return;
+    holes.push([x - left, y - pad, node.offsetWidth + left + pad, node.offsetHeight + 2 * pad]);
+  };
+  const editing = S.edit && !S.edit.cover && S.edit.ta;
+  if (editing) add(S.edit.ta, 8);
+  if (typeof SHEET !== 'undefined' && SHEET.root) add(SHEET.root, 8, 30);
+  if (S.sel && (editing || S.panel)) document.querySelectorAll(`.hit[data-id="${S.sel.id}"]`).forEach((hit) => add(hit, 4, 22));
+  if (S.multi && S.multi.size) document.querySelectorAll('.hit.multi').forEach((hit) => add(hit, 4, 22));
+  return holes;
+}
+
+function drawSpot() {
+  const scroll = $('#scroll');
+  const pages = $('#pages');
+  if (!scroll || !pages) return;
+  let veil = $('#spot');
+  if (!veil) {
+    veil = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    veil.id = 'spot';
+    scroll.append(veil);
+  }
+  const holes = S.pages.length && !document.documentElement.classList.contains('home') ? spotHoles() : [];
+  veil.classList.toggle('on', holes.length > 0);
+  if (!holes.length) return;
+  const bottom = parseFloat(getComputedStyle(scroll).paddingBottom) || 0;
+  const width = Math.max(scroll.clientWidth, pages.offsetLeft + pages.scrollWidth);
+  const height = Math.max(scroll.clientHeight, pages.offsetTop + pages.offsetHeight + bottom);
+  veil.setAttribute('width', width);
+  veil.setAttribute('height', height);
+  veil.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  const cuts = holes.map(([x, y, w, hh]) => `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="8" fill="#000"/>`).join('');
+  veil.innerHTML = `<defs><mask id="spotMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#fff"/>${cuts}</mask></defs><rect class="spot-fill" width="${width}" height="${height}" mask="url(#spotMask)"/>`;
 }
 
 function clearReflow() {
@@ -811,7 +877,7 @@ function reflow(div, span, ta) {
   const spans = S.regions[S.edit.range.id] || [];
   const page = S.pages[span.page];
   const bottom = (page.h - marginPt()) * S.scale;
-  const top = (span.t !== undefined ? span.t : span.y0) * S.scale;
+  const top = parseFloat(ta.style.top) || (span.t !== undefined ? span.t : span.y0) * S.scale;
   const delta = ta.offsetHeight - (S.edit.base || ta.offsetHeight);
   if (spans.length !== 1 || bottom <= top) {
     spans.forEach((other, index) => {
@@ -837,7 +903,7 @@ function fitEditor(ta) {
 
 function openEditor(range, selectAll = false) {
   if (!firstSpan(range)) return;
-  if ((['para', 'heading', 'blank', 'list'].includes(range.kind) || isRichText(range)) && typeof openRich === 'function') return openRich(range, selectAll);
+  if ((['para', 'heading', 'blank', 'list'].includes(range.kind) || isRichText(range) || isProse(range)) && typeof openRich === 'function') return openRich(range, selectAll);
   const ta = h('textarea', { class: 'editor', spellcheck: 'false' });
   ta.value = linesOf(range).join('\n');
   S.edit = { range, ta };
@@ -873,7 +939,7 @@ function closeEditor(silent = false) {
     return;
   }
   const { range, ta, bar } = S.edit;
-  const keepPage = Boolean(S.edit.blank);
+  const keepPage = Boolean(S.edit.blank || S.edit.keep);
   S.edit = null;
   clearReflow();
   markEditing(null);
@@ -888,6 +954,7 @@ function closePanel() {
   if (typeof closeSheet === 'function') closeSheet();
   S.panel = null;
   if (!S.settingsOpen) conceal($('#panel'));
+  spotSoon();
 }
 
 function remove(range) {
@@ -1213,17 +1280,119 @@ function animateRemovePage(pageIndex, page) {
   }, 560);
 }
 
-function pickPage(index) {
-  S.pagePick = index;
+function pickPage(index, how = '') {
+  const had = S.pagePicks || new Set();
+  if (index === null || index === undefined) S.pagePicks = new Set();
+  else if (how === 'range' && S.pagePick !== null && S.pagePick !== undefined) {
+    S.pagePicks = new Set();
+    const [from, to] = [Math.min(S.pagePick, index), Math.max(S.pagePick, index)];
+    for (let i = from; i <= to; i += 1) S.pagePicks.add(i);
+  } else if (how === 'toggle') {
+    S.pagePicks = new Set(had);
+    if (S.pagePicks.has(index)) S.pagePicks.delete(index);
+    else S.pagePicks.add(index);
+  } else S.pagePicks = new Set([index]);
+  if (how !== 'range') S.pagePick = S.pagePicks.size ? index : null;
+  if (S.pagePick !== null && S.pagePick !== undefined && !S.pagePicks.has(S.pagePick)) S.pagePick = [...S.pagePicks][0];
+  if (!S.pagePicks.size) S.pagePick = null;
   S.armed = null;
-  document.querySelectorAll('#pages > .page').forEach((div, i) => div.classList.toggle('picked', i === index));
+  paintPicks();
+}
+
+function paintPicks() {
+  const picks = S.pagePicks || new Set();
+  document.querySelectorAll('#pages > .page').forEach((div, i) => div.classList.toggle('picked', picks.has(i)));
+}
+
+function pickedPages() {
+  return [...(S.pagePicks || [])].sort((a, b) => a - b);
 }
 
 function unpickPage() {
-  if (S.pagePick === null || S.pagePick === undefined) return;
+  if ((S.pagePick === null || S.pagePick === undefined) && !(S.pagePicks && S.pagePicks.size)) return;
   S.pagePick = null;
+  S.pagePicks = new Set();
   S.armed = null;
   document.querySelectorAll('#pages > .page.picked').forEach((div) => div.classList.remove('picked', 'armed'));
+}
+
+function pageRuns(list) {
+  const runs = [];
+  list.forEach((index) => {
+    const last = runs[runs.length - 1];
+    if (last && last[last.length - 1] === index - 1) last.push(index);
+    else runs.push([index]);
+  });
+  return runs;
+}
+
+function runRanges(run) {
+  return S.ranges.filter((range) => {
+    const spans = S.regions[range.id] || [];
+    return spans.length && spans.every((span) => run.includes(span.page));
+  });
+}
+
+function pagesText(list) {
+  const all = lines();
+  return pageRuns(list)
+    .map((run) => {
+      const ranges = runRanges(run).filter((range) => range.kind !== 'pagebreak');
+      if (!ranges.length) return '';
+      const first = leadingRanges(ranges[0]).reverse()[0] || ranges[0];
+      return all.slice(first.start - 1, ranges[ranges.length - 1].end).join('\n');
+    })
+    .filter(Boolean)
+    .join('\n\n:::pagebreak\n\n');
+}
+
+function confirmHeavyPages(list, label) {
+  const key = list.join(',');
+  const weight = list.reduce((sum, index) => sum + pageWeight(index), 0);
+  if (weight <= 30 || (S.armed && S.armed.index === key && performance.now() - S.armed.time < 2500)) {
+    S.armed = null;
+    return true;
+  }
+  S.armed = { index: key, time: performance.now() };
+  list.forEach((index) => {
+    const div = $('#pages').children[index];
+    if (!div) return;
+    div.classList.remove('armed');
+    void div.offsetWidth;
+    div.classList.add('armed');
+  });
+  toast(`These pages have a lot on them. Press ${label} again to remove them.`);
+  return false;
+}
+
+function removePages(list) {
+  if (!list.length) return;
+  if (coverIsOn() && list.includes(0)) {
+    setHeader('cover', 'no');
+    list = list.filter((index) => index !== 0);
+  }
+  const doomed = new Set();
+  pageRuns(list).forEach((run) => {
+    const ranges = runRanges(run);
+    if (!ranges.length) return;
+    let before = S.ranges[S.ranges.indexOf(ranges[0]) - 1];
+    while (before && ['numbering', 'overlay'].includes(before.kind)) {
+      doomed.add(before);
+      before = S.ranges[S.ranges.indexOf(before) - 1];
+    }
+    if (before && before.kind === 'pagebreak') {
+      doomed.add(before);
+      while (ranges.length && ranges[ranges.length - 1].kind === 'pagebreak') ranges.pop();
+    }
+    ranges.forEach((range) => doomed.add(range));
+  });
+  commitHistory();
+  closeEditor(true);
+  closePanel();
+  S.sel = null;
+  [...doomed].sort((a, b) => b.start - a.start).forEach((range) => remove(range));
+  commitHistory();
+  toast('Pages removed. Ctrl+Z brings them back.');
 }
 
 function pageText(index) {
@@ -1251,8 +1420,15 @@ function confirmHeavy(index, label) {
 }
 
 function dropPickedPage(label) {
-  const index = S.pagePick;
-  if (index === null || index === undefined) return;
+  const picked = pickedPages();
+  if (!picked.length) return;
+  if (picked.length > 1) {
+    if (!confirmHeavyPages(picked, label)) return;
+    unpickPage();
+    removePages(picked);
+    return;
+  }
+  const index = picked[0];
   if (!confirmHeavy(index, label)) return;
   unpickPage();
   animateRemovePage(index, $('#pages').children[index]);
@@ -2607,10 +2783,12 @@ function bind() {
     }
     if (margin) {
       const index = [...$('#pages').children].indexOf(sheet);
-      pickPage(index === S.pagePick ? null : index);
+      const how = event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : '';
+      if (!how && S.pagePicks && S.pagePicks.size === 1 && S.pagePicks.has(index)) pickPage(null);
+      else pickPage(index, how);
       return;
     }
-    if (S.pagePick !== null && S.pagePick !== undefined) unpickPage();
+    unpickPage();
   });
   document.addEventListener('mousedown', (event) => {
     if (!event.target.closest('#palette, #insertBtn')) {
@@ -2659,7 +2837,7 @@ function bind() {
     } else if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key) && S.sel && !typing) {
       event.preventDefault();
       move(event.key === 'ArrowUp' ? -1 : 1);
-    } else if (['Delete', 'Backspace'].includes(event.key) && !typing && !S.edit && S.pagePick !== null && S.pagePick !== undefined) {
+    } else if (['Delete', 'Backspace'].includes(event.key) && !typing && !S.edit && pickedPages().length) {
       event.preventDefault();
       dropPickedPage('Delete');
     } else if (event.key === 'Delete' && !typing && S.sel && !TEXT_KINDS.has(S.sel.kind)) {
@@ -2700,79 +2878,134 @@ function bind() {
     }
   }, true);
   const blockClipboard = (event) => {
-    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
-    if (typing || S.edit || !S.sel || (typeof CV !== 'undefined' && CV.mode === 'page')) return false;
+    if ((typeof CV !== 'undefined' && CV.mode === 'page') || !clipRanges().length) return false;
     const selection = window.getSelection();
-    return !selection || selection.isCollapsed;
+    const collapsed = !selection || selection.isCollapsed;
+    if (S.edit) return Boolean(S.edit.rich && !S.edit.cover && S.edit.ta.contains(event.target) && collapsed);
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
+    return !typing && collapsed;
   };
   const pagePicked = (event) => {
     const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
-    return !typing && !S.edit && S.pagePick !== null && S.pagePick !== undefined;
+    return !typing && !S.edit && pickedPages().length > 0;
   };
-  const clipPage = (event) => {
-    const text = pageText(S.pagePick);
+  const clipPages = (event) => {
+    const text = pagesText(pickedPages());
     if (!text) return false;
     S.clip = { text, kind: 'para', page: true };
     event.clipboardData.setData('text/plain', text);
+    event.clipboardData.setData(BLOCK_MIME, JSON.stringify(S.clip));
     return true;
   };
   document.addEventListener('copy', (event) => {
     if (pagePicked(event)) {
       event.preventDefault();
-      if (clipPage(event)) toast('Page copied');
+      const count = pickedPages().length;
+      if (clipPages(event)) toast(count > 1 ? `${count} pages copied` : 'Page copied');
       return;
     }
     if (!blockClipboard(event)) return;
     event.preventDefault();
-    S.clip = { text: linesOf(S.sel).join('\n'), kind: S.sel.kind };
-    event.clipboardData.setData('text/plain', S.clip.text);
-    toast('Block copied');
+    const ranges = clipRanges();
+    writeBlockClip(event, ranges);
+    toast(ranges.length > 1 ? `${ranges.length} blocks copied` : 'Block copied');
   });
   document.addEventListener('cut', (event) => {
     if (pagePicked(event)) {
       event.preventDefault();
-      if (S.pagePick === 0 && coverIsOn()) {
+      const picked = pickedPages();
+      if (picked.length === 1 && picked[0] === 0 && coverIsOn()) {
         unpickPage();
         removePage(0);
         return;
       }
-      if (!confirmHeavy(S.pagePick, 'Ctrl+X')) return;
-      clipPage(event);
-      const index = S.pagePick;
+      if (picked.length === 1) {
+        if (!confirmHeavy(picked[0], 'Ctrl+X')) return;
+        clipPages(event);
+        unpickPage();
+        animateRemovePage(picked[0], $('#pages').children[picked[0]]);
+        return;
+      }
+      if (!confirmHeavyPages(picked, 'Ctrl+X')) return;
+      clipPages(event);
       unpickPage();
-      animateRemovePage(index, $('#pages').children[index]);
+      removePages(picked);
       return;
     }
     if (!blockClipboard(event)) return;
     event.preventDefault();
-    S.clip = { text: linesOf(S.sel).join('\n'), kind: S.sel.kind };
-    event.clipboardData.setData('text/plain', S.clip.text);
+    const ranges = clipRanges();
+    writeBlockClip(event, ranges);
+    if (S.edit) closeEditor(true);
     commitHistory();
-    remove(S.sel);
+    if (ranges.length > 1) deleteBlocks();
+    else remove(ranges[0]);
     commitHistory();
   });
   document.addEventListener('paste', (event) => {
     const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable;
     if (typing || S.edit || !S.pages.length || (typeof CV !== 'undefined' && CV.mode === 'page')) return;
-    if (S.pagePick !== null && S.pagePick !== undefined && !(S.clip && S.clip.page)) S.sel = lastRangeOn(S.pagePick, true);
+    const block = readBlockClip(event);
+    const picked = pickedPages();
+    if (picked.length && !(block && block.page)) S.sel = lastRangeOn(picked[picked.length - 1], true);
     const text = (event.clipboardData.getData('text/plain') || '').replace(/\r/g, '');
-    if (!text.trim()) return;
+    if (!text.trim() && !block) return;
     event.preventDefault();
-    commitHistory();
-    if (S.clip && S.clip.page && text === S.clip.text) {
-      const anchor = S.pagePick !== null && S.pagePick !== undefined ? lastRangeOn(S.pagePick, true) : S.sel || S.ranges[S.ranges.length - 1];
+    if (block && block.page) {
+      commitHistory();
+      const anchor = picked.length ? lastRangeOn(picked[picked.length - 1], true) : S.sel || S.ranges[S.ranges.length - 1];
       const all = lines();
       const at = anchor ? anchor.end : all.length;
-      all.splice(at, 0, '', ':::pagebreak', '', ...S.clip.text.split('\n'));
+      all.splice(at, 0, '', ':::pagebreak', '', ...block.text.split('\n'));
       unpickPage();
       restoreSource(all.join('\n'));
       return;
     }
-    if (S.clip && text === S.clip.text) insertLines(S.clip.text.split('\n'), S.clip.kind);
+    if (block) {
+      pasteBlock(block);
+      return;
+    }
+    const styled = event.clipboardData.getData(INLINE_MIME);
+    commitHistory();
+    if (styled.trim()) insertLines(styled.trim().split('\n'), 'para');
     else insertLines(text.trim().split(/\n\s*\n/).map((part) => part.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n').split('\n'), 'para');
     commitHistory();
   });
   setInterval(() => fetch('/api/ping').catch(() => null), 5000);
+}
+
+const BLOCK_MIME = 'application/x-essay-block';
+
+function clipRanges() {
+  if (S.multi && S.multi.size) return S.ranges.filter((range) => S.multi.has(range.start));
+  return S.sel ? [S.sel] : [];
+}
+
+function writeBlockClip(event, ranges) {
+  const text = ranges.map((range) => linesOf(range).join('\n')).join('\n\n');
+  S.clip = { text, kind: ranges[0].kind };
+  event.clipboardData.setData('text/plain', text);
+  event.clipboardData.setData(BLOCK_MIME, JSON.stringify(S.clip));
+}
+
+function readBlockClip(event) {
+  const raw = event.clipboardData.getData(BLOCK_MIME);
+  if (raw) {
+    try {
+      const clip = JSON.parse(raw);
+      if (clip && clip.text) return clip;
+    } catch (error) {
+      return null;
+    }
+  }
+  const text = (event.clipboardData.getData('text/plain') || '').replace(/\r/g, '');
+  return S.clip && text === S.clip.text ? S.clip : null;
+}
+
+function pasteBlock(clip) {
+  commitHistory();
+  insertLines(clip.text.split('\n'), clip.kind);
+  commitHistory();
 }
 
 async function main() {

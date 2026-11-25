@@ -2718,7 +2718,7 @@ body.page-dragging * {
   border-radius: 6px;
   background: #fff;
   color: #141414;
-  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.5), 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / 0.3);
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.5);
 }
 
 .sheet .sheet-bar {
@@ -2950,14 +2950,40 @@ body.page-dragging * {
   to { opacity: 0; }
 }
 
-.editor.rich.inplace,
-.editor,
-.sheet:not(.below) {
-  animation: spot-in 240ms ease-out both;
+#spot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease-out;
 }
 
-@keyframes spot-in {
-  from { box-shadow: 0 0 0 0 rgb(var(--accent-rgb) / 0), 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / 0); }
+#spot.on {
+  opacity: 1;
+}
+
+#spot .spot-fill {
+  fill: rgb(var(--shadow, 12 31 24) / 0.3);
+}
+
+.editor.rich.prose {
+  padding: 6px 10px;
+  box-sizing: border-box;
+}
+
+.editor.rich .rich-lead {
+  font-weight: 700;
+  margin-right: 0.3em;
+  color: #141414;
+  user-select: none;
+}
+
+.editor.rich .rich-lead.block {
+  display: block;
+  margin: 0 0 0.2em;
+  break-after: avoid;
 }
 
 .sheet.below {

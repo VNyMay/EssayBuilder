@@ -3,9 +3,12 @@ registerKit({
   kinds: [
     {
       kind: 'columns',
+      layout: false,
+      caption: false,
       label: 'Columns',
       icon: 'paragraph',
       bodyTitle: 'Text',
+      argNumber: { label: 'Columns', min: 2, max: 4 },
       hint: 'Text that flows from one column into the next.',
       options: [
         { key: 'gap', label: 'Gap', type: 'text', value: '8mm' },
@@ -23,6 +26,8 @@ registerKit({
     },
     {
       kind: 'abstract',
+      layout: false,
+      caption: false,
       label: 'Abstract',
       icon: 'paragraph',
       bodyTitle: 'Summary',
@@ -32,6 +37,8 @@ registerKit({
     },
     {
       kind: 'tip',
+      layout: false,
+      caption: false,
       label: 'Tip',
       icon: 'paragraph',
       bodyTitle: 'Text',
@@ -40,6 +47,8 @@ registerKit({
     },
     {
       kind: 'warning',
+      layout: false,
+      caption: false,
       label: 'Warning',
       icon: 'paragraph',
       bodyTitle: 'Text',
@@ -48,6 +57,8 @@ registerKit({
     },
     {
       kind: 'info',
+      layout: false,
+      caption: false,
       label: 'Info',
       icon: 'paragraph',
       bodyTitle: 'Text',
@@ -56,6 +67,8 @@ registerKit({
     },
     {
       kind: 'important',
+      layout: false,
+      caption: false,
       label: 'Important',
       icon: 'paragraph',
       bodyTitle: 'Text',
@@ -64,6 +77,8 @@ registerKit({
     },
     {
       kind: 'glossary',
+      layout: false,
+      caption: false,
       label: 'Glossary',
       icon: 'list',
       bodyTitle: 'Terms',
@@ -72,6 +87,8 @@ registerKit({
     },
     {
       kind: 'checklist',
+      layout: false,
+      caption: false,
       label: 'Checklist',
       icon: 'list',
       bodyTitle: 'Items',
@@ -80,6 +97,8 @@ registerKit({
     },
     {
       kind: 'steps',
+      layout: false,
+      caption: false,
       label: 'Steps',
       icon: 'list',
       bodyTitle: 'Steps',

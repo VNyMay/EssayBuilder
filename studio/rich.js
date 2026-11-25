@@ -6,7 +6,8 @@ const UNICODE_MATH = {
   '⊂': ' subset ', '∪': ' cup ', '∩': ' cap ', '≈': ' ~~ ', '°': '^@',
 };
 const SPECIAL_CHARS = /[\\*$[\]`]/g;
-const BREAK = ' ';
+const INLINE_MIME = 'application/x-essay-inline';
+const BREAK =' ';
 const NAMED_SIZES = { tiny: '0.7em', small: '0.85em', large: '1.25em', xl: '1.6em', xxl: '2.2em', huge: '3em' };
 
 let savedRange = null;
@@ -190,6 +191,7 @@ function nodesToMd(parent) {
     }
     if (node.nodeType !== 1) return;
     const tag = node.tagName;
+    if (node.classList.contains('rich-lead')) return;
     if (node.classList.contains('chip')) {
       out += node.dataset.src;
       return;
@@ -238,6 +240,13 @@ function commitRich() {
     return;
   }
   const { ta: el, prefix, tail } = S.edit;
+  if (S.edit.prose) {
+    S.edit.model.body = proseLines(el, S.edit.byLine);
+    setRangeLines(S.edit.range, serializeBlock(S.edit.model));
+    positionEditor();
+    schedule(120);
+    return;
+  }
   const body = S.edit.list ? listMd(el) : bodyMd(el);
   const text = S.edit.blank && !body.trim() ? ':::blank' : `${prefix}${body}${tail}`;
   setRangeLines(S.edit.range, text.split('\n'));
@@ -354,6 +363,17 @@ function blockSize() {
 function blockOption(key, value) {
   const edit = S.edit;
   if (!edit || edit.cover || !edit.range) return false;
+  if (edit.prose) {
+    const all = document.createRange();
+    all.selectNodeContents(edit.ta);
+    const lead = edit.ta.querySelector(':scope > .rich-lead');
+    if (lead) all.setStartAfter(lead);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(all);
+    savedRange = all.cloneRange();
+    return false;
+  }
   const kind = edit.range.kind;
   const shown = value && /\s/.test(value) ? `"${value}"` : value;
   if (kind === 'heading') {
@@ -627,14 +647,14 @@ function mountRichBar() {
       document.execCommand('removeFormat');
       applyFmt(() => []);
     }),
-    h('span', { class: 'fmt-sep' }),
-    tool(icon('alignLeft', 16), 'Align left (Ctrl+L)', () => setAlign('left')),
-    tool(icon('alignCenter', 16), 'Centre (Ctrl+E)', () => setAlign('center')),
-    tool(icon('alignRight', 16), 'Align right (Ctrl+R)', () => setAlign('right')),
-    tool(icon('alignJustify', 16), 'Justify (Ctrl+J)', () => setAlign('justify')),
-    h('span', { class: 'fmt-sep' }),
-    tool(icon('list', 16), 'Bullet list (type - and a space)', () => toggleList(false), 'is-bullets'),
-    tool('<span class="num-glyph">1.</span>', 'Numbered list (type 1. and a space)', () => toggleList(true), 'is-numbers'),
+    h('span', { class: 'fmt-sep para-only' }),
+    tool(icon('alignLeft', 16), 'Align left (Ctrl+L)', () => setAlign('left'), 'para-only'),
+    tool(icon('alignCenter', 16), 'Centre (Ctrl+E)', () => setAlign('center'), 'para-only'),
+    tool(icon('alignRight', 16), 'Align right (Ctrl+R)', () => setAlign('right'), 'para-only'),
+    tool(icon('alignJustify', 16), 'Justify (Ctrl+J)', () => setAlign('justify'), 'para-only'),
+    h('span', { class: 'fmt-sep para-only' }),
+    tool(icon('list', 16), 'Bullet list (type - and a space)', () => toggleList(false), 'is-bullets para-only'),
+    tool('<span class="num-glyph">1.</span>', 'Numbered list (type 1. and a space)', () => toggleList(true), 'is-numbers para-only'),
     h('span', { class: 'fmt-sep' }),
     tool(icon('up', 16), 'Move up', () => move(-1)),
     tool(icon('down', 16), 'Move down', () => move(1)),
@@ -642,6 +662,7 @@ function mountRichBar() {
     tool(icon('trash', 16), 'Delete', () => remove(S.sel), 'danger'),
   );
   if (S.edit.cover) [...bar.children].slice(-5).forEach((node) => node.remove());
+  if (S.edit.prose) bar.querySelectorAll('.para-only').forEach((node) => node.remove());
   if (S.edit.range && S.edit.range.kind === 'heading') bar.prepend(headingTools(tool), h('span', { class: 'fmt-sep' }));
   S.edit.bar = bar;
   el.parentNode.append(bar);
@@ -728,7 +749,7 @@ function richKeys(event) {
   if (key === 'Enter') {
     event.preventDefault();
     document.execCommand('insertLineBreak');
-  } else if (key === '/' && !mod && !event.shiftKey && (!S.edit.ta.textContent.trim() || window.getSelection().toString() === S.edit.ta.textContent)) {
+  } else if (key === '/' && !mod && !event.shiftKey && !S.edit.prose && (!S.edit.ta.textContent.trim() || window.getSelection().toString() === S.edit.ta.textContent)) {
     event.preventDefault();
     openSlash();
   } else if (event.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
@@ -809,12 +830,21 @@ function openRich(range, selectAll) {
   }
   const el = h('div', { class: 'editor rich', contenteditable: 'true', spellcheck: 'false' });
   el.style.setProperty('--pt', `${S.scale}px`);
-  if (range.kind === 'list') {
+  const prose = proseModel(range);
+  const byLine = LINE_KINDS.has(range.kind);
+  if (prose) {
+    prefix = '';
+    tail = '';
+    const lead = proseLead(range, prose);
+    if (lead) el.append(lead);
+    el.append(inlineNodes(proseText(prose, byLine)));
+  } else if (range.kind === 'list') {
     prefix = '';
     tail = '';
     el.append(listDom(listItems(lines)));
   } else el.append(inlineNodes(body));
   S.edit = { range, ta: el, rich: true, prefix, tail, blank, list: range.kind === 'list' };
+  if (prose) Object.assign(S.edit, { prose: true, model: prose, byLine, keep: true, list: false });
   savedRange = null;
   el.style.textAlign = currentAlign();
   el.addEventListener('input', () => {
@@ -834,8 +864,58 @@ function openRich(range, selectAll) {
       if (S.edit && S.edit.ta === el) positionEditor();
     });
   }).observe(el, { childList: true, subtree: true, characterData: true });
+  const copyStyled = (event, cut) => {
+    const selection = window.getSelection();
+    if (!selection.rangeCount || selection.isCollapsed) return;
+    const picked = selection.getRangeAt(0);
+    let content = picked.cloneContents();
+    let node = picked.commonAncestorContainer;
+    if (node.nodeType === 3) node = node.parentNode;
+    while (node && node !== el && el.contains(node)) {
+      const shell = node.cloneNode(false);
+      shell.append(content);
+      content = shell;
+      node = node.parentNode;
+    }
+    const holder = document.createElement('div');
+    holder.append(content);
+    event.preventDefault();
+    event.stopPropagation();
+    event.clipboardData.setData('text/plain', selection.toString());
+    event.clipboardData.setData(INLINE_MIME, nodesToMd(holder));
+    if (cut) document.execCommand('delete');
+  };
+  el.addEventListener('copy', (event) => copyStyled(event, false));
+  el.addEventListener('cut', (event) => copyStyled(event, true));
   el.addEventListener('paste', (event) => {
     event.preventDefault();
+    const block = !S.edit.cover && readBlockClip(event);
+    if (block) {
+      if (block.page) {
+        toast('Pages paste between pages');
+        return;
+      }
+      pasteBlock(block);
+      return;
+    }
+    const styled = event.clipboardData.getData(INLINE_MIME);
+    if (styled) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const frag = inlineNodes(styled.replace(/\\\\\n/g, BREAK).replace(/\n/g, ' '));
+      const last = frag.lastChild;
+      range.insertNode(frag);
+      if (last) {
+        range.setStartAfter(last);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      commitRich();
+      return;
+    }
     const text = (event.clipboardData || window.clipboardData).getData('text/plain').replace(/\r\n?/g, '\n').replace(/[ \t\u00a0]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
     text.split('\n').forEach((part, index) => {
       if (index) document.execCommand('insertLineBreak');
@@ -867,6 +947,8 @@ function openRich(range, selectAll) {
   const selection = window.getSelection();
   const fresh = document.createRange();
   fresh.selectNodeContents(el);
+  const leadNode = el.querySelector(':scope > .rich-lead');
+  if (leadNode) fresh.setStartAfter(leadNode);
   if (!selectAll) fresh.collapse(Boolean(S.caretStart));
   S.caretStart = false;
   selection.removeAllRanges();

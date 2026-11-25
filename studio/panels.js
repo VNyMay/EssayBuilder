@@ -991,7 +991,8 @@ function calloutPanel(model, body, range) {
     });
     body.append(section(null, line('Title', h('div', { class: 'field' }, arg))));
   }
-  body.append(section('Text', bodyArea(model, { label: '', placeholder: 'Write it here', rows: 7 })));
+  if (isProse(range)) body.append(section(null, proseHint()));
+  else body.append(section('Text', bodyArea(model, { label: '', placeholder: 'Write it here', rows: 7 })));
 }
 
 const PANELS = {
