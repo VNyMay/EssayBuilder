@@ -743,17 +743,46 @@ function editorStyle(range) {
   const size = parseFloat(S.settings['font-size']) || 11;
   const zoom = size / 12;
   const first = (linesOf(range)[0] || '').match(/^(#{1,3})\s/);
-  if (range.kind === 'heading' && first) {
-    const level = first[1].length;
-    const points = [20, 14, 12][level - 1] * zoom;
-    return { size: points * S.scale, weight: 700, italic: level === 3, height: 1.3 };
-  }
+  if (range.kind === 'heading' && first) return headingLook(first[1].length, zoom);
   const spacing = parseFloat(S.settings['line-spacing']);
   return { size: size * S.scale, weight: 400, italic: false, height: spacing > 0 ? spacing : 1.8 };
 }
 
+function headingLook(level, zoom) {
+  const set = S.settings;
+  const look = String(set['heading-style'] || 'accent').toLowerCase();
+  let points = [20, 14, 12][level - 1] * zoom;
+  let height = [1.25, 1.35, 1.4][level - 1];
+  let weight = 700;
+  let color = '';
+  let decoration = '';
+  if (look === 'underline' && level < 3) {
+    weight = 400;
+    decoration = 'underline';
+    points = level === 1 ? 17 : 14;
+  } else if (look === 'plain' && level === 1) points = 17;
+  else if (look === 'accent') {
+    color = set.accent || '#1f4e79';
+    if (level === 1) {
+      points = 15;
+      height = 1.3;
+    } else if (level === 2) points = 12.5;
+  }
+  const big = parseFloat(set['heading-size']);
+  if (big && level < 3) points = level === 1 ? big : big * 0.85;
+  const own = parseFloat(set[`h${level}-size`]);
+  if (own && level > 1) points = own;
+  const custom = String(set['heading-color'] || '').trim();
+  if (/^(#[0-9a-f]{3,8}|[a-z]+)$/i.test(custom)) color = custom;
+  const upper = level < 3 && /^(upper|caps|uppercase)$/i.test(String(set['heading-case'] || '').trim());
+  const where = String(set['heading-align'] || '').trim().toLowerCase();
+  const align = level < 3 && ['center', 'centre', 'right'].includes(where) ? (where === 'right' ? 'right' : 'center') : '';
+  const font = String(set['heading-font'] || '').split(',')[0].trim();
+  return { size: points * S.scale, weight, italic: level === 3, height, color, decoration, upper, align, font };
+}
+
 function inPlace(range) {
-  return (range.kind === 'para' || range.kind === 'blank' || range.kind === 'list' || isRichText(range));
+  return (range.kind === 'para' || range.kind === 'heading' || range.kind === 'blank' || range.kind === 'list' || isRichText(range));
 }
 
 function positionEditor() {
@@ -776,14 +805,30 @@ function positionEditor() {
   ta.style.width = `${width}px`;
   const textTop = prose ? span.y0 : span.t !== undefined ? span.t : span.y0;
   ta.style.top = `${textTop * S.scale}px`;
-  ta.style.fontFamily = docFont();
+  ta.style.fontFamily = style.font ? `"${style.font}",${docFont()}` : docFont();
   ta.style.fontSize = `${style.size}px`;
   ta.style.fontWeight = style.weight;
-  ta.style.fontStyle = style.italic ? 'italic' : 'normal';
+  ta.style.fontStyle = style.italic || (prose && ['theorem', 'lemma', 'proposition', 'corollary'].includes(range.kind)) ? 'italic' : 'normal';
   ta.style.lineHeight = style.height;
+  ta.style.color = place && style.color ? style.color : '';
+  ta.style.textDecoration = style.decoration || '';
+  ta.style.textTransform = style.upper ? 'uppercase' : '';
+  ta.style.letterSpacing = style.upper ? '0.04em' : '';
+  if (prose && S.edit.paperFor !== span.page) {
+    const look = paperLook(span);
+    S.edit.paperFor = span.page;
+    ta.style.setProperty('--ed-bg', look.bg);
+    ta.style.background = look.bg;
+    ta.style.borderLeft = look.edge ? `${2 * S.scale}px solid ${look.edge}` : '';
+    if (look.edge) ta.style.setProperty('--ed-edge', look.edge);
+    const boxed = Boolean(look.edge) || look.bg !== '#fff';
+    ta.style.padding = boxed ? `${8 * S.scale}px ${(look.edge ? 12 : 14) * S.scale}px` : '0';
+  }
   if (place) {
     const explicit = /^align\s*:/im.test(S.edit.prefix || '');
-    if (!explicit) ta.style.textAlign = S.edit.byLine || String(S.settings.justify || 'yes').toLowerCase() === 'no' ? 'left' : 'justify';
+    const headAlign = range.kind === 'heading' && ((S.edit.tail || '').match(/align=([a-z]+)/i) || [])[1];
+    if (range.kind === 'heading') ta.style.textAlign = headAlign || style.align || 'left';
+    else if (!explicit) ta.style.textAlign = S.edit.byLine || String(S.settings.justify || 'yes').toLowerCase() === 'no' ? 'left' : 'justify';
     const indent = String(S.settings['paragraph-indent'] || '').trim();
     ta.style.textIndent = indent && !/^(no|none|0)$/i.test(indent) && range.kind === 'para' ? `calc(${parseFloat(indent) || 0} * ${/em$/.test(indent) ? style.size : 1}px)` : '0';
     ta.style.minHeight = `${prose ? Math.max((span.y1 - span.y0) * S.scale, style.size * style.height) : style.size * style.height}px`;
@@ -823,25 +868,26 @@ function spotSoon() {
 
 function spotHoles() {
   const scroll = $('#scroll');
+  const box = scroll.getBoundingClientRect();
   const holes = [];
-  const add = (node, pad = 8, left = pad) => {
-    if (!node || !node.isConnected || !node.offsetWidth) return;
-    let x = 0;
-    let y = 0;
-    let el = node;
-    while (el && el !== scroll) {
-      x += el.offsetLeft;
-      y += el.offsetTop;
-      el = el.offsetParent;
-    }
-    if (el !== scroll) return;
-    holes.push([x - left, y - pad, node.offsetWidth + left + pad, node.offsetHeight + 2 * pad]);
+  const add = (node, pad = 8, left = pad, sharp = false) => {
+    if (!node || !node.isConnected || !scroll.contains(node)) return;
+    const rect = node.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = rect.left - box.left + scroll.scrollLeft;
+    const y = rect.top - box.top + scroll.scrollTop;
+    const scale = node.offsetWidth ? rect.width / node.offsetWidth : 1;
+    const round = (parseFloat(getComputedStyle(node).borderTopLeftRadius) || 0) * scale;
+    holes.push({ x: x - left, y: y - pad, w: rect.width + left + pad, h: rect.height + 2 * pad, r: sharp ? round : Math.max(round, 10), sharp });
   };
   const editing = S.edit && !S.edit.cover && S.edit.ta;
+  const sheet = typeof SHEET !== 'undefined' && SHEET.root;
   if (editing) add(S.edit.ta, 8);
-  if (typeof SHEET !== 'undefined' && SHEET.root) add(SHEET.root, 8, 30);
-  if (S.sel && (editing || S.panel)) document.querySelectorAll(`.hit[data-id="${S.sel.id}"]`).forEach((hit) => add(hit, 4, 22));
+  if (sheet) add(SHEET.root, 8, 30);
+  if (S.sel && (editing || S.panel) && !(sheet && SHEET.mode !== 'below')) document.querySelectorAll(`.hit[data-id="${S.sel.id}"]`).forEach((hit) => add(hit, 4, 22));
   if (S.multi && S.multi.size) document.querySelectorAll('.hit.multi').forEach((hit) => add(hit, 4, 22));
+  if (!holes.length) return holes;
+  document.querySelectorAll('#scroll .fmtbar, #scroll .tool, #scroll .chip-pop, #scroll .grip, #scroll .knob').forEach((node) => add(node, 0, 0, true));
   return holes;
 }
 
@@ -864,8 +910,13 @@ function drawSpot() {
   veil.setAttribute('width', width);
   veil.setAttribute('height', height);
   veil.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  const cuts = holes.map(([x, y, w, hh]) => `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="8" fill="#000"/>`).join('');
-  veil.innerHTML = `<defs><mask id="spotMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#fff"/>${cuts}</mask></defs><rect class="spot-fill" width="${width}" height="${height}" mask="url(#spotMask)"/>`;
+  const cut = (list) => list.map((hole) => {
+    const r = Math.min(hole.r, hole.w / 2, hole.h / 2).toFixed(1);
+    return `<rect x="${hole.x.toFixed(1)}" y="${hole.y.toFixed(1)}" width="${hole.w.toFixed(1)}" height="${hole.h.toFixed(1)}" rx="${r}" ry="${r}" fill="#000"/>`;
+  }).join('');
+  const soft = cut(holes.filter((hole) => !hole.sharp));
+  const sharp = cut(holes.filter((hole) => hole.sharp));
+  veil.innerHTML = `<defs><filter id="spotSoft" filterUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"><feGaussianBlur stdDeviation="5"/></filter><mask id="spotMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#fff"/><g filter="url(#spotSoft)">${soft}</g>${sharp}</mask></defs><rect class="spot-fill" width="${width}" height="${height}" mask="url(#spotMask)"/>`;
 }
 
 function clearReflow() {

@@ -956,6 +956,8 @@ def studio_build(essay, source, output):
             for key in (
                 "font", "font-size", "paper", "margins", "accent", "cover", "contents",
                 "line-spacing", "paragraph-indent", "paragraph-spacing", "justify",
+                "heading-style", "heading-size", "heading-color", "heading-align",
+                "heading-case", "heading-font", "h2-size", "h3-size", "heading-numbers",
             )
         },
         "fontCss": font_css,

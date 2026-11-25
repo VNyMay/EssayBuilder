@@ -2980,10 +2980,34 @@ body.page-dragging * {
   user-select: none;
 }
 
+.editor.rich .rich-lead .lead-title {
+  font-weight: 400;
+}
+
+.editor.rich .rich-lead.num {
+  display: inline;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  box-shadow: none;
+  font-weight: inherit;
+  color: inherit;
+  margin-right: 0.55em;
+}
+
+.editor.rich.prose {
+  border-radius: 0;
+}
+
 .editor.rich .rich-lead.block {
   display: block;
   margin: 0 0 0.2em;
   break-after: avoid;
+  font-size: 0.82em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ed-edge, #141414);
 }
 
 .sheet.below {

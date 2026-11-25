@@ -566,6 +566,7 @@ function openChipPop(node) {
   box.style.left = `${Math.max(rect.left - host.left, 4)}px`;
   box.style.top = `${rect.bottom - host.top + 8}px`;
   chipPop = box;
+  spotSoon();
 }
 
 function splitParagraph() {
@@ -842,7 +843,11 @@ function openRich(range, selectAll) {
     prefix = '';
     tail = '';
     el.append(listDom(listItems(lines)));
-  } else el.append(inlineNodes(body));
+  } else {
+    const number = range.kind === 'heading' && !/(^|\s)(nonumber|unnumbered)(\s|$)/.test(tail) ? headingNumber(range) : '';
+    if (number) el.append(h('span', { class: 'rich-lead num', contenteditable: 'false', text: number }));
+    el.append(inlineNodes(body));
+  }
   S.edit = { range, ta: el, rich: true, prefix, tail, blank, list: range.kind === 'list' };
   if (prose) Object.assign(S.edit, { prose: true, model: prose, byLine, keep: true, list: false });
   savedRange = null;
