@@ -2718,7 +2718,7 @@ body.page-dragging * {
   border-radius: 6px;
   background: #fff;
   color: #141414;
-  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.5);
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.5), 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / var(--spot-a));
 }
 
 .sheet .sheet-bar {
@@ -2950,22 +2950,24 @@ body.page-dragging * {
   to { opacity: 0; }
 }
 
-#spot {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 5;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 160ms ease-out;
+@property --spot-a {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.3;
 }
 
-#spot.on {
-  opacity: 1;
+.editor,
+.sheet:not(.below),
+.hit.focus-in {
+  animation: spot-a 220ms ease-out both;
 }
 
-#spot .spot-fill {
-  fill: rgb(var(--shadow, 12 31 24) / 0.3);
+@keyframes spot-a {
+  from { --spot-a: 0; }
+}
+
+.hit.sel.focus {
+  box-shadow: 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / var(--spot-a));
 }
 
 .editor.rich.prose {

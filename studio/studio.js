@@ -792,7 +792,7 @@ function positionEditor() {
   if (!span) return;
   const div = $('#pages').children[span.page];
   if (ta.parentNode !== div) div.append(ta);
-  markEditing(div);
+  spotSoon();
   const style = editorStyle(range);
   const prose = Boolean(S.edit.prose);
   const place = (inPlace(range) && ta.classList.contains('rich')) || prose;
@@ -837,7 +837,7 @@ function positionEditor() {
     ta.style.minHeight = `${style.size * style.height * 2}px`;
   }
   fitEditor(ta);
-  if (S.edit.base == null) S.edit.base = ta.offsetHeight;
+  if (S.edit.base == null) S.edit.base = ta.offsetHeight / S.scale;
   if (place) {
     ta.style.top = `${textTop * S.scale}px`;
     reflow(div, span, ta);
@@ -856,67 +856,26 @@ function markEditing(div) {
     if (page !== div) page.classList.remove('editing');
   });
   if (div) div.classList.add('editing');
-  spotSoon();
 }
-
-let spotFrame = 0;
 
 function spotSoon() {
-  cancelAnimationFrame(spotFrame);
-  spotFrame = requestAnimationFrame(drawSpot);
-}
-
-function spotHoles() {
-  const scroll = $('#scroll');
-  const box = scroll.getBoundingClientRect();
-  const holes = [];
-  const add = (node, pad = 8, left = pad, sharp = false) => {
-    if (!node || !node.isConnected || !scroll.contains(node)) return;
-    const rect = node.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const x = rect.left - box.left + scroll.scrollLeft;
-    const y = rect.top - box.top + scroll.scrollTop;
-    const scale = node.offsetWidth ? rect.width / node.offsetWidth : 1;
-    const round = (parseFloat(getComputedStyle(node).borderTopLeftRadius) || 0) * scale;
-    holes.push({ x: x - left, y: y - pad, w: rect.width + left + pad, h: rect.height + 2 * pad, r: sharp ? round : Math.max(round, 10), sharp });
-  };
-  const editing = S.edit && !S.edit.cover && S.edit.ta;
-  const sheet = typeof SHEET !== 'undefined' && SHEET.root;
-  if (editing) add(S.edit.ta, 8);
-  if (sheet) add(SHEET.root, 8, 30);
-  if (S.sel && (editing || S.panel) && !(sheet && SHEET.mode !== 'below')) document.querySelectorAll(`.hit[data-id="${S.sel.id}"]`).forEach((hit) => add(hit, 4, 22));
-  if (S.multi && S.multi.size) document.querySelectorAll('.hit.multi').forEach((hit) => add(hit, 4, 22));
-  if (!holes.length) return holes;
-  document.querySelectorAll('#scroll .fmtbar, #scroll .tool, #scroll .chip-pop, #scroll .grip, #scroll .knob').forEach((node) => add(node, 0, 0, true));
-  return holes;
-}
-
-function drawSpot() {
-  const scroll = $('#scroll');
-  const pages = $('#pages');
-  if (!scroll || !pages) return;
-  let veil = $('#spot');
-  if (!veil) {
-    veil = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    veil.id = 'spot';
-    scroll.append(veil);
+  const editor = S.edit && !S.edit.cover && S.edit.ta && S.edit.ta.isConnected ? S.edit.ta : null;
+  const sheet = typeof SHEET !== 'undefined' && SHEET.root && SHEET.mode !== 'below' ? SHEET.root : null;
+  let host = editor || sheet;
+  let hit = null;
+  if (!host && S.sel && S.panel && !(S.multi && S.multi.size)) {
+    hit = document.querySelector(`.hit[data-id="${S.sel.id}"]`);
+    host = hit;
   }
-  const holes = S.pages.length && !document.documentElement.classList.contains('home') ? spotHoles() : [];
-  veil.classList.toggle('on', holes.length > 0);
-  if (!holes.length) return;
-  const bottom = parseFloat(getComputedStyle(scroll).paddingBottom) || 0;
-  const width = Math.max(scroll.clientWidth, pages.offsetLeft + pages.scrollWidth);
-  const height = Math.max(scroll.clientHeight, pages.offsetTop + pages.offsetHeight + bottom);
-  veil.setAttribute('width', width);
-  veil.setAttribute('height', height);
-  veil.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  const cut = (list) => list.map((hole) => {
-    const r = Math.min(hole.r, hole.w / 2, hole.h / 2).toFixed(1);
-    return `<rect x="${hole.x.toFixed(1)}" y="${hole.y.toFixed(1)}" width="${hole.w.toFixed(1)}" height="${hole.h.toFixed(1)}" rx="${r}" ry="${r}" fill="#000"/>`;
-  }).join('');
-  const soft = cut(holes.filter((hole) => !hole.sharp));
-  const sharp = cut(holes.filter((hole) => hole.sharp));
-  veil.innerHTML = `<defs><filter id="spotSoft" filterUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"><feGaussianBlur stdDeviation="5"/></filter><mask id="spotMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#fff"/><g filter="url(#spotSoft)">${soft}</g>${sharp}</mask></defs><rect class="spot-fill" width="${width}" height="${height}" mask="url(#spotMask)"/>`;
+  document.querySelectorAll('.hit.focus').forEach((node) => {
+    if (node !== hit) node.classList.remove('focus', 'focus-in');
+  });
+  if (hit) {
+    hit.classList.add('focus');
+    if (S.spotFor !== S.sel.id) hit.classList.add('focus-in');
+  }
+  S.spotFor = host && S.sel ? S.sel.id : null;
+  markEditing(host ? host.closest('.page') : null);
 }
 
 function clearReflow() {
@@ -929,7 +888,7 @@ function reflow(div, span, ta) {
   const page = S.pages[span.page];
   const bottom = (page.h - marginPt()) * S.scale;
   const top = parseFloat(ta.style.top) || (span.t !== undefined ? span.t : span.y0) * S.scale;
-  const delta = ta.offsetHeight - (S.edit.base || ta.offsetHeight);
+  const delta = ta.offsetHeight - (S.edit.base ? S.edit.base * S.scale : ta.offsetHeight);
   if (spans.length !== 1 || bottom <= top) {
     spans.forEach((other, index) => {
       const sheet = $('#pages').children[other.page];
@@ -993,7 +952,7 @@ function closeEditor(silent = false) {
   const keepPage = Boolean(S.edit.blank || S.edit.keep);
   S.edit = null;
   clearReflow();
-  markEditing(null);
+  spotSoon();
   const empty = !(ta.value !== undefined ? ta.value : ta.textContent).trim();
   ta.remove();
   if (bar) bar.remove();

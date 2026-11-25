@@ -300,7 +300,7 @@ function positionSheet() {
   const div = $('#pages').children[span.page];
   if (SHEET.root.parentNode !== div) div.append(SHEET.root);
   const below = SHEET.mode === 'below';
-  markEditing(div);
+  spotSoon();
   if (!below) div.classList.add('sheeting');
   const page = S.pages[span.page];
   const last = (S.regions[SHEET.range.id] || []).slice(-1)[0] || span;

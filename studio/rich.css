@@ -153,7 +153,7 @@
   background: #fff;
   color: #141414;
   min-height: 0;
-  box-shadow: 0 0 0 6px var(--ed-bg, #fff), 0 0 0 8px rgb(var(--accent-rgb) / 0.55);
+  box-shadow: 0 0 0 6px var(--ed-bg, #fff), 0 0 0 8px rgb(var(--accent-rgb) / 0.55), 0 0 0 200vmax rgb(var(--shadow, 12 31 24) / var(--spot-a));
   word-break: normal;
   overflow-wrap: break-word;
   hyphens: manual;
