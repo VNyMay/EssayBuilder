@@ -91,7 +91,7 @@ def node_modules():
 
 
 def browser():
-    names = ["chrome", "google-chrome", "chromium", "chromium-browser", "msedge"]
+    names = ["chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "msedge", "microsoft-edge", "microsoft-edge-stable"]
     found = [shutil.which(name) for name in names]
     for root in ["ProgramFiles", "ProgramFiles(x86)", "LocalAppData"]:
         base = Path(os.environ.get(root, "/nonexistent"))
@@ -100,7 +100,6 @@ def browser():
     found.append("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
     found.append("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge")
     found.append(Path.home() / "Applications" / "Google Chrome.app" / "Contents" / "MacOS" / "Google Chrome")
-    found.append(runtime.chrome_path())
 
     for path in found:
         if path and Path(path).is_file():
@@ -124,10 +123,4 @@ def ensure():
     try:
         browser()
     except RuntimeError as error:
-        if sys.platform == "win32":
-            sys.exit(str(error))
-        try:
-            if runtime.chrome() is None:
-                sys.exit(f"{error}. Install Chromium with your package manager.")
-        except (OSError, ValueError, StopIteration, KeyError) as failure:
-            sys.exit(f"{error}. Download failed: {failure}")
+        sys.exit(f"{error}. Install Google Chrome, then open Essay Builder again.")

@@ -29,7 +29,6 @@ const $ = (selector, root = document) => root.querySelector(selector);
 
 const ZOOM_STEPS = [25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400];
 let zoomPick = null;
-let lastWheel = 0;
 
 function h(tag, props = {}, ...kids) {
   const node = document.createElement(tag);
@@ -2395,6 +2394,67 @@ function openHelpCard(tile, template) {
   if (palette.contains(card)) card.style.setProperty('--arrow', `${tile.offsetLeft + tile.offsetWidth / 2 - card.offsetLeft}px`);
 }
 
+const PX = 96 / 72;
+let pinch = null;
+
+function pinchWheel(event) {
+  const pages = $('#pages');
+  if (!S.pages.length || !pages.children.length) return;
+  if (!pinch) {
+    clearTimeout(setZoom.timer);
+    const box = pages.getBoundingClientRect();
+    const sheets = [...pages.children];
+    const div = sheets.find((node) => {
+      const rect = node.getBoundingClientRect();
+      return event.clientY >= rect.top - 22 && event.clientY <= rect.bottom + 22;
+    }) || sheets[0];
+    const rect = div.getBoundingClientRect();
+    pinch = {
+      base: S.scale,
+      scale: S.scale,
+      index: sheets.indexOf(div),
+      fx: (event.clientX - rect.left) / rect.width,
+      fy: (event.clientY - rect.top) / rect.height,
+      cx: event.clientX,
+      cy: event.clientY,
+      timer: 0,
+    };
+    pages.style.transition = 'none';
+    pages.style.willChange = 'transform';
+    pages.style.transformOrigin = `${event.clientX - box.left}px ${event.clientY - box.top}px`;
+  }
+  const unit = event.deltaMode === 1 ? 0.04 : event.deltaMode === 2 ? 0.5 : 0.0016;
+  const step = Math.max(-0.35, Math.min(0.35, -event.deltaY * unit));
+  pinch.scale = Math.max(0.25 * PX, Math.min(4 * PX, pinch.scale * Math.exp(step)));
+  pages.style.transform = `scale(${pinch.scale / pinch.base})`;
+  if (zoomPick) zoomPick.setLabel(`${Math.round((pinch.scale / PX) * 100)}%`);
+  clearTimeout(pinch.timer);
+  pinch.timer = setTimeout(endPinch, 160);
+}
+
+function endPinch() {
+  if (!pinch) return;
+  const { scale, index, fx, fy, cx, cy } = pinch;
+  pinch = null;
+  const scroll = $('#scroll');
+  const pages = $('#pages');
+  pages.style.transform = '';
+  pages.style.transformOrigin = '';
+  pages.style.willChange = '';
+  S.zoom = scale;
+  layout();
+  const div = pages.children[index];
+  if (div) {
+    const rect = div.getBoundingClientRect();
+    scroll.scrollLeft += rect.left + fx * rect.width - cx;
+    scroll.scrollTop += rect.top + fy * rect.height - cy;
+  }
+  void pages.offsetWidth;
+  pages.style.transition = '';
+  clearTimeout(setZoom.timer);
+  setZoom.timer = setTimeout(sharpen, 220);
+}
+
 function zoomStep(direction) {
   const now = (S.scale / (96 / 72)) * 100;
   const next = direction > 0 ? ZOOM_STEPS.find((v) => v > now + 0.5) : [...ZOOM_STEPS].reverse().find((v) => v < now - 0.5);
@@ -2764,9 +2824,7 @@ function bind() {
     (event) => {
       if (!event.ctrlKey) return;
       event.preventDefault();
-      if (Date.now() - lastWheel < 90) return;
-      lastWheel = Date.now();
-      zoomStep(event.deltaY < 0 ? 1 : -1);
+      pinchWheel(event);
     },
     { passive: false },
   );

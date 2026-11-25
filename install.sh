@@ -125,6 +125,7 @@ Icon=$ROOT/studio/icon.png
 Terminal=false
 Categories=Office;WordProcessor;Education;
 StartupNotify=true
+StartupWMClass=essay-builder
 DESKTOP
   chmod +x "$ENTRY"
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS" >/dev/null 2>&1 || true
@@ -136,7 +137,7 @@ DESKTOP
   fi
 fi
 
-say "Getting Python, Node.js, Chrome and the libraries (first time only, a few minutes)"
+say "Getting Python, Node.js and the libraries (first time only, a few minutes)"
 ESSAY_BUILDER_SETUP_ONLY=1 /bin/bash "$ROOT/launcher/start.sh"
 
 say "Essay Builder is installed"

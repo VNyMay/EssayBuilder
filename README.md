@@ -21,7 +21,7 @@ Open Terminal, paste this line and press Enter:
 curl -fsSL https://raw.githubusercontent.com/VNyMay/EssayBuilder/main/install.sh | bash
 ```
 
-That's it. It downloads everything it needs by itself (no password needed) and adds **Essay Builder** to your Applications (Mac) or apps menu (Linux), with an icon on your Desktop. The first start takes a few minutes; after that it opens in seconds. Run the same line again any time to update.
+That's it. It downloads everything else it needs by itself. If Google Chrome isn't installed yet, it shows the one command that installs it (or offers to run it for you), waits until Chrome is there, then carries on. It adds **Essay Builder** to your Applications (Mac) or apps menu (Linux), with an icon on your Desktop. The first start takes a few minutes; after that it opens in seconds. Run the same line again any time to update.
 
 <details>
 <summary>Other ways to run it</summary>

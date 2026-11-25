@@ -12,7 +12,6 @@ import zipfile
 from pathlib import Path
 
 NODE_INDEX = "https://nodejs.org/dist/index.json"
-CHROME_INDEX = "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json"
 NOTE = {"text": ""}
 
 
@@ -148,33 +147,3 @@ def node():
         return False
     os.environ["PATH"] = str(folder) + os.pathsep + os.environ.get("PATH", "")
     return True
-
-
-def chrome_key():
-    if sys.platform == "darwin":
-        return f"mac-{arch()}"
-    if sys.platform == "linux" and arch() == "x64":
-        return "linux64"
-    return None
-
-
-def chrome_path():
-    key = chrome_key()
-    if not key:
-        return None
-    folder = home() / "chrome"
-    if key.startswith("mac"):
-        return folder / "Google Chrome for Testing.app" / "Contents" / "MacOS" / "Google Chrome for Testing"
-    return folder / "chrome"
-
-
-def chrome():
-    path = chrome_path()
-    if path is None:
-        return None
-    if path.is_file():
-        return path
-    builds = read_json(CHROME_INDEX)["channels"]["Stable"]["downloads"]["chrome"]
-    url = next(item["url"] for item in builds if item["platform"] == chrome_key())
-    install("chrome", url, "Chrome", unzip)
-    return path if path.is_file() else None

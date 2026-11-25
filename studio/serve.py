@@ -791,9 +791,12 @@ def launch_window(url):
         return False
     profile = setup.runtime.home().parent / "window"
     flags = [f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check"]
+    smooth = [flag for flag in SMOOTH if flag != "--disable-frame-rate-limit"]
+    if sys.platform.startswith("linux"):
+        smooth += ["--ozone-platform-hint=auto", "--class=essay-builder"]
     WINDOWS.append(
         subprocess.Popen(
-            [found, f"--app={url}", "--window-size=1280,860", *flags, *SMOOTH],
+            [found, f"--app={url}", "--window-size=1280,860", *flags, *smooth],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
