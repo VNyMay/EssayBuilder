@@ -120,7 +120,7 @@ function checkRow(item) {
     { class: `check-row ${item.level}${item.line ? ' jump' : ''}`, type: item.line ? 'button' : undefined },
     h('span', { class: 'check-mark', html: mark }),
     h('span', { class: 'check-text', text: item.text }),
-    item.line ? h('span', { class: 'check-line', text: `L${item.line}` }) : null,
+    item.line ? h('span', { class: 'check-line', text: lineWhere(item.line) }) : null,
   );
   if (item.line) row.addEventListener('click', () => checkJump(item.line));
   return row;

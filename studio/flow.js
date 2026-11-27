@@ -775,7 +775,7 @@ function flowDrawView(view, node) {
     view.append(h('span', { class: 'fb-wait-icon', html: icon(flowKindIcon(kind), 22) }), h('span', { text: flowKindLabel(kind) }));
     return;
   }
-  const scale = S.scale;
+  const scale = FLOW_L;
   const margin = marginPt();
   crop.rects.forEach((rect) => {
     const page = S.pages[rect.page] || crop.pages[rect.page];
@@ -948,7 +948,7 @@ function flowResizeStart(event, dom, getPos, side) {
   dom.classList.add('sizing');
   let pct = start;
   const paint = () => {
-    frame.style.width = `${(pct / 100) * full}px`;
+    frame.style.width = `${((pct / 100) * full) / flowZoom()}px`;
     frame.firstChild.textContent = `${Math.round(pct)}%`;
   };
   paint();
@@ -1255,7 +1255,7 @@ function flowNotesPlace() {
   const lost = [];
   notes.forEach((note) => {
     const mark = FLOW.root.querySelector(`.note-mark[data-note="${note.id}"]`);
-    if (mark) placed.push({ note, y: mark.getBoundingClientRect().top - sheetTop });
+    if (mark) placed.push({ note, y: (mark.getBoundingClientRect().top - sheetTop) / flowZoom() });
     else lost.push(note);
   });
   placed.sort((a, b) => a.y - b.y);
@@ -1525,7 +1525,10 @@ function flowMount() {
   FLOW.marks = h('div', { class: 'flow-marks' });
   const host = h('div', { class: 'flow-host' });
   FLOW.sheet.append(FLOW.marks, host);
-  FLOW.root.append(FLOW.front, FLOW.sheet);
+  FLOW.zoomer = h('div', { class: 'flow-zoomer' }, FLOW.front, FLOW.sheet);
+  FLOW.zoomBox = h('div', { class: 'flow-zoom' }, FLOW.zoomer);
+  FLOW.root.append(FLOW.zoomBox);
+  new ResizeObserver(() => flowZoomBox()).observe(FLOW.zoomer);
   $('#scroll').append(FLOW.root);
   FLOW.editor = new TT.Editor({
     element: host,
@@ -1546,6 +1549,13 @@ function flowMount() {
       flowFindCount();
       if (FLOW.outlineSoon) FLOW.outlineSoon();
       if (FLOW.notes && FLOW.notes.length) requestAnimationFrame(flowNotesPlace);
+      if (!FLOW.fitQueued) {
+        FLOW.fitQueued = true;
+        requestAnimationFrame(() => {
+          FLOW.fitQueued = false;
+          flowFitPages();
+        });
+      }
     },
     onSelectionUpdate: () => {
       flowSelectionChanged();
@@ -1706,9 +1716,10 @@ function flowHandleMount() {
     FLOW.handlePos = pos;
     const box = dom.getBoundingClientRect();
     const sheet = FLOW.sheet.getBoundingClientRect();
-    const line = node.type.name === 'figureBlock' ? 18 : Math.min(box.height, parseFloat(getComputedStyle(dom).lineHeight) || 24);
-    FLOW.handle.style.top = `${box.top - sheet.top + line / 2 - 13}px`;
-    FLOW.handle.style.left = `${box.left - sheet.left - 58}px`;
+    const zoom = flowZoom();
+    const line = node.type.name === 'figureBlock' ? 18 : Math.min(box.height / zoom, parseFloat(getComputedStyle(dom).lineHeight) || 24);
+    FLOW.handle.style.top = `${(box.top - sheet.top) / zoom + line / 2 - 13}px`;
+    FLOW.handle.style.left = `${(box.left - sheet.left) / zoom - 58}px`;
     FLOW.handle.classList.add('on');
   });
   FLOW.sheet.addEventListener('mouseleave', () => FLOW.handle.classList.remove('on'));
@@ -2112,26 +2123,42 @@ function flowToolbar() {
     flowFontMenu(font);
   });
   const chain = (fn) => () => fn(FLOW.editor.chain().focus()).run();
+  const fx = h('button', { type: 'button', class: 'fbtn fx', title: 'More text styles: colour, highlight, strikethrough, superscript', html: '<span class="fx-a">Aa</span><span class="fx-bar"></span>' });
+  fx.dataset.cmd = 'fx';
+  fx.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    flowFxMenu(fx);
+  });
+  const align = btn('alignLeft', 'Align', (b) => flowMenu(b, [
+    ['left', 'alignLeft', 'Left', 'Ctrl+Shift+L'],
+    ['center', 'alignCenter', 'Centre', 'Ctrl+Shift+E'],
+    ['right', 'alignRight', 'Right', 'Ctrl+Shift+R'],
+    ['justify', 'alignJustify', 'Justify', 'Ctrl+Shift+J'],
+  ].map(([value, name, label, keys]) => ({ label, icon: name, hint: keys, on: flowCurrentAlign() === value, run: () => flowAlign(value) }))), 'align');
+  const add = h('button', { type: 'button', class: 'fpick addmenu', title: 'Add maths, a citation, a footnote, a table, a chart...', html: `${icon('plus', 16)}<span>Add</span>${icon('chevron', 14)}` });
+  add.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    const block = (label, iconName, extra = {}) => {
+      const found = TEMPLATES.find((item) => item.label === label);
+      return found ? { label, icon: iconName, run: () => flowInsertTemplate(found), ...extra } : null;
+    };
+    flowMenu(add, [
+      { label: 'Maths', icon: 'equation', hint: 'Ctrl+M', run: () => flowNewChip('math') },
+      { label: 'Citation', icon: 'bibliography', hint: '@', run: () => flowCitePop(add) },
+      { label: 'Figure or table reference', icon: 'hash', hint: '@', run: () => flowRefPop(add) },
+      { label: 'Footnote', icon: 'footnote', run: () => flowNewChip('note') },
+      block('Table', 'table', { cls: 'sep-top' }),
+      block('Chart', 'chart'),
+      block('Image', 'image'),
+      { label: 'All blocks…', icon: 'box', hint: '/', run: () => reveal($('#palette')) },
+    ].filter(Boolean));
+  });
   const groups = [
     [btn('undo', 'Undo (Ctrl+Z)', chain((c) => c.undo())), btn('redo', 'Redo (Ctrl+Y)', chain((c) => c.redo()))],
     [style, font, size],
-    [
-      btn('bold', 'Bold (Ctrl+B)', chain((c) => c.toggleBold())),
-      btn('italic', 'Italic (Ctrl+I)', chain((c) => c.toggleItalic())),
-      btn('underline', 'Underline (Ctrl+U)', chain((c) => c.toggleUnderline())),
-      btn('strike', 'Strikethrough', chain((c) => c.toggleStrike())),
-      btn('superscript', 'Superscript (Ctrl+.)', chain((c) => c.toggleSuperscript())),
-      btn('subscript', 'Subscript (Ctrl+,)', chain((c) => c.toggleSubscript())),
-    ],
-    [btn('textColor', 'Text colour', (b) => flowColorMenu(b, 'color')), btn('highlight', 'Highlight', (b) => flowColorMenu(b, 'bg')), btn('link', 'Link', (b) => flowLinkPop(b)), btn('eraser', 'Clear formatting', flowClearFormat)],
-    [
-      btn('alignLeft', 'Left (Ctrl+Shift+L)', () => flowAlign('left'), 'al'),
-      btn('alignCenter', 'Centre (Ctrl+Shift+E)', () => flowAlign('center'), 'al'),
-      btn('alignRight', 'Right (Ctrl+Shift+R)', () => flowAlign('right'), 'al'),
-      btn('alignJustify', 'Justify (Ctrl+Shift+J)', () => flowAlign('justify'), 'al'),
-    ],
-    [btn('list', 'Bullets (Ctrl+Shift+8)', chain((c) => c.toggleBulletList())), btn('listOrdered', 'Numbers (Ctrl+Shift+7)', chain((c) => c.toggleOrderedList())), btn('quote', 'Quote', () => flowSetBlock(flowBlockType() === 'quote' ? 'p' : 'quote'))],
-    [btn('equation', 'Maths (Ctrl+M)', () => flowNewChip('math')), btn('bibliography', 'Cite', (b) => flowCitePop(b)), btn('hash', 'Reference a figure, table or section', (b) => flowRefPop(b)), btn('footnote', 'Footnote', () => flowNewChip('note'))],
+    [btn('bold', 'Bold (Ctrl+B)', chain((c) => c.toggleBold())), btn('italic', 'Italic (Ctrl+I)', chain((c) => c.toggleItalic())), btn('underline', 'Underline (Ctrl+U)', chain((c) => c.toggleUnderline())), fx],
+    [align, btn('list', 'Bullets (Ctrl+Shift+8)', chain((c) => c.toggleBulletList())), btn('listOrdered', 'Numbers (Ctrl+Shift+7)', chain((c) => c.toggleOrderedList())), btn('link', 'Link', (b) => flowLinkPop(b))],
+    [add],
   ];
   groups.forEach((group, index) => {
     if (index) bar.append(sep());
@@ -2139,6 +2166,56 @@ function flowToolbar() {
   });
   bar.append(h('span', { class: 'fgrow' }), btn('note', 'Add a note (Ctrl+Alt+M)', flowNoteAdd), btn('search', 'Find and replace (Ctrl+F)', () => flowFindOpen(false)));
   return bar;
+}
+
+function flowFxMenu(anchor) {
+  flowPopClose();
+  const editor = FLOW.editor;
+  const box = h('div', { class: 'fmenu fxmenu' });
+  const toggle = (name, label, active, run) => {
+    const b = h('button', { type: 'button', class: `fx-toggle${active ? ' on' : ''}`, html: `${icon(name, 16)}<span>${label}</span>` });
+    b.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      run();
+      flowPopClose();
+      flowPaintBar();
+    });
+    return b;
+  };
+  const swatches = (key, list) => {
+    const row = h('div', { class: 'fx-swatches' });
+    const none = h('button', { type: 'button', class: 'swatch none', title: 'None' });
+    none.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      flowPopClose();
+      flowSetFmt(key, '');
+      if (key === 'bg') flowSetFmt('highlight', '');
+    });
+    row.append(none);
+    list.forEach((value) => {
+      const swatch = h('button', { type: 'button', class: 'swatch', title: value });
+      swatch.style.background = value;
+      swatch.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        flowPopClose();
+        flowSetFmt(key, value);
+      });
+      row.append(swatch);
+    });
+    return row;
+  };
+  box.append(
+    h('div', { class: 'fx-row' },
+      toggle('strike', 'Strike', editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run()),
+      toggle('superscript', 'Super', editor.isActive('superscript'), () => editor.chain().focus().toggleSuperscript().run()),
+      toggle('subscript', 'Sub', editor.isActive('subscript'), () => editor.chain().focus().toggleSubscript().run())),
+    h('div', { class: 'fx-label', text: 'Colour' }),
+    swatches('color', FLOW_COLORS),
+    h('div', { class: 'fx-label', text: 'Highlight' }),
+    swatches('bg', FLOW_MARKS),
+    toggle('eraser', 'Clear formatting', false, flowClearFormat),
+  );
+  flowPlacePop(box, anchor);
 }
 
 function flowPaintBar() {
@@ -2157,11 +2234,17 @@ function flowPaintBar() {
     link: editor.isActive('rlink'),
   };
   const align = flowCurrentAlign();
-  const alignName = { left: 'alignLeft', center: 'alignCenter', centre: 'alignCenter', right: 'alignRight', justify: 'alignJustify' }[align];
+  const alignName = { left: 'alignLeft', center: 'alignCenter', centre: 'alignCenter', right: 'alignRight', justify: 'alignJustify' }[align] || 'alignLeft';
   FLOW.bar.querySelectorAll('.fbtn').forEach((b) => {
-    const name = b.dataset.cmd;
-    b.classList.toggle('on', Boolean(active[name]) || (b.classList.contains('al') && name === alignName));
+    b.classList.toggle('on', Boolean(active[b.dataset.cmd]));
   });
+  const alignBtn = FLOW.bar.querySelector('.fbtn.align');
+  if (alignBtn && alignBtn.dataset.shown !== alignName) {
+    alignBtn.dataset.shown = alignName;
+    alignBtn.innerHTML = icon(alignName, 17);
+  }
+  const fxBtn = FLOW.bar.querySelector('.fbtn.fx');
+  if (fxBtn) fxBtn.classList.toggle('on', Boolean(active.strike || active.superscript || active.subscript));
   const type = flowBlockType();
   const style = FLOW_STYLES.find((item) => item.value === type);
   const styleBtn = FLOW.bar.querySelector('.fpick.style');
@@ -2174,8 +2257,7 @@ function flowPaintBar() {
   fontBtn.innerHTML = `<span>${font || (S.settings && S.settings.font) || 'Cambria'}</span>${icon('chevron', 14)}`;
   fontBtn.firstChild.style.fontFamily = `"${font || (S.settings && S.settings.font) || 'Cambria'}"`;
   const color = (fmt.find((item) => item.key === 'color') || {}).value;
-  const colorBtn = FLOW.bar.querySelector('[data-cmd="textColor"]');
-  if (colorBtn) colorBtn.style.setProperty('--swatch', color || 'currentColor');
+  if (fxBtn) fxBtn.style.setProperty('--swatch', color || 'currentColor');
 }
 
 function flowMenu(anchor, items) {
@@ -2183,8 +2265,11 @@ function flowMenu(anchor, items) {
   const menu = h('div', { class: 'fmenu' });
   items.forEach((item) => {
     const row = h('button', { type: 'button', class: `frow${item.on ? ' on' : ''} ${item.cls || ''}` });
-    row.append(h('span', { text: item.label }));
-    if (item.style) row.firstChild.style.cssText = item.style;
+    if (item.icon) row.append(h('span', { class: 'frow-icon small', html: icon(item.icon, 16) }));
+    const text = h('span', { class: 'frow-main', text: item.label });
+    if (item.style) text.style.cssText = item.style;
+    row.append(text);
+    if (item.hint) row.append(h('span', { class: 'frow-hint', text: item.hint }));
     row.addEventListener('mousedown', (event) => {
       event.preventDefault();
       flowPopClose();
@@ -2527,6 +2612,37 @@ function flowLinkPop(anchor) {
   });
 }
 
+const FLOW_ACTIONS = [
+  { id: 'cite', label: 'Citation', icon: 'bibliography', group: 'Text', hint: '@', words: 'cite source reference quote', action: () => flowCitePop(flowCaretAnchor()) },
+  { id: 'footnote', label: 'Footnote', icon: 'footnote', group: 'Text', words: 'note endnote', action: () => flowNewChip('note') },
+];
+
+function flowRunAction(item) {
+  const go = () => {
+    FLOW.editor.commands.focus();
+    item.action();
+  };
+  if (FLOW.on && FLOW.editor) return go();
+  flowShow(true);
+  requestAnimationFrame(() => requestAnimationFrame(go));
+}
+
+function flowPaletteActions() {
+  const head = [...document.querySelectorAll('#palette .palette-group')].find((node) => node.textContent === 'Text');
+  const grid = head && head.nextElementSibling;
+  if (!grid || grid.querySelector('.palette-action')) return;
+  const tint = getComputedStyle(grid.firstElementChild || grid).getPropertyValue('--tint') || '#fbbc04';
+  FLOW_ACTIONS.forEach((item, i) => {
+    const tile = h('button', { class: 'palette-action', html: `${icon(item.icon, 26)}<span>${item.label}</span>`, title: item.label, style: `--tint:${tint};--i:${grid.children.length + i}` });
+    tile.template = item;
+    tile.addEventListener('click', () => {
+      conceal($('#palette'));
+      flowRunAction(item);
+    });
+    grid.append(tile);
+  });
+}
+
 function flowSlashCheck() {
   if (!FLOW.editor) return;
   const { state } = FLOW.editor;
@@ -2548,8 +2664,8 @@ function flowSlashCheck() {
     if (label.split(/[^a-z0-9]+/).some((word) => word.startsWith(low))) return 1;
     return 2;
   };
-  const list = TEMPLATES.map((template, order) => ({ template, order }))
-    .filter(({ template }) => !term || templateMatches(template, term))
+  const list = [...FLOW_ACTIONS, ...TEMPLATES].map((template, order) => ({ template, order }))
+    .filter(({ template }) => !term || templateMatches(template, term) || (template.words && templateMatches({ label: template.words, group: '' }, term)))
     .sort((a, b) => rank(a.template) - rank(b.template) || a.order - b.order)
     .map(({ template }) => template)
     .slice(0, 12);
@@ -2623,6 +2739,7 @@ function flowSlashRun(i) {
   }
   FLOW.editor.view.dispatch(FLOW.editor.state.tr.delete(slash.from, slash.to));
   flowSlashClose(true);
+  if (template.action) return template.action();
   flowInsertTemplate(template);
 }
 
@@ -2777,7 +2894,7 @@ function flowStyle() {
   const margin = marginPt();
   const size = parseFloat(set['font-size']) || 11;
   const zoom = size / 12;
-  const scale = S.scale || 1.2;
+  const scale = FLOW_L;
   const root = FLOW.root;
   root.style.setProperty('--pt', `${scale}px`);
   root.style.setProperty('--u', `${scale * zoom}px`);
@@ -2880,94 +2997,219 @@ function flowAfterRender(sent) {
   flowMarkers();
 }
 
+const FLOW_GAP = 28;
+const FLOW_L = 96 / 72;
+
+function flowZoom() {
+  return (S.scale || FLOW_L) / FLOW_L;
+}
+
+function flowZoomBox() {
+  if (!FLOW.zoomer) return;
+  const zoom = flowZoom();
+  FLOW.zoomer.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
+  FLOW.zoomBox.style.width = `${FLOW.zoomer.offsetWidth * zoom}px`;
+  FLOW.zoomBox.style.height = `${FLOW.zoomer.offsetHeight * zoom}px`;
+}
+
 function flowFrontPages(blocks, rectsOf) {
   const firstBody = rectsOf.reduce((low, rects) => (rects.length ? Math.min(low, rects[0].page) : low), Infinity);
   const count = Number.isFinite(firstBody) ? firstBody : 0;
   FLOW.frontCount = count;
   const items = [];
   const coverOn = typeof coverIsOn === 'function' && coverIsOn();
+  const contentsOn = /^(yes|on|true)$/i.test(String(S.settings.contents || ''));
   for (let i = 0; i < count; i += 1) {
     const page = S.pages[i];
     if (!page) continue;
     const isCover = coverOn && i === 0;
-    const card = h('button', { type: 'button', class: 'flow-page-card', title: isCover ? 'Design the cover' : 'Settings' });
-    const img = h('img', { src: page.url, alt: '', draggable: 'false' });
-    card.append(img, h('span', { text: isCover ? 'Cover' : i === (coverOn ? 1 : 0) && /^(yes|on|true)$/i.test(String(S.settings.contents || '')) ? 'Contents' : `Page ${i + 1}` }));
-    card.addEventListener('click', () => {
+    const label = isCover ? 'Design the cover' : i === (coverOn ? 1 : 0) && contentsOn ? 'Contents settings' : 'Settings';
+    const sheet = h('div', { class: 'flow-page-sheet', title: label });
+    sheet.style.width = `${page.w * FLOW_L}px`;
+    sheet.style.height = `${page.h * FLOW_L}px`;
+    sheet.append(h('img', { src: page.url, alt: '', draggable: 'false' }), h('span', { class: 'flow-page-tag', html: `${icon(isCover ? 'shapes' : 'gear', 14)}<span>${label}</span>` }));
+    sheet.addEventListener('click', () => {
       if (isCover) {
-        if (typeof openCover === 'function') openCover();
+        if (typeof cvEnterPage === 'function') {
+          FLOW.backToWrite = true;
+          flowShow(false);
+          cvEnterPage();
+        } else if (typeof openCover === 'function') openCover();
       } else openSettings();
     });
-    items.push(card);
+    items.push(sheet);
   }
   FLOW.front.replaceChildren(...items);
   FLOW.front.hidden = !items.length;
 }
 
-function flowMarkers() {
-  if (!FLOW.marks) return;
-  FLOW.marks.replaceChildren();
+function flowPageLayout() {
   const rectsOf = FLOW.lastRects;
-  if (!rectsOf) return;
+  if (!rectsOf || !S.pages.length) return null;
   const doc = FLOW.editor.state.doc;
-  const view = FLOW.editor.view;
-  const sheetTop = FLOW.sheet.getBoundingClientRect().top;
   const entries = [];
   let k = 0;
   doc.forEach((node, offset) => {
     if (!flowNodeLines(node).length) return;
-    entries.push({ offset, rects: rectsOf[k] || [] });
+    entries.push({ offset, node, rects: rectsOf[k] || [] });
     k += 1;
   });
-  const total = S.pages.length;
-  const starts = [];
-  const known = new Set();
-  entries.forEach(({ offset, rects }) => {
-    rects.forEach((rect, i) => {
-      if (!known.has(rect.page) && rect.page > FLOW.frontCount && i === 0) starts.push({ offset, page: rect.page });
-      known.add(rect.page);
+  const first = FLOW.frontCount || 0;
+  const breaks = [];
+  const seen = new Set();
+  const ends = {};
+  const tops = {};
+  let firstTop = null;
+  entries.forEach((entry) => {
+    entry.rects.forEach((rect, i) => {
+      ends[rect.page] = Math.max(ends[rect.page] || 0, rect.y1);
+      if (!(rect.page in tops)) tops[rect.page] = rect.y0;
+      if (rect.page === first && firstTop === null) firstTop = rect.y0;
+      if (rect.page > first && !seen.has(rect.page)) breaks.push({ page: rect.page, offset: entry.offset, node: entry.node, part: i, rects: entry.rects, y0: rect.y0 });
+      seen.add(rect.page);
     });
   });
-  const sign = starts.map((item) => `${item.offset}:${item.page}`).join(',');
-  if (sign !== FLOW.pageSign) {
-    FLOW.pageSign = sign;
-    const deco = starts
-      .map((item) => {
-        const node = doc.nodeAt(item.offset);
-        return node ? TT.Decoration.node(item.offset, item.offset + node.nodeSize, { class: 'page-start', 'data-page': String(item.page + 1) }) : null;
-      })
-      .filter(Boolean);
-    view.dispatch(view.state.tr.setMeta(FLOW_PAGES_KEY, TT.DecorationSet.create(doc, deco)).setMeta('addToHistory', false));
-    requestAnimationFrame(flowMarkers);
+  return { first, last: S.pages.length - 1, breaks, ends, tops, firstTop: firstTop === null ? marginPt() : firstTop };
+}
+
+function flowPageTop(page) {
+  let top = 0;
+  for (let p = FLOW.frontCount || 0; p < page; p += 1) top += (S.pages[p] ? S.pages[p].h : 842) * FLOW_L + FLOW_GAP;
+  return top;
+}
+
+function flowSplitPos(item) {
+  const view = FLOW.editor.view;
+  const dom = view.nodeDOM(item.offset);
+  if (!dom || !dom.getBoundingClientRect) return null;
+  const before = item.rects.slice(0, item.part).reduce((sum, rect) => sum + Math.max(0, rect.y1 - rect.y0), 0) * FLOW_L;
+  const top = dom.getBoundingClientRect().top;
+  const zoom = flowZoom();
+  const walker = document.createTreeWalker(dom, NodeFilter.SHOW_TEXT);
+  let best = null;
+  let node = walker.nextNode();
+  while (node) {
+    if (!node.parentElement.closest('.hnum, [contenteditable="false"]')) {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      [...range.getClientRects()].forEach((rect) => {
+        if (!rect.width) return;
+        const line = (rect.top - top) / zoom;
+        if (line >= before - (rect.height / zoom) * 0.45 && (!best || rect.top < best.top - 1 || (Math.abs(rect.top - best.top) <= 1 && rect.left < best.left))) best = rect;
+      });
+    }
+    node = walker.nextNode();
+  }
+  if (!best) return null;
+  const spot = view.posAtCoords({ left: best.left + 1, top: best.top + best.height / 2 });
+  return spot ? spot.pos : null;
+}
+
+function flowMarkers() {
+  if (!FLOW.marks || !FLOW.editor || !FLOW.on) return;
+  const layout = flowPageLayout();
+  if (!layout) {
+    flowFitPages();
     return;
   }
-  const seen = new Set();
-  entries.forEach(({ offset, rects }) => {
-    if (!rects.length) return;
-    const dom = view.nodeDOM(offset);
-    if (!dom || !dom.getBoundingClientRect) return;
-    const box = dom.getBoundingClientRect();
-    const spans = rects.map((rect) => Math.max(0, rect.y1 - rect.y0));
-    const sum = spans.reduce((a, b) => a + b, 0) || 1;
-    let acc = 0;
-    rects.forEach((rect, i) => {
-      if (!seen.has(rect.page) && rect.page > FLOW.frontCount && i === 0) {
-        seen.add(rect.page);
-        acc += spans[i];
+  const view = FLOW.editor.view;
+  const sign = `${layout.breaks.map((item) => `${item.offset}:${item.page}:${item.part}`).join(',')}|${FLOW_L}|${S.pages.length}|${FLOW.editor.state.doc.content.size}`;
+  FLOW.pageInfo = layout;
+  if (sign !== FLOW.pageSign) {
+    FLOW.pageSign = sign;
+    view.dispatch(view.state.tr.setMeta(FLOW_PAGES_KEY, TT.DecorationSet.empty).setMeta('addToHistory', false));
+    const gaps = [];
+    const deco = [];
+    layout.breaks.forEach((item) => {
+      if (item.part === 0 || item.node.type.name === 'figureBlock') {
+        const el = h('div', { class: 'pg-gap', contenteditable: 'false' });
+        gaps.push({ el, page: item.page, y0: item.y0, kind: 'block' });
+        deco.push(TT.Decoration.widget(item.offset, el, { side: -1, key: `pg${item.page}`, ignoreSelection: true }));
         return;
       }
-      if (!seen.has(rect.page) && rect.page > FLOW.frontCount) {
-        seen.add(rect.page);
-        const y = box.top - sheetTop + (acc / sum) * box.height;
-        const mark = h('div', { class: 'flow-mark' }, h('span', { text: `${rect.page + 1}` }));
-        mark.style.top = `${y}px`;
-        mark.title = `Page ${rect.page + 1} of ${total}`;
-        FLOW.marks.append(mark);
-      }
-      seen.add(rect.page);
-      acc += spans[i];
+      const pos = flowSplitPos(item);
+      if (pos === null) return;
+      const el = h('span', { class: 'pg-gap inline', contenteditable: 'false' });
+      gaps.push({ el, page: item.page, y0: item.y0, kind: 'inline' });
+      deco.push(TT.Decoration.widget(pos, el, { side: -1, key: `pg${item.page}i`, ignoreSelection: true }));
     });
+    const end = h('div', { class: 'pg-gap end', contenteditable: 'false' });
+    gaps.push({ el: end, page: layout.last, kind: 'end' });
+    deco.push(TT.Decoration.widget(view.state.doc.content.size, end, { side: 1, key: 'pgend', ignoreSelection: true }));
+    FLOW.gaps = gaps;
+    view.dispatch(view.state.tr.setMeta(FLOW_PAGES_KEY, TT.DecorationSet.create(view.state.doc, deco)).setMeta('addToHistory', false));
+  }
+  flowFitPages();
+}
+
+function flowFitPages() {
+  const info = FLOW.pageInfo;
+  if (!info || !FLOW.gaps || !FLOW.sheet || !FLOW.on) return;
+  const scale = FLOW_L;
+  const zoom = flowZoom();
+  FLOW.sheet.style.paddingTop = `${Math.max(0, info.firstTop) * scale}px`;
+  const base = FLOW.sheet.getBoundingClientRect().top;
+  const sheetTop = () => base;
+  const at = (value) => value / zoom;
+  FLOW.gaps.forEach((gap) => {
+    const el = gap.el;
+    if (!el.isConnected) return;
+    if (gap.kind === 'end') {
+      el.style.height = '0px';
+      const top = at(el.getBoundingClientRect().top - sheetTop());
+      const page = S.pages[gap.page] || S.pages[S.pages.length - 1];
+      el.style.height = `${Math.max(24, flowPageTop(gap.page) + page.h * scale - top)}px`;
+      return;
+    }
+    const target = flowPageTop(gap.page) + gap.y0 * scale;
+    const follower = () => {
+      if (gap.kind === 'inline') return at(el.getBoundingClientRect().bottom - sheetTop());
+      const next = el.nextElementSibling;
+      return at((next ? next.getBoundingClientRect().top : el.getBoundingClientRect().bottom) - sheetTop());
+    };
+    el.style.height = '0px';
+    let height = Math.max(0, target - follower());
+    el.style.height = `${height}px`;
+    const miss = target - follower();
+    if (Math.abs(miss) > 0.5) {
+      height = Math.max(0, height + miss);
+      el.style.height = `${height}px`;
+    }
   });
+  flowPaintPages();
+}
+
+function flowPaintPages() {
+  const info = FLOW.pageInfo;
+  if (!info || !FLOW.marks) return;
+  const scale = FLOW_L;
+  const sheets = [];
+  for (let p = info.first; p <= info.last; p += 1) {
+    const page = S.pages[p];
+    if (!page) continue;
+    const top = flowPageTop(p);
+    const sheet = h('div', { class: 'pg-sheet' });
+    sheet.style.top = `${top}px`;
+    sheet.style.height = `${page.h * scale}px`;
+    sheet.style.width = `${page.w * scale}px`;
+    const head = Math.max(0, ((p in info.tops ? info.tops[p] : marginPt()) - 3) * scale);
+    const foot = (p in info.ends ? info.ends[p] + 3 : page.h - marginPt()) * scale;
+    const paint = (y, height) => {
+      if (height <= 1) return;
+      const band = h('div', { class: 'pg-band' });
+      band.style.top = `${y}px`;
+      band.style.height = `${height}px`;
+      band.style.backgroundImage = `url("${page.url}")`;
+      band.style.backgroundSize = `${page.w * scale}px ${page.h * scale}px`;
+      band.style.backgroundPosition = `0 ${-y}px`;
+      sheet.append(band);
+    };
+    paint(0, head);
+    paint(foot, page.h * scale - foot);
+    sheets.push(sheet);
+  }
+  FLOW.marks.replaceChildren(...sheets);
+  if (FLOW.notes && FLOW.notes.length) flowNotesPlace();
 }
 
 function flowSections() {
@@ -3133,7 +3375,7 @@ const FLOW_SHORTCUTS = [
     ['# then space', 'Heading'], ['- then space', 'Bullet list'], ['1. then space', 'Numbered list'], ['> then space', 'Quote'],
   ]],
   ['Essay', [
-    ['Ctrl+F', 'Find'], ['Ctrl+H', 'Find and replace'], ['Ctrl+K', 'Search actions'], ['Ctrl+Shift+P', 'Pages / Write'], ['Ctrl+Shift+F', 'Focus mode'],
+    ['Ctrl+F', 'Find'], ['Ctrl+H', 'Find and replace'], ['Ctrl+K', 'Search actions'], ['Ctrl+Shift+P', 'Print preview'], ['Ctrl+Shift+F', 'Focus mode'],
     ['Ctrl+= / Ctrl+−', 'Zoom in / out'], ['Ctrl+/', 'Shortcuts'],
   ]],
 ];
@@ -3304,7 +3546,7 @@ function flowStats() {
 const FLOW_TOUR = [
   {
     title: 'This is Essay Builder',
-    text: 'Type like in any document. It becomes a finished PDF with the cover, contents and page numbers done for you.',
+    text: 'You write straight onto the real pages. The cover, contents, page numbers and footnotes are done for you.',
     centre: true,
   },
   {
@@ -3322,8 +3564,8 @@ const FLOW_TOUR = [
   },
   {
     title: 'Cite and refer',
-    text: 'Type @ to cite a source or point to a figure. Numbers and references update by themselves.',
-    points: [() => $('#fbar [data-cmd="bibliography"]'), () => $('#fbar [data-cmd="hash"]')],
+    text: 'Type @ to cite a source or point to a figure, or use Add. Numbers and references update by themselves.',
+    points: [() => $('#fbar .fpick.addmenu')],
   },
   {
     title: 'Change a chart or table',
@@ -3358,17 +3600,13 @@ const FLOW_TOUR = [
     text: 'Counted the way the IB counts, against your word limit. Select text to count just that.',
     points: [() => $('#statusPill .words') || $('#statusPill span:nth-child(2)')],
   },
-  {
-    title: 'See the real pages',
-    text: 'Switch to Pages for the exact PDF. Ctrl+/ shows every shortcut.',
-    points: [() => $('#viewBtn')],
-  },
   { title: 'Hand it in', text: 'It saves by itself as you go. Export when you are ready.', points: [() => $('#export')] },
 ];
 
 function flowShow(on) {
   const scroll = $('#scroll');
   const turn = FLOW.root && FLOW.on !== on && S.name ? scroll.scrollTop / Math.max(1, scroll.scrollHeight - scroll.clientHeight) : null;
+  if (FLOW.on !== on && typeof TOUR !== 'undefined' && TOUR.root) endTour();
   flowMount();
   FLOW.on = on;
   document.documentElement.classList.toggle('flow-mode', on);
@@ -3426,6 +3664,27 @@ function flowFocusStart() {
   $('#scroll').scrollTop = 0;
 }
 
+function flowFitPalette() {
+  const palette = $('#palette');
+  if (!palette || palette.hidden) return;
+  palette.style.maxHeight = '';
+  if (!FLOW.on || !FLOW.bar || FLOW.bar.hidden) return;
+  const box = palette.getBoundingClientRect();
+  const limit = FLOW.bar.getBoundingClientRect().bottom + 12;
+  if (box.top >= limit) return;
+  const zoom = palette.offsetHeight ? box.height / palette.offsetHeight : 1;
+  palette.style.maxHeight = `${Math.max(240, (box.bottom - limit) / (zoom || 1))}px`;
+  palette.style.overflowY = 'auto';
+  const settle = (tries) => {
+    const now = palette.getBoundingClientRect();
+    const over = limit - now.top;
+    if (over <= 1 || tries <= 0) return;
+    palette.style.maxHeight = `${Math.max(240, parseFloat(palette.style.maxHeight) - over / (zoom || 1) - 2)}px`;
+    requestAnimationFrame(() => settle(tries - 1));
+  };
+  setTimeout(() => settle(3), 260);
+}
+
 function flowFitScale() {
   const page = S.pages.length ? S.pages[0] : { w: 595 };
   const scroll = $('#scroll');
@@ -3443,6 +3702,7 @@ function flowWanted() {
 }
 
 function flowHook() {
+  flowPaletteActions();
   const baseLoad = load;
   load = function (state) {
     baseLoad(state);
@@ -3517,15 +3777,26 @@ function flowHook() {
     scroll.scrollTo({ top: scroll.scrollTop + dom.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 140, behavior: 'smooth' });
     FLOW.editor.chain().setTextSelection(entry.offset + 1).focus(null, { scrollIntoView: false }).run();
   };
+  const baseExitPage = cvExitPage;
+  cvExitPage = function () {
+    baseExitPage();
+    if (FLOW.backToWrite) {
+      FLOW.backToWrite = false;
+      flowShow(true);
+    }
+  };
   const baseSelect = select;
   select = function (range) {
     const texty = range && (TEXT_KINDS.has(range.kind) || (typeof isRichText === 'function' && isRichText(range)) || (typeof isProse === 'function' && isProse(range)));
-    if (FLOW.on || !texty || range.kind === 'blank') return baseSelect(range);
+    if (FLOW.on || !texty || range.kind === 'blank' || (typeof CV !== 'undefined' && CV.mode)) return baseSelect(range);
     const start = range.start;
     flowShow(true);
-    toast('Editing in Write view');
     requestAnimationFrame(() => scrollToRange({ start, end: start, kind: 'para' }));
   };
+  $('#pages').addEventListener('mousedown', (event) => {
+    if (event.button !== 0 || (S.edit && S.edit.ta && S.edit.ta.contains && S.edit.ta.contains(event.target))) return;
+    S.clickAt = { x: event.clientX, y: event.clientY, t: Date.now() };
+  }, true);
   const basePosition = positionSheet;
   positionSheet = function () {
     if (!FLOW.on) return basePosition();
@@ -3539,8 +3810,8 @@ function flowHook() {
     SHEET.root.style.width = '';
     SHEET.root.style.minHeight = '';
     SHEET.root.style.fontFamily = docFont();
-    SHEET.root.style.fontSize = `${(parseFloat(S.settings['font-size']) || 12) * 0.92 * S.scale}px`;
-    SHEET.root.style.setProperty('--pt', `${S.scale}px`);
+    SHEET.root.style.fontSize = `${(parseFloat(S.settings['font-size']) || 12) * 0.92 * FLOW_L}px`;
+    SHEET.root.style.setProperty('--pt', `${FLOW_L}px`);
   };
   const baseCloseSheet = closeSheet;
   closeSheet = function () {
@@ -3582,15 +3853,74 @@ function flowHook() {
     if (FLOW.on) {
       S.scale = S.zoom === 'fit' ? flowFitScale() : S.zoom === 'page' ? pageScale() : S.zoom;
       if (zoomPick) zoomPick.setLabel(`${Math.round((S.scale / (96 / 72)) * 100)}%`);
-      flowStyle();
-      FLOW.root.querySelectorAll('.fb').forEach((dom) => dom.flowRepaint && dom.flowRepaint());
-      requestAnimationFrame(() => {
-        flowMarkers();
-        flowNotesPlace();
-      });
+      flowZoomBox();
+      if (!FLOW.styled) {
+        FLOW.styled = true;
+        flowStyle();
+      }
       return;
     }
     baseLayout();
+  };
+  const zoomAt = (scale, x, y) => {
+    const scroll = $('#scroll');
+    const before = FLOW.zoomer.getBoundingClientRect();
+    const old = flowZoom();
+    const lx = (x - before.left) / old;
+    const ly = (y - before.top) / old;
+    S.zoom = scale;
+    S.scale = scale;
+    flowZoomBox();
+    const after = FLOW.zoomer.getBoundingClientRect();
+    const now = flowZoom();
+    scroll.scrollLeft += after.left + lx * now - x;
+    scroll.scrollTop += after.top + ly * now - y;
+    if (zoomPick) zoomPick.setLabel(`${Math.round((scale / PX) * 100)}%`);
+    clearTimeout(FLOW.sharpTimer);
+    FLOW.sharpTimer = setTimeout(async () => {
+      const dpi = S.dpi;
+      await sharpen();
+      if (S.dpi === dpi || !FLOW.on) return;
+      flowPaintPages();
+      FLOW.root.querySelectorAll('.fb').forEach((dom) => dom.flowRepaint && dom.flowRepaint());
+      FLOW.front.querySelectorAll('img').forEach((img, index) => {
+        if (S.pages[index] && img.getAttribute('src') !== S.pages[index].url) img.src = S.pages[index].url;
+      });
+    }, 400);
+  };
+  const basePinch = pinchWheel;
+  pinchWheel = function (event) {
+    if (!FLOW.on || !FLOW.zoomer) return basePinch(event);
+    cancelAnimationFrame(FLOW.zoomAnim);
+    const unit = event.deltaMode === 1 ? 0.04 : event.deltaMode === 2 ? 0.5 : 0.0016;
+    const step = Math.max(-0.35, Math.min(0.35, -event.deltaY * unit));
+    const next = Math.max(0.25 * PX, Math.min(4 * PX, (S.scale || PX) * Math.exp(step)));
+    zoomAt(next, event.clientX, event.clientY);
+  };
+  const baseSetZoom = setZoom;
+  setZoom = function (value) {
+    if (!FLOW.on || !FLOW.zoomer) return baseSetZoom(value);
+    const scroll = $('#scroll');
+    const box = scroll.getBoundingClientRect();
+    const from = S.scale || PX;
+    S.zoom = value;
+    const to = value === 'fit' ? flowFitScale() : value === 'page' ? pageScale() : value;
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    cancelAnimationFrame(FLOW.zoomAnim);
+    const start = performance.now();
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const tick = (time) => {
+      const t = still ? 1 : Math.min(1, (time - start) / 220);
+      const ease = 1 - Math.pow(1 - t, 3);
+      zoomAt(from + (to - from) * ease, x, y);
+      if (t < 1) FLOW.zoomAnim = requestAnimationFrame(tick);
+      else {
+        S.zoom = value;
+        if (FLOW.editor) FLOW.editor.commands.focus(null, { scrollIntoView: false });
+      }
+    };
+    FLOW.zoomAnim = requestAnimationFrame(tick);
   };
   let sideTimer = 0;
   const sideChanged = () => {
@@ -3608,6 +3938,11 @@ function flowHook() {
     if (records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node.id === 'checkSheet'))) sideChanged();
   }).observe(document.body, { childList: true });
   FLOW.sideChanged = sideChanged;
+  const palette = $('#palette');
+  if (palette) {
+    new MutationObserver(() => requestAnimationFrame(flowFitPalette)).observe(palette, { attributes: true, attributeFilter: ['hidden'] });
+    window.addEventListener('resize', () => requestAnimationFrame(flowFitPalette));
+  }
   const baseHome = goHome;
   goHome = async function () {
     flowSlashClose();
@@ -3665,7 +4000,7 @@ function flowHook() {
     if (open) {
       add('Find and replace', 'Edit', () => flowFindOpen(true), 'search replace swap ctrl h', 'search');
       add('Focus mode', 'View', () => flowFocusMode(), 'zen distraction free typewriter', 'eye');
-      add(FLOW.on ? 'Pages view' : 'Write view', 'View', () => flowShow(!FLOW.on), 'print preview layout exact pdf', 'page');
+      add(FLOW.on ? 'Print preview' : 'Back to writing', 'View', () => flowShow(!FLOW.on), 'pages view layout exact pdf image', 'page');
     }
     return items;
   };

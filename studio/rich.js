@@ -576,7 +576,7 @@ function openChipPop(node) {
 function splitParagraph() {
   const { ta: el, range, prefix, tail } = S.edit;
   const current = currentRange();
-  if (!current) return;
+  if (!current) return false;
   const before = document.createRange();
   before.selectNodeContents(el);
   before.setEnd(current.startContainer, current.startOffset);
@@ -588,10 +588,11 @@ function splitParagraph() {
   const head = bodyMd(holder);
   holder.replaceChildren(after.cloneContents());
   const rest = bodyMd(holder);
-  if (!head.trim()) return;
+  if (!head.trim()) return false;
   const lines = `${prefix}${head}${tail}`.split('\n');
   const fresh = rest.trim() ? rest : 'New paragraph.';
   const out = [...lines, '', ...fresh.split('\n')];
+  S.clickAt = null;
   closeEditor(true);
   setRangeLines(range, out);
   S.pendingStart = range.start + lines.length + 1;
@@ -600,6 +601,96 @@ function splitParagraph() {
   S.caretStart = Boolean(rest.trim());
   lockHits();
   schedule(120);
+  return true;
+}
+
+function caretAtStart(el) {
+  const current = currentRange();
+  if (!current || !current.collapsed) return false;
+  const probe = document.createRange();
+  probe.selectNodeContents(el);
+  const lead = el.querySelector(':scope > .rich-lead');
+  if (lead) probe.setStartAfter(lead);
+  probe.setEnd(current.startContainer, current.startOffset);
+  return !probe.toString().replace(/​/g, '').length;
+}
+
+function caretEdgeLine(el, down) {
+  const current = currentRange();
+  if (!current || !current.collapsed) return false;
+  const rects = current.getClientRects();
+  const spot = rects.length ? rects[0] : current.startContainer.nodeType === 1 ? current.startContainer.getBoundingClientRect() : null;
+  if (!spot) return false;
+  const box = el.getBoundingClientRect();
+  const line = parseFloat(getComputedStyle(el).lineHeight) || spot.height || 20;
+  return down ? spot.bottom > box.bottom - line * 0.75 : spot.top < box.top + line * 0.75;
+}
+
+function textNeighbour(range, step) {
+  let index = S.ranges.indexOf(range) + step;
+  while (index >= 0 && index < S.ranges.length) {
+    const next = S.ranges[index];
+    if ((TEXT_KINDS.has(next.kind) && next.kind !== 'blank') || isRichText(next)) return next;
+    index += step;
+  }
+  return null;
+}
+
+function moveAcross(step) {
+  const next = textNeighbour(S.edit.range, step);
+  if (!next) return false;
+  S.clickAt = null;
+  closeEditor(true);
+  S.caretStart = step > 0;
+  select(next);
+  scrollToRange(next);
+  return true;
+}
+
+function mergeBackward() {
+  const { range, prefix } = S.edit;
+  if (range.kind !== 'para' || prefix) return false;
+  const index = S.ranges.indexOf(range);
+  const prev = S.ranges[index - 1];
+  if (!prev || prev.kind !== 'para') return false;
+  commitRich();
+  const all = lines();
+  const above = all.slice(prev.start - 1, prev.end);
+  const here = all.slice(range.start - 1, range.end);
+  const shown = document.createElement('div');
+  shown.append(inlineNodes(above.join(' ').replace(/\\\\$/, '').trim()));
+  const chars = shown.textContent.length + 1;
+  const merged = [...above.slice(0, -1), `${above[above.length - 1].replace(/\s+$/, '')} ${here[0].trim()}`, ...here.slice(1)];
+  S.clickAt = null;
+  closeEditor(true);
+  all.splice(prev.start - 1, range.end - prev.start + 1, ...merged);
+  S.source = all.join('\n');
+  S.pendingStart = prev.start;
+  S.focusNew = true;
+  S.focusSelectAll = false;
+  S.caretChars = chars;
+  lockHits();
+  schedule(120);
+  return true;
+}
+
+function caretToChar(el, count) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let left = count;
+  let node = walker.nextNode();
+  while (node) {
+    if (!node.parentElement.closest('.rich-lead, .chip')) {
+      if (node.nodeValue.length >= left) {
+        const spot = document.createRange();
+        spot.setStart(node, left);
+        spot.collapse(true);
+        return spot;
+      }
+      left -= node.nodeValue.length;
+    }
+    node = walker.nextNode();
+  }
+  return null;
 }
 
 function mountRichBar() {
@@ -751,9 +842,15 @@ function richKeys(event) {
     return openInline();
   }
   if (S.edit && S.edit.list && !mod && (key === 'Tab' || key === 'Enter') && listKeys(event)) return;
+  const plain = S.edit && !S.edit.cover && !S.edit.prose && !S.edit.list;
   if (key === 'Enter') {
     event.preventDefault();
+    if (plain && !event.shiftKey && !mod && splitParagraph()) return;
     document.execCommand('insertLineBreak');
+  } else if (key === 'Backspace' && plain && !mod && !event.shiftKey && caretAtStart(S.edit.ta) && mergeBackward()) {
+    event.preventDefault();
+  } else if ((key === 'ArrowDown' || key === 'ArrowUp') && plain && !mod && !event.shiftKey && !event.altKey && caretEdgeLine(S.edit.ta, key === 'ArrowDown') && moveAcross(key === 'ArrowDown' ? 1 : -1)) {
+    event.preventDefault();
   } else if (key === '/' && !mod && !event.shiftKey && !S.edit.prose && (!S.edit.ta.textContent.trim() || window.getSelection().toString() === S.edit.ta.textContent)) {
     event.preventDefault();
     openSlash();
@@ -963,6 +1060,24 @@ function openRich(range, selectAll) {
   selection.removeAllRanges();
   selection.addRange(fresh);
   savedRange = fresh.cloneRange();
+  const click = S.clickAt;
+  const chars = S.caretChars;
+  S.clickAt = null;
+  S.caretChars = null;
+  if (selectAll) return;
+  requestAnimationFrame(() => {
+    let spot = null;
+    if (chars != null) spot = caretToChar(el, chars);
+    else if (click && Date.now() - click.t < 1500 && document.caretRangeFromPoint) {
+      const found = document.caretRangeFromPoint(click.x, click.y);
+      if (found && el.contains(found.startContainer)) spot = found;
+    }
+    if (!spot || !S.edit || S.edit.ta !== el) return;
+    const live = window.getSelection();
+    live.removeAllRanges();
+    live.addRange(spot);
+    savedRange = spot.cloneRange();
+  });
 }
 
 function trackSelection() {

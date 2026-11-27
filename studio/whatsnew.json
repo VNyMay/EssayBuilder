@@ -1,12 +1,12 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "items": [
-    ["Write view", "Type like a normal document. Enter, Backspace, arrows and selection work across the whole essay."],
-    ["Templates", "Start an Extended Essay, TOK essay, IA or report in one click."],
-    ["Check", "Word limit, missing captions, uncited sources and the IB criteria before you hand in."],
-    ["Sources", "Paste a DOI, ISBN or link and the reference fills itself in."],
-    ["Version history", "See what changed, name versions and restore any of them."],
-    ["Word export", "Hand in a .docx when your teacher asks for one."],
-    ["Writing tools", "Find and replace, notes in the margin, outline with word counts, focus mode and goals."]
+    ["Real pages while you write", "Write view now shows your actual pages, with the same breaks, headers and footers as your PDF."],
+    ["Smooth zoom", "Zoom in and out of Write view as smoothly as the page view, with Ctrl and + or -, or a pinch."],
+    ["Simpler toolbar", "One Add button for maths, citations, footnotes, tables, charts and pictures."],
+    ["Footnotes and citations everywhere", "Find them in Add, in the Insert panel and by typing /footnote or /cite."],
+    ["Fewer dead ends", "The cover designer and print preview take you back to where you were writing."],
+    ["Friendlier checks", "Problems show the section they are in, and charts with a wrong column still build."],
+    ["Fair word count", "Footnotes no longer count toward your words, like the IB rules."]
   ]
 }

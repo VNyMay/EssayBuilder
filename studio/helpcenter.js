@@ -1,12 +1,13 @@
 const HELP_QUESTIONS = [
   ['How is my word count worked out?', 'Like the IB: only your main text. The cover, contents, captions, tables, footnotes, references and appendices are not counted. Click the word count for more.'],
-  ['How do I cite a source?', 'Type @ and pick it, or press Cite in the toolbar. To add a new one, paste a DOI, ISBN or link into Add source.'],
-  ['How do I add a chart, table or picture?', 'Type / on an empty line or press Insert. You can also drag a picture onto the page.'],
+  ['How do I cite a source?', 'Type @ and pick the source, or press Add in the toolbar and choose Citation. To add a new source, press Add source in that list and paste a DOI, ISBN or link.'],
+  ['How do I add a chart, table or picture?', 'Press Add in the toolbar, or type / on an empty line. You can also drag a picture onto the page.'],
   ['How do I change a chart or table?', 'Click it. Tables are edited right on the page, everything else in the panel on the right.'],
   ['How do I change fonts, margins or the cover?', 'Settings changes the whole essay. Cover designs the title page.'],
+  ['How do I add a footnote?', 'Press Add in the toolbar and choose Footnote, or type /footnote. Footnotes do not count toward your words.'],
   ['Can I get an older version back?', 'Click Saved at the bottom left. Every version is kept and you can restore any of them.'],
   ['How do I hand in a Word file?', 'Use the arrow next to Export PDF and pick Word document.'],
-  ['Why does the PDF look a little different?', 'Write view is for writing. Pages shows the exact PDF, page by page.'],
+  ['Is what I see what I hand in?', 'Yes. The pages you write on are the pages of your PDF, with the same breaks, page numbers and footnotes. They settle a moment after you stop typing.'],
   ['Is my work saved?', 'Yes, as you type. Nothing is lost if the app closes.'],
 ];
 

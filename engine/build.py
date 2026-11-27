@@ -73,11 +73,22 @@ def legacy_code(src, folder):
 
 
 def word_count(src):
-    notes = NOTE_PAGES.search(src)
-    if notes:
-        src = src.replace(notes.group(0), "")
-    words = body_words(src)
-    return words + (body_words(notes.group(0)) if notes else 0)
+    return body_words(NOTE_PAGES.sub(" ", src))
+
+
+def drop_notes(body):
+    while (start := body.find('<div class="notes">')) >= 0:
+        depth, at = 0, start
+        for tag in re.finditer(r"<(/?)div\b", body[start:]):
+            depth += -1 if tag.group(1) else 1
+            if depth == 0:
+                at = start + tag.end()
+                break
+        else:
+            at = len(body)
+        end = body.find(">", at)
+        body = body[:start] + " " + body[end + 1 if end >= 0 else len(body):]
+    return body
 
 
 def body_words(src):
@@ -85,7 +96,9 @@ def body_words(src):
         body = src.split("<!--WC-START-->")[1].split("<!--WC-END-->")[0]
     else:
         body = src.split("<body", 1)[-1]
+    body = drop_notes(body)
     for pattern in [
+        r'<sup class="fnr"[^>]*>[\s\S]*?</sup>',
         r"<!--cite-->[\s\S]*?<!--/cite-->",
         r"<(table|figure|nav|style|script|svg)\b[\s\S]*?</\1>",
         r'<(div|p) class="(?:cap|src)[^"]*">[\s\S]*?</\1>',

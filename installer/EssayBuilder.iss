@@ -1,5 +1,5 @@
 #define AppName "Essay Builder"
-#define AppVersion "1.1.0"
+#define AppVersion "1.2.0"
 
 [Setup]
 AppId={{B7E3A1D2-4C58-4F0B-9A7E-5D2C6F1E8A34}

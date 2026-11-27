@@ -1827,21 +1827,20 @@ class Compiler(*KITS):
                 return lookup[key]
             if key.isdigit() and 1 <= int(key) <= len(header):
                 return int(key) - 1
-            self.report.error(where, f"chart column '{name}' not found{suggest(key, lookup)}; columns are: {', '.join(header)}")
+            self.report.warn(where, f"chart column '{name}' is not in the data{suggest(key, lookup)}, so another column was used. Columns: {', '.join(header)}")
             return None
 
         xi = column(opts.get("x") or "1")
         if xi is None:
-            return None
+            xi = 0
         ys = []
         if opts.get("y"):
             for part in re.split(r"\s*,\s*", opts.get("y")):
                 name, _, label = part.partition("=")
                 idx = column(name)
-                if idx is None:
-                    return None
-                ys.append((idx, label.strip() or header[idx]))
-        else:
+                if idx is not None:
+                    ys.append((idx, label.strip() or header[idx]))
+        if not ys:
             for i, h in enumerate(header):
                 if i != xi:
                     values = [to_float(r[i]) for r in rows[1:] if i < len(r) and r[i].strip()]

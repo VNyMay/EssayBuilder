@@ -79,7 +79,7 @@ function toast(text, bad = false, actions = []) {
 function setStatus(kind) {
   const node = $('#status');
   node.className = kind === 'busy' ? 'busy' : kind === 'bad' ? 'bad' : '';
-  node.textContent = kind === 'busy' ? 'Saving' : kind === 'bad' ? 'Blocked' : 'Saved';
+  node.textContent = kind === 'busy' ? 'Saving' : kind === 'bad' ? 'Fix needed' : 'Saved';
   if (kind === 'ok') S.savedAt = new Date();
   updatePill(kind);
 }
@@ -92,7 +92,7 @@ function updatePill(kind) {
   if (!open) return;
   const parts = [];
   const state = kind || (S.dirty ? 'busy' : 'ok');
-  parts.push(state === 'busy' ? 'Saving' : state === 'bad' ? 'Blocked' : S.savedAt ? `Saved ${S.savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Saved');
+  parts.push(state === 'busy' ? 'Saving' : state === 'bad' ? 'Fix needed' : S.savedAt ? `Saved ${S.savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Saved');
   const limit = parseInt(String(headerValue('word-limit') || (S.settings && S.settings['word-limit']) || '').replace(/[^\d]/g, ''), 10) || 0;
   const words = Number(S.words) || 0;
   const picked = typeof flowSelectedWords === 'function' ? flowSelectedWords() : 0;
@@ -327,7 +327,7 @@ async function applyResult(result, sent) {
     if (S.sel) S.edit.range = S.sel;
     else closeEditor(true);
   }
-  if (S.panel) {
+  if (S.panel && !(S.panel.range && S.panel.range.uid)) {
     if (S.sel) S.panel.range = S.sel;
     else closePanel();
   }
@@ -1794,7 +1794,7 @@ const SETTING_FIELDS = [
   { key: 'font', label: 'Font', spec: 'font' },
   { key: 'font-size', label: 'Font size', spec: ['10', '10.5', '11', '11.5', '12', '13', '14'] },
   { key: 'paper', label: 'Paper', spec: ['A4', 'Letter', 'A5', 'Legal'] },
-  { key: 'margins', label: 'Margins', spec: 't' },
+  { key: 'margins', label: 'Margins (mm)', spec: 't' },
   { key: 'accent', label: 'Accent', spec: 'c' },
   { key: 'cover', label: 'Cover', spec: 'y' },
   { key: 'embed-project', label: 'Editable PDF', spec: 'y' },
@@ -2030,6 +2030,14 @@ async function settle() {
   }
 }
 
+function lineWhere(line) {
+  if (!line) return '';
+  if (S.front && line >= S.front[0] && line <= S.front[1]) return 'Settings';
+  const before = headingList().filter((item) => item.range.start <= line).pop();
+  const text = before ? before.text : 'Beginning';
+  return text.length > 24 ? `${text.slice(0, 23)}…` : text;
+}
+
 function headingList() {
   return S.ranges
     .filter((range) => range.kind === 'heading')
@@ -2247,6 +2255,7 @@ async function exportAs(kind) {
   }
   S.busyExport = true;
   setStatus('busy');
+  toast(kind === 'docx' ? 'Making your Word file…' : 'Making your PDF…');
   await settle();
   const answer = await api(format.route).catch((error) => ({ error: String(error) }));
   S.busyExport = false;
@@ -2306,7 +2315,7 @@ function openIssues() {
           },
         },
         h('span', { class: `dot ${item.level === 'error' ? 'error' : ''}` }),
-        h('span', { class: 'line', text: item.line ? `L${item.line}` : '' }),
+        h('span', { class: 'line', text: lineWhere(item.line) }),
         h('span', { text: item.text }),
       ),
     ),

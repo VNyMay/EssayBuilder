@@ -338,6 +338,7 @@ const TEMPLATES = [
 ];
 
 const ICONS = {
+  footnote: 'M4 8h10M4 12h10M4 16h6M18 4v5M16.5 5.5 18 4M4 20h16',
   heading: 'M6 4v16M18 4v16M6 12h12',
   paragraph: 'M4 6h16M4 10h16M4 14h16M4 18h10',
   list: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01',
