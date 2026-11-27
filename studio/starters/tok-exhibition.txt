@@ -1,0 +1,54 @@
+title: TOK exhibition
+look: document
+page-numbers: no
+citations: mla
+word-limit: 950
+---
+
+:::text
+align: center
+style: italic
+---
+IA prompt: copy one of the 35 prompts here, word for word\\
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Object 1: Name of the object
+
+Add a photo of the object, then describe it and its specific real-world context: where it comes from, who made or used it, and when.
+
+Explain how this object links to your chosen IA prompt, using TOK concepts and evidence [@source2024].
+
+Justify why it earns its place in the exhibition and what it adds that the other two objects do not.
+
+# Object 2: Name of the object
+
+Add a photo of the object, then describe it and its specific real-world context.
+
+Explain how this object links to your chosen IA prompt.
+
+Justify why it earns its place in the exhibition.
+
+# Object 3: Name of the object
+
+Add a photo of the object, then describe it and its specific real-world context.
+
+Explain how this object links to your chosen IA prompt.
+
+Justify why it earns its place in the exhibition.
+
+# Works Cited
+
+:::sources
+@source2024
+type: website
+author: Surname, Firstname
+year: 2024
+title: Title of the page
+site: Website name
+url: https://example.com
+accessed: 2026-11-01
+:::
+
+:::bibliography
+:::

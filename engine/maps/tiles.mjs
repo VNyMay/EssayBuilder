@@ -14,9 +14,10 @@ const STYLES = {
     max: 17,
   },
   light: {
-    url: (z, x, y) => `https://basemaps.cartocdn.com/light_all/${z}/${x}/${y}@2x.png`,
-    credit: '© OpenStreetMap contributors © CARTO',
-    max: 20,
+    url: (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}`,
+    credit: 'Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors',
+    max: 16,
+    cache: 'light-gray',
   },
 };
 
@@ -52,7 +53,7 @@ export function tileProjection(center, zoom, width, height) {
 }
 
 async function fetchTile(style, z, x, y) {
-  const file = tilePath(style, z, x, y);
+  const file = tilePath(STYLES[style].cache || style, z, x, y);
   if (existsSync(file)) return readFileSync(file);
   const data = await download(STYLES[style].url(z, x, y), true);
   writeFileSync(file, data);
@@ -99,7 +100,7 @@ export async function tileMosaic(style, projection, zoom, width, height, sharp) 
     const x = left + tile.x * size;
     const y = top + tile.y * size;
     const data = images[i].toString('base64');
-    return `<image x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${(size + 0.6).toFixed(2)}" height="${(size + 0.6).toFixed(2)}" href="data:image/png;base64,${data}"/>`;
+    return `<image x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${(size + 0.6).toFixed(2)}" height="${(size + 0.6).toFixed(2)}" href="data:image/${images[i][0] === 0xff ? 'jpeg' : 'png'};base64,${data}"/>`;
   });
   return { svg: parts.join(''), credit: spec.credit, zoom: rounded, count: wanted.length };
 }

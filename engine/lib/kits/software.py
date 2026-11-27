@@ -191,7 +191,7 @@ def sequence_source(rest, report):
         key = ident(name)
         if key not in seen:
             seen[key] = name
-            out.insert(1, f"  participant {key} as {name}")
+            out.insert(len(seen), f"  participant {key} as {name}")
         return key
 
     for ln in lines_of(rest):

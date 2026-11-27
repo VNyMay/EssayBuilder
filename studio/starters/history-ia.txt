@@ -1,0 +1,41 @@
+title: Title of your historical investigation
+subject: History
+question: To what extent ...? Write your research question here.
+cover-line: Session: May 2027
+look: essay
+contents: no
+section-breaks: no
+citations: chicago
+word-limit: 2200
+---
+
+# Identification and evaluation of sources
+
+State your research question and explain why it is worth investigating.
+
+Name two sources you will evaluate in detail [@source2024]. For each, analyse its origin, purpose and content, and explain its values and limitations for your investigation.
+
+# Investigation
+
+Present a structured, critical analysis that answers the research question. Use a range of sources and evidence, and compare different perspectives and interpretations.
+
+Reach a reasoned conclusion that follows from the evidence and answers the question.
+
+# Reflection
+
+Reflect on what the investigation showed you about the methods historians use and the challenges they face.
+
+# Bibliography
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the source
+publisher: Publisher
+city: City
+:::
+
+:::bibliography
+:::

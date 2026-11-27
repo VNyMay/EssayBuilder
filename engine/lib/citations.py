@@ -166,8 +166,8 @@ def apa_names(names):
         out.append(clean(n.org) if n.org else f"{clean(n.family)}, {clean(n.initials())}".strip(", "))
     if len(names) > 20:
         return ", ".join(out) + ", . . . " + (clean(names[-1].family) + ", " + clean(names[-1].initials()))
-    if len(out) == 1:
-        return out[0]
+    if len(out) <= 1:
+        return "".join(out)
     return ", ".join(out[:-1]) + ", & " + out[-1]
 
 

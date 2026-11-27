@@ -1360,6 +1360,10 @@ html.home button.brand {
   overflow: hidden;
 }
 
+#statusPill.raised {
+  bottom: 84px;
+}
+
 #statusPill span {
   padding: 9px 14px;
   white-space: nowrap;

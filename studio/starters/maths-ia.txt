@@ -1,0 +1,67 @@
+title: Maths exploration
+look: compact
+citations: ieee
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Title of your mathematical exploration
+:::
+
+:::text
+align: center
+size: 10
+---
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Introduction
+
+State the aim of your exploration and the question it answers. Explain why the topic interests you and what mathematics it involves.
+
+# Background
+
+Introduce the context and define the variables, notation and key ideas the reader needs [@source2024].
+
+:::definition Name of the idea
+Write a precise definition here.
+:::
+
+# Exploration
+
+## First stage
+
+Develop the mathematics step by step. Explain each step in words as well as symbols.
+
+$$ f(x) = a x^2 + b x + c $$ {#model}
+
+Refer to equations by name, as in @eq:model, and interpret every result in context.
+
+## Second stage
+
+Extend or test your work: try another method, check special cases or use technology to verify results.
+
+# Reflection
+
+Reflect critically on your results: their meaning, limitations and assumptions, and what you would explore next.
+
+# Conclusion
+
+Summarise what you found and answer the aim stated in the introduction.
+
+# References
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the source
+publisher: Publisher
+:::
+
+:::bibliography
+:::

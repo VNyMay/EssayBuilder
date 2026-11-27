@@ -198,6 +198,9 @@ function sheetKeys(event) {
   } else if (event.key === 'Escape') {
     event.preventDefault();
     deselect();
+  } else if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    getSelection().selectAllChildren(td);
   } else if (SHEET.picked.size && mod && ['b', 'i', 'u'].includes(event.key.toLowerCase())) {
     event.preventDefault();
     restyle({ flag: { b: 'bold', i: 'italic', u: 'underline' }[event.key.toLowerCase()] });
@@ -295,6 +298,7 @@ function drawSheet() {
 
 function positionSheet() {
   if (!SHEET.root || !SHEET.range) return;
+  if (S.panel && S.panel.range !== SHEET.range && S.panel.range.start === SHEET.range.start) SHEET.range = S.panel.range;
   const span = firstSpan(SHEET.range);
   if (!span) return;
   const div = $('#pages').children[span.page];
@@ -311,6 +315,15 @@ function positionSheet() {
   SHEET.root.style.fontFamily = docFont();
   SHEET.root.style.fontSize = `${(parseFloat(S.settings['font-size']) || 12) * 0.92 * S.scale}px`;
   SHEET.root.style.setProperty('--pt', `${S.scale}px`);
+  const bar = SHEET.root.querySelector('.sheet-bar');
+  const panel = $('#panel');
+  bar.style.maxWidth = '';
+  if (!below && !panel.hidden && !panel.classList.contains('leaving')) {
+    const edge = panel.getBoundingClientRect().left - 16;
+    const room = edge - bar.getBoundingClientRect().left;
+    const ui = Number(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+    if (room > 0 && bar.getBoundingClientRect().right > edge) bar.style.maxWidth = `${room / ui}px`;
+  }
 }
 
 function openSheet(range) {
@@ -370,6 +383,10 @@ function openSheet(range) {
     SHEET.anchor = here;
     SHEET.picked = new Set();
     paintPicked();
+    const chosen = window.getSelection();
+    if (chosen.rangeCount && !td.contains(chosen.anchorNode)) chosen.removeAllRanges();
+    const host = SHEET.root.closest('[draggable="true"]');
+    if (host) host.draggable = false;
     let dragging = false;
     const over = (move) => {
       const cell = move.target.closest && move.target.closest('td[data-r]');
@@ -381,6 +398,7 @@ function openSheet(range) {
       pickRect(here, there);
     };
     const up = () => {
+      if (host) host.draggable = true;
       table.removeEventListener('mouseover', over);
       window.removeEventListener('mouseup', up);
     };

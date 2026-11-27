@@ -66,7 +66,7 @@ class Kit:
         self.bib_all = opts.flag("all")
         opts.finish({"all"})
         self.bib_marks += 1
-        self.emit("<!--BIB-->")
+        self.emit('<div class="bibwrap"><!--BIB--></div>')
 
     def resolve_cites(self, text):
         entries = self.bib_state()
@@ -103,7 +103,7 @@ class Kit:
                 return raw if narrative else '<span class="bad">[source?]</span>'
             shown = citations.cite_group(items, entries, style, order, narrative)
             self.cite_map[raw] = re.sub(r"<[^>]+>", "", shown)
-            return shown
+            return shown if narrative else f"<!--cite-->{shown}<!--/cite-->"
         text = re.sub(f"{MARK}(\\d+){MARK}", swap, text)
         shown = list(entries.values()) if self.bib_all else cited
         if style == "ieee":

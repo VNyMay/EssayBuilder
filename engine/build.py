@@ -86,6 +86,7 @@ def body_words(src):
     else:
         body = src.split("<body", 1)[-1]
     for pattern in [
+        r"<!--cite-->[\s\S]*?<!--/cite-->",
         r"<(table|figure|nav|style|script|svg)\b[\s\S]*?</\1>",
         r'<(div|p) class="(?:cap|src)[^"]*">[\s\S]*?</\1>',
         r'<span class="num">[^<]*</span>',
@@ -184,7 +185,7 @@ def settings_css(cfg, font):
     if cfg.get("contents-depth", "").strip() == "1":
         rules.append(".toc a.l2{display:none}")
     if cfg.get("contents-numbers", "yes").strip().lower() in OFF:
-        rules.append(".toc a .n{display:none}")
+        rules.append(".toc:not(.lof) a .n{display:none}")
     if cfg.get("contents-dots", "yes").strip().lower() in OFF:
         rules.append(".toc .dots{visibility:hidden}")
     if cfg.get("caption-style", "bold").lower() == "italic":  # whole caption italic, like a Word document
@@ -1020,6 +1021,15 @@ def main():
         from lib import samples
 
         print(f"style samples -> {samples.make(args.essay, lambda src, out: build(src, out))}")
+        return
+    if args.output and args.output.lower().endswith(".docx") and not args.check:
+        from lib import docx_export
+
+        try:
+            done = docx_export.export(args.essay, args.output)
+        except ValueError as error:
+            sys.exit(str(error))
+        print(f"{done['pages']} pages, {done['words']} words -> {done['path']}")
         return
     build(args.essay, args.output, args.check, args.keep_html)
 

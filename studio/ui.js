@@ -112,6 +112,8 @@ function showMenu(button, choices, current, onPick, up) {
       buttons.forEach((entry, i) => {
         entry.hidden = term !== '' && !items[i].label.toLowerCase().includes(term);
       });
+      const first = buttons.findIndex((entry) => !entry.hidden);
+      if (buttons[active].hidden && first >= 0) highlight(first);
     });
     node.append(search);
   }
@@ -138,7 +140,7 @@ function showMenu(button, choices, current, onPick, up) {
     const at = Math.max(0, visible.indexOf(active));
     if (event.key === 'ArrowDown') highlight(visible[Math.min(visible.length - 1, at + 1)]);
     else if (event.key === 'ArrowUp') highlight(visible[Math.max(0, at - 1)]);
-    else if (event.key === 'Enter') buttons[active].click();
+    else if (event.key === 'Enter') buttons[buttons[active].hidden ? visible[0] : active].click();
     else return;
     event.preventDefault();
     event.stopPropagation();

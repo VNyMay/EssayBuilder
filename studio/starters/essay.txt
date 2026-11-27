@@ -1,0 +1,54 @@
+title: Essay
+look: compact
+heading-numbers: no
+citations: apa
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Title of your essay
+:::
+
+:::text
+align: center
+size: 10
+---
+Your name · Class · Date
+:::
+
+# Introduction
+
+Introduce the topic, give the context a reader needs and end with a clear thesis.
+
+# First point
+
+Make your first argument with a topic sentence, evidence [@source2024] and analysis that links back to your thesis.
+
+# Second point
+
+Make your second argument and explain how it builds on the first.
+
+# Third point
+
+Make your third argument or address a counter-argument.
+
+# Conclusion
+
+Draw the argument together and answer the question. Do not introduce new evidence here.
+
+# References
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the source
+publisher: Publisher
+:::
+
+:::bibliography
+:::

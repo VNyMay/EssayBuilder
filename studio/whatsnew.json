@@ -1,0 +1,12 @@
+{
+  "version": "1.1.0",
+  "items": [
+    ["Write view", "Type like a normal document. Enter, Backspace, arrows and selection work across the whole essay."],
+    ["Templates", "Start an Extended Essay, TOK essay, IA or report in one click."],
+    ["Check", "Word limit, missing captions, uncited sources and the IB criteria before you hand in."],
+    ["Sources", "Paste a DOI, ISBN or link and the reference fills itself in."],
+    ["Version history", "See what changed, name versions and restore any of them."],
+    ["Word export", "Hand in a .docx when your teacher asks for one."],
+    ["Writing tools", "Find and replace, notes in the margin, outline with word counts, focus mode and goals."]
+  ]
+}

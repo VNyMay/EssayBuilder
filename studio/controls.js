@@ -12,7 +12,7 @@ const alignKeyOf = (kind) => (kind === 'table' || kind === 'pipetable' ? 'place'
 
 function defaultWidth(kind, wrapped) {
   if (wrapped) return 40;
-  if (kind === 'map') return 100;
+  if (kind === 'map' || kind === 'grid' || kind === 'swot') return 100;
   if (kind === 'table' || kind === 'pipetable') return 62;
   return 86;
 }

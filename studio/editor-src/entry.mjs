@@ -1,0 +1,11 @@
+export { Editor, Node, Mark, Extension, mergeAttributes, InputRule, markInputRule, textblockTypeInputRule, wrappingInputRule } from '@tiptap/core';
+export { default as StarterKit } from '@tiptap/starter-kit';
+export { default as Superscript } from '@tiptap/extension-superscript';
+export { default as Subscript } from '@tiptap/extension-subscript';
+export { Placeholder, CharacterCount, Focus } from '@tiptap/extensions';
+export { Plugin, PluginKey, TextSelection, NodeSelection, Selection, AllSelection } from '@tiptap/pm/state';
+export { Decoration, DecorationSet } from '@tiptap/pm/view';
+export { DOMParser, DOMSerializer, Fragment, Slice } from '@tiptap/pm/model';
+export { default as Heading } from '@tiptap/extension-heading';
+export { default as Paragraph } from '@tiptap/extension-paragraph';
+export { default as Blockquote } from '@tiptap/extension-blockquote';

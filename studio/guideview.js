@@ -133,13 +133,13 @@ function moreHelpButton(id, before) {
 }
 
 function panelHelpButton(kind) {
-  const template = templateFor(kind);
+  const template = templateFor({ tree: 'mindmap', grid: 'swot', figures: 'image', pipetable: 'table', fence: 'code' }[kind] || kind);
   if (!template || (!guideFor(template.id) && !HELP[template.id])) return null;
   return h('button', {
     type: 'button',
-    class: 'round panel-help',
-    title: 'Help',
-    text: '?',
+    class: 'round panel-help labelled',
+    title: 'Open the guide for this block',
+    html: `${icon('info', 15)}<span>Help</span>`,
     onclick: () => {
       if (guideFor(template.id)) return openGuide(template.id);
       const [what, how] = HELP[template.id];

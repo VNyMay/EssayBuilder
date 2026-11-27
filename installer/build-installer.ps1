@@ -48,7 +48,7 @@ if (-not (Test-Path $rcedit)) {
 }
 $exe = Join-Path $target "Essay Builder.exe"
 Copy-Item (Join-Path $target "pythonw.exe") $exe
-& $rcedit $exe --set-icon (Join-Path $repo "studio\icon.ico") --set-version-string "FileDescription" "Essay Builder" --set-version-string "ProductName" "Essay Builder" --set-version-string "CompanyName" "VNyMay" --set-version-string "LegalCopyright" "Copyright (c) 2026 VNyMay" --set-version-string "InternalName" "Essay Builder" --set-version-string "OriginalFilename" "Essay Builder.exe" --set-file-version "1.0.0" --set-product-version "1.0.0"
+& $rcedit $exe --set-icon (Join-Path $repo "studio\icon.ico") --set-version-string "FileDescription" "Essay Builder" --set-version-string "ProductName" "Essay Builder" --set-version-string "CompanyName" "VNyMay" --set-version-string "LegalCopyright" "Copyright (c) 2026 VNyMay" --set-version-string "InternalName" "Essay Builder" --set-version-string "OriginalFilename" "Essay Builder.exe" --set-file-version "1.1.0" --set-product-version "1.1.0"
 if ($LASTEXITCODE -ne 0) { throw "rcedit failed" }
 
 Write-Host "Bundling Node.js..."

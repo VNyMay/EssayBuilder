@@ -87,9 +87,9 @@ function imagePanel(model, body, range) {
         renderPanel();
       },
     })),
-    layoutSection(model, 'figure', range),
     captionSection(model),
     section(null, yesNoLine('Border', model, 'border')),
+    layoutSection(model, 'figure', range),
   );
   moreSection(body, model, 'figure', ['src', 'caption', 'source', 'border', 'width', 'align', 'wrap']);
 }
@@ -127,6 +127,7 @@ function tablePanel(model, body, range) {
     { value: 'right', icon: 'alignRight', title: 'Right' },
   ];
   body.append(
+    captionSection(model),
     section(
       'Options',
       yesNoLine('Header row', model, 'header', { defaultOn: true }),
@@ -158,7 +159,6 @@ function tablePanel(model, body, range) {
       })),
     ),
     layoutSection(model, 'table', range),
-    captionSection(model),
   );
   moreSection(body, model, 'table', ['src', 'style', 'header', 'total', 'transpose', 'decimals', 'align', 'size', 'width', 'place', 'wrap', 'caption', 'source']);
 }
@@ -206,8 +206,10 @@ function chartPanel(model, body, range) {
   }));
   body.append(section('Type', cards(types, type, (value) => {
     rowSet(model, 'type', value === 'line' ? '' : value);
+    if (value === 'function' && !model.rows.some((row) => row.key === 'f')) model.rows.push({ key: 'f', value: 'x^2' });
     commitPanel(150);
     renderPanel();
+    if (typeof openSheet === 'function') openSheet(S.panel.range);
   }, 4)));
   const src = rowGet(model, 'src');
   if (type === 'function') {
@@ -317,6 +319,7 @@ function chartPanel(model, body, range) {
     })));
   }
   body.append(
+    captionSection(model),
     section('Labels', ...show),
     section('Shape', segmented([
       { value: '', label: 'Auto' },
@@ -328,7 +331,6 @@ function chartPanel(model, body, range) {
       commitPanel(150);
     })),
     layoutSection(model, 'chart', range),
-    captionSection(model),
   );
   moreSection(body, model, 'chart', ['type', 'src', 'x', 'y', 'xlabel', 'ylabel', 'grid', 'legend', 'labels', 'f', 'domain', 'ratio', 'width', 'align', 'wrap', 'caption', 'source']);
 }
@@ -809,6 +811,7 @@ function mapPanel(model, body, range) {
   }));
   body.append(section('Layers', layers));
   body.append(
+    captionSection(model),
     section('Shape', segmented([
       { value: '', label: 'Auto' },
       { value: '16:9', label: 'Wide' },
@@ -819,7 +822,6 @@ function mapPanel(model, body, range) {
       commitPanel(150);
     })),
     layoutSection(model, 'map', range),
-    captionSection(model),
   );
   const shown = ['focus', 'center', 'span', 'basemap', 'level', 'projection', 'cities', 'capitals', 'names', 'scale', 'north', 'inset', 'graticule', 'numbered', 'legend', 'ratio', 'width', 'align', 'wrap', 'caption', 'source', ...LAYER_KEYS];
   moreSection(body, model, 'map', shown);
@@ -855,7 +857,10 @@ const DIAGRAM_HINTS = {
 function diagramPanel(model, body, range) {
   const kind = range.kind;
   const hint = DIAGRAM_HINTS[kind] || 'Mermaid notation';
-  body.append(section('Content', bodyArea(model, { label: '', placeholder: hint, mono: true, rows: 9 })));
+  if (typeof rowSpec === 'function' && rowSpec(kind)) body.append(rowsSection(model, kind, ROW_TITLES[kind] || 'Content', { placeholder: hint }));
+  else body.append(section('Content', bodyArea(model, { label: '', placeholder: hint, mono: true, rows: 9 })));
+  body.append(captionSection(model));
+  if (kind === 'timeline') body.append(section(null, textLine('Title', model, 'title')));
   if (['flow', 'tree'].includes(kind)) {
     body.append(section('Direction', segmented([
       { value: '', label: 'Top to bottom' },
@@ -865,8 +870,8 @@ function diagramPanel(model, body, range) {
       commitPanel(150);
     })));
   }
-  body.append(layoutSection(model, 'diagram', range), captionSection(model));
-  moreSection(body, model, kind, ['caption', 'source', 'width', 'align', 'wrap', 'direction']);
+  body.append(layoutSection(model, 'diagram', range));
+  moreSection(body, model, kind, ['caption', 'source', 'width', 'align', 'wrap', 'direction', ...(kind === 'timeline' ? ['title'] : [])]);
 }
 
 function gridPanel(model, body, range) {
@@ -874,13 +879,13 @@ function gridPanel(model, body, range) {
   const names = { grid: 'Boxes', swot: 'Boxes', figures: 'Images' };
   const hints = { grid: 'Title:\n- point', swot: 'Strengths:\n- point\nWeaknesses:\n- point', figures: 'images/one.png | First\nimages/two.png | Second' };
   body.append(
-    section('Content', bodyArea(model, { label: names[kind], placeholder: hints[kind], mono: true, rows: 8 })),
-    section('Columns', stepper({ value: Number(rowGet(model, 'cols', kind === 'figures' ? 2 : 2)), min: 1, max: 4, onChange: (value) => {
+    typeof rowSpec === 'function' && rowSpec(kind) ? rowsSection(model, kind, names[kind], { placeholder: hints[kind], rows: 8 }) : section('Content', bodyArea(model, { label: names[kind], placeholder: hints[kind], mono: true, rows: 8 })),
+    captionSection(model),
+    section(null, line('Columns', stepper({ value: Number(rowGet(model, 'cols', kind === 'figures' ? 2 : 2)), min: 1, max: 4, onChange: (value) => {
       rowSet(model, 'cols', String(value));
       commitPanel(250);
-    } })),
+    } }))),
     layoutSection(model, 'diagram', range),
-    captionSection(model),
   );
   moreSection(body, model, kind, ['cols', 'caption', 'source', 'width', 'align', 'wrap']);
 }
@@ -907,8 +912,8 @@ function moleculePanel(model, body, range) {
         commitPanel(150);
       })),
     ),
-    layoutSection(model, 'figure', range),
     captionSection(model),
+    layoutSection(model, 'figure', range),
   );
   moreSection(body, model, 'molecule', ['smiles', 'color', 'stereo', 'caption', 'source', 'width', 'align', 'wrap']);
 }
@@ -926,7 +931,7 @@ function musicPanel(model, body, range) {
       },
     })));
   } else body.append(section('Score', bodyArea(model, { label: '', placeholder: 'X:1\nK:C\nCDEF|GABc|', mono: true, rows: 8 })));
-  body.append(layoutSection(model, 'diagram', range), captionSection(model));
+  body.append(captionSection(model), layoutSection(model, 'diagram', range));
   moreSection(body, model, 'music', ['src', 'caption', 'source', 'width', 'align', 'wrap']);
 }
 
@@ -991,8 +996,27 @@ function calloutPanel(model, body, range) {
     });
     body.append(section(null, line('Title', h('div', { class: 'field' }, arg))));
   }
-  if (isProse(range)) body.append(section(null, proseHint()));
+  if (isProse(range) && !range.uid) body.append(section(null, proseHint()));
   else body.append(section('Text', bodyArea(model, { label: '', placeholder: 'Write it here', rows: 7 })));
+}
+
+function spacerPanel(model, body) {
+  body.append(section(null, line('Height', spacerControl(model))));
+}
+
+function spacerControl(model) {
+  const given = String(model.args || '').trim();
+  const match = given.match(/^(\d+(?:\.\d+)?)\s*mm$/i) || (given ? null : ['', '10']);
+  const control = match
+    ? h('div', { class: 'inline-row' }, stepper({ value: Number(match[1]), min: 1, max: 250, step: 2, onChange: (value) => {
+      model.args = `${value}mm`;
+      commitPanel(250);
+    } }), h('span', { class: 'unit-note', text: 'mm' }))
+    : plainInput(given, (value) => {
+      model.args = value.trim();
+      commitPanel(500);
+    }, '12mm');
+  return control;
 }
 
 const PANELS = {
@@ -1015,6 +1039,7 @@ const PANELS = {
   math: mathPanel,
   code: codePanel,
   fence: codePanel,
+  spacer: spacerPanel,
 };
 MERMAID_KINDS.forEach((name) => {
   PANELS[name] = diagramPanel;

@@ -1,0 +1,47 @@
+title: English essay
+look: compact
+heading-numbers: no
+line-spacing: 2
+citations: mla
+word-limit: 1500
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Title of your essay
+:::
+
+:::text
+align: center
+size: 10
+---
+Line of inquiry: write your line of inquiry here\\
+Text: Title of the work, by its author
+:::
+
+Introduce the work and its context, then state your line of inquiry and a clear thesis that answers it.
+
+Begin your first point with a topic sentence. Support it with a short quotation [@source2024] and analyse how the author's choices create meaning.
+
+Develop your second point with new evidence and close analysis, linking it back to your thesis.
+
+Develop your third point and show how it builds on the first two.
+
+Conclude by drawing your argument together and explaining what it reveals about the work as a whole.
+
+# Works Cited
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the work
+publisher: Publisher
+:::
+
+:::bibliography
+:::

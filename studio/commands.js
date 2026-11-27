@@ -43,18 +43,21 @@ function cmdItems() {
     add('Open essay', 'Start', () => $('#openEssay').click(), 'file browse', 'folder');
   } else {
     add('Export PDF', 'Essay', () => $('#export').click(), 'save download print', 'export');
+    add('Export Word', 'Essay', () => exportDocx(), 'docx microsoft word document save download teacher comments', 'export');
     add('Cover designer', 'Essay', () => openCover(), 'title page front', 'cover');
     add('Edit cover on the page', 'Essay', () => openCoverFree(), 'design own cover word count fields custom', 'shapes');
     add('Settings', 'Essay', () => openSettings(), 'font paper margins accent contents', 'gear');
-    add('Previous versions', 'Essay', async () => {
-      openSettings();
-      await openVersions();
-    }, 'history restore backup', 'clock');
+    if (typeof checkOpen === 'function') add('Check before submitting', 'Essay', () => checkOpen(), 'check submit hand in criteria word count errors warnings review proofread ready', 'checklist');
+    add('Previous versions', 'Essay', () => openVersions(), 'history restore backup version name named', 'clock');
     add('Make a copy', 'Essay', () => makeCopy(), 'duplicate', 'copy');
     add('All essays', 'Essay', () => goHome(), 'home back menu', 'home');
     add('New page', 'Essay', () => addPageAfter(pageInView()), 'blank page add break', 'newFile');
     add('Outline', 'View', () => toggleOutline(), 'headings navigation contents', 'list');
     add('Show the tour', 'Help', () => startTour(true), 'guide tutorial help how start basics', 'sparkle');
+    if (typeof openSourceLookup === 'function') {
+      const target = sourceTarget();
+      add('Add source', 'References', () => openSourceLookup(target), 'doi isbn link url website book article video cite citation reference lookup find', 'sources');
+    }
     [['APA', 'apa'], ['MLA', 'mla'], ['Harvard', 'harvard'], ['Chicago', 'chicago'], ['IEEE', 'ieee']].forEach(([label, value]) => add(`Citation style ${label}`, 'References', () => setCitationStyle(value), 'references bibliography works cited sources cite', 'bibliography'));
     add('Undo', 'Edit', () => undo(-1), 'back', 'undo');
     add('Redo', 'Edit', () => undo(1), 'forward', 'redo');
@@ -187,7 +190,7 @@ function cmdOpen() {
 document.addEventListener(
   'keydown',
   (event) => {
-    if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'k' || event.key === '/')) {
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       event.stopPropagation();
       cmdOpen();

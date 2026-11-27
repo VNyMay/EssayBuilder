@@ -11,9 +11,11 @@ function registerKit(spec) {
     TEMPLATES.push({ group: spec.group, id: kit.kind, label: kit.label, icon: kit.iconPath ? kit.kind : kit.icon || 'diagram', kind: kit.kind, lines: kit.template });
     PANELS[kit.kind] = (model, body, range) => {
       if (kit.hasBody !== false) {
-        if (isProse(range)) body.append(section(null, proseHint()));
-        else body.append(section(kit.bodyTitle || 'Content', bodyArea(model, { label: '', placeholder: kit.hint || '', mono: kit.mono !== false, rows: kit.rows || 9 })));
+        if (isProse(range) && !range.uid) body.append(section(null, proseHint()));
+        else if (typeof rowSpec === 'function' && rowSpec(kit.kind)) body.append(rowsSection(model, kit.kind, kit.bodyTitle || 'Content', { placeholder: kit.hint || '', mono: kit.mono !== false, rows: kit.rows || 9 }));
+        else body.append(section(kit.bodyTitle || 'Content', bodyArea(model, { label: '', placeholder: kit.hint || '', mono: kit.mono !== false && !(typeof PROSE_KINDS !== 'undefined' && PROSE_KINDS.has(kit.kind)) && kit.kind !== 'landscape', rows: kit.rows || 9 })));
       }
+      if (kit.caption !== false) body.append(captionSection(model));
       const rows = options.map((option) => {
         const current = rowGet(model, option.key, option.value ?? '');
         if (option.type === 'header') {
@@ -26,10 +28,16 @@ function registerKit(spec) {
           }));
         }
         if (option.type === 'choice') {
-          return stackLine(option.label, segmented(option.choices.map((choice) => ({ value: choice[0], label: choice[1] })), current, (value) => {
+          const choices = option.choices.map((choice) => ({ value: choice[0], label: choice[1] }));
+          const pick = (value) => {
             rowSet(model, option.key, value);
             commitPanel(150);
-          }));
+          };
+          if (choices.length > 3 || choices.some((choice) => choice.label.length > 12)) {
+            if (!choices.some((choice) => choice.value === current)) choices.push({ value: current, label: current });
+            return line(option.label, h('div', { class: 'field' }, dropdown({ choices, value: current, onPick: pick })));
+          }
+          return stackLine(option.label, segmented(choices, current, pick));
         }
         if (option.type === 'number') {
           return line(option.label, stepper({ value: Number(current) || Number(option.value) || 0, min: option.min ?? 0, max: option.max ?? 99, onChange: (value) => {
@@ -51,7 +59,6 @@ function registerKit(spec) {
       }
       if (rows.length) body.append(section('Options', ...rows));
       if (kit.layout !== false) body.append(layoutSection(model, 'diagram', range));
-      if (kit.caption !== false) body.append(captionSection(model));
       moreSection(body, model, kit.kind, ['caption', 'source', 'width', 'align', 'wrap', ...options.map((option) => option.key)]);
     };
   });

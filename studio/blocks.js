@@ -284,7 +284,10 @@ function serializeBlock(model) {
   const out = [`:::${model.name}${model.args ? ` ${model.args}` : ''}`];
   rows.forEach((row) => out.push(row.raw !== undefined ? row.raw : `${row.key}: ${row.value}`));
   if (body.length) {
-    if (rows.some((row) => row.raw === undefined)) out.push('---');
+    const lead = body[0].match(OPTION_LINE);
+    const schema = schemaOf(model.name);
+    const mistaken = lead && !/^\s/.test(body[0]) && schema && !schema.optional && lead[1].toLowerCase().replace(/_/g, '-') in schema.keys;
+    if (rows.some((row) => row.raw === undefined) || mistaken) out.push('---');
     out.push(...body);
   }
   if (body.length || rows.length || model.closed) out.push(':::');

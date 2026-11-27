@@ -56,13 +56,24 @@ async function api(path, body) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function toast(text, bad = false) {
+function toast(text, bad = false, actions = []) {
   const node = $('#toast');
-  node.textContent = text;
-  node.className = bad ? 'bad' : '';
+  node.replaceChildren(h('span', { class: 'toast-text', text }));
+  actions.forEach((action) => {
+    node.append(h('button', {
+      type: 'button',
+      class: 'toast-act',
+      text: action.label,
+      onclick: () => {
+        conceal(node);
+        action.run();
+      },
+    }));
+  });
+  node.className = `${bad ? 'bad' : ''}${actions.length ? ' acts' : ''}`;
   reveal(node);
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => conceal(node), 3200);
+  toast.timer = setTimeout(() => conceal(node), actions.length ? 7000 : 3200);
 }
 
 function setStatus(kind) {
@@ -82,22 +93,48 @@ function updatePill(kind) {
   const parts = [];
   const state = kind || (S.dirty ? 'busy' : 'ok');
   parts.push(state === 'busy' ? 'Saving' : state === 'bad' ? 'Blocked' : S.savedAt ? `Saved ${S.savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Saved');
-  if (S.words) parts.push(`${Number(S.words).toLocaleString()} ${Number(S.words) === 1 ? 'word' : 'words'}`);
+  const limit = parseInt(String(headerValue('word-limit') || (S.settings && S.settings['word-limit']) || '').replace(/[^\d]/g, ''), 10) || 0;
+  const words = Number(S.words) || 0;
+  const picked = typeof flowSelectedWords === 'function' ? flowSelectedWords() : 0;
+  let wordPart = '';
+  if (picked) wordPart = `${picked.toLocaleString()} of ${words.toLocaleString()} words`;
+  else if (limit) wordPart = `${words.toLocaleString()} / ${limit.toLocaleString()} words`;
+  else if (words) wordPart = `${words.toLocaleString()} ${words === 1 ? 'word' : 'words'}`;
+  if (wordPart) parts.push(wordPart);
   if (S.pages && S.pages.length) parts.push(`${S.pages.length} ${S.pages.length === 1 ? 'page' : 'pages'}`);
   pill.className = state;
   pill.innerHTML = parts.map((part, index) => `<span class="${index === 0 ? 'state' : ''}">${part}</span>`).join('');
   const segments = [...pill.children];
+  const wordsPart = wordPart ? segments[1] : null;
+  if (wordsPart && limit && !picked) {
+    const share = words / limit;
+    wordsPart.classList.add('words', share > 1 ? 'over' : share > 0.9 ? 'near' : 'under');
+    wordsPart.style.setProperty('--fill', `${Math.min(100, share * 100)}%`);
+    wordsPart.title = share > 1 ? `${(words - limit).toLocaleString()} over the limit` : `${(limit - words).toLocaleString()} left`;
+  } else if (wordsPart) wordsPart.title = 'Words counted for the word limit';
+  if (wordsPart && typeof flowStats === 'function') {
+    wordsPart.classList.add('words');
+    wordsPart.onclick = () => flowStats();
+  }
   segments[0].title = 'Versions';
-  segments[0].onclick = () => {
-    openSettings();
-    openVersions();
-  };
+  segments[0].onclick = () => openVersions();
   const pagesPart = segments.find((node) => /page/.test(node.textContent));
   if (pagesPart) {
     pagesPart.title = 'Outline';
     pagesPart.onclick = () => toggleOutline();
   }
+  raisePill();
 }
+
+function raisePill() {
+  const pill = $('#statusPill');
+  const dock = $('#dock');
+  if (!pill || !dock) return;
+  pill.classList.remove('raised');
+  if (!pill.hidden && pill.getBoundingClientRect().right + 8 > dock.getBoundingClientRect().left) pill.classList.add('raised');
+}
+
+window.addEventListener('resize', raisePill);
 
 function lines() {
   return S.source.split('\n');
@@ -257,6 +294,10 @@ async function applyResult(result, sent) {
     S.dirty = false;
     setStatus('bad');
     if (result.title !== undefined) S.title = result.title;
+    if (result.front !== undefined) S.front = result.front;
+    if (result.settings) S.settings = result.settings;
+    if (result.ranges && !S.pages.length) S.ranges = result.ranges.map((range) => ({ ...range }));
+    syncTitle();
     return;
   }
   if (result.fontCss !== undefined) applyFontCss(result.fontCss);
@@ -687,6 +728,11 @@ function placeOverlays() {
     tool.style.right = `${Math.max(marginPt() - 6, 8) * S.scale}px`;
     tool.style.top = `${Math.max(span.y0 * S.scale - 40, 4)}px`;
     div.append(tool);
+    const panel = $('#panel');
+    if (!panel.hidden && !panel.classList.contains('leaving')) {
+      const over = tool.getBoundingClientRect().right - panel.getBoundingClientRect().left + 24;
+      if (over > 0) tool.style.right = `${parseFloat(tool.style.right) + over}px`;
+    }
   }
   if (S.edit) positionEditor();
   spotSoon();
@@ -1751,7 +1797,6 @@ const SETTING_FIELDS = [
   { key: 'margins', label: 'Margins', spec: 't' },
   { key: 'accent', label: 'Accent', spec: 'c' },
   { key: 'cover', label: 'Cover', spec: 'y' },
-  { key: 'contents', label: 'Contents', spec: 'y' },
   { key: 'embed-project', label: 'Editable PDF', spec: 'y' },
   { group: 'Headings' },
   { key: 'heading-font', label: 'Font', spec: 'font' },
@@ -1903,7 +1948,7 @@ function openSettings() {
   body.append(h('div', { class: 'row' }, h('label', { text: 'Copy' }), h('button', { type: 'button', class: 'pill ghost small', html: `${icon('copy', 15)}<span>Make a copy</span>`, onclick: makeCopy }), h('span')));
   body.append(h('div', { class: 'row' }, h('label', { text: 'Versions' }), h('button', { type: 'button', class: 'pill ghost small', html: `${icon('clock', 15)}<span>Show</span>`, onclick: openVersions }), h('span')));
   body.append(h('div', { class: 'row' }, h('label', { text: 'Keep' }), segmented(
-    [{ value: 0, label: 'Off' }, { value: 10, label: '10' }, { value: 30, label: '30' }, { value: 60, label: '60' }],
+    [{ value: 0, label: 'Off' }, { value: 30, label: '30 days' }, { value: 365, label: '1 year' }, { value: 9999, label: 'Always' }],
     keepVersions(),
     (value) => {
       localStorage.setItem('studio.keep', String(value));
@@ -1928,29 +1973,8 @@ async function makeCopy() {
   toast('Copy opened');
 }
 
-async function openVersions() {
-  const root = $('#panel');
-  const answer = await api('/api/versions');
-  const list = h('div', { class: 'panel-body versions' });
-  const days = new Intl.DateTimeFormat([], { dateStyle: 'medium', timeStyle: 'short' });
-  answer.versions.forEach((item) => {
-    list.append(h('button', {
-      type: 'button',
-      class: 'version',
-      html: `<b>${days.format(new Date(item.time * 1000))}</b><span>${item.words} words</span>`,
-      onclick: async () => {
-        const data = await api('/api/version', { name: item.name });
-        restoreSource(data.source);
-        closeSettings();
-        toast('Version restored. Press Ctrl+Z to undo.');
-      },
-    }));
-  });
-  if (!answer.versions.length) list.append(h('div', { class: 'empty', text: 'Nothing yet' }));
-  root.replaceChildren(
-    h('div', { class: 'panel-head' }, h('button', { class: 'round', html: icon('arrowLeft', 16), title: 'Back', onclick: openSettings }), h('span', { text: 'Versions' }), h('button', { class: 'round', html: icon('close', 16), title: 'Close', onclick: closeSettings })),
-    list,
-  );
+function openVersions() {
+  return openHistory();
 }
 
 function restoreSource(text) {
@@ -2159,24 +2183,62 @@ async function goHome() {
   showStart(state);
 }
 
-async function exportPdf() {
+const EXPORTS = {
+  pdf: { route: '/api/export', ext: 'pdf', description: 'PDF', mime: 'application/pdf' },
+  docx: {
+    route: '/api/export_docx',
+    ext: 'docx',
+    description: 'Word document',
+    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  },
+};
+
+function exportPdf() {
+  return exportAs('pdf');
+}
+
+function exportDocx() {
+  return exportAs('docx');
+}
+
+function openExportMenu() {
+  const button = $('#exportMore');
+  if (openMenu && openMenu.button === button) {
+    closeMenu();
+    return;
+  }
+  showMenu(
+    button,
+    [
+      { value: 'pdf', label: 'PDF document (.pdf)' },
+      { value: 'docx', label: 'Word document (.docx)' },
+    ],
+    null,
+    (kind) => exportAs(kind),
+  );
+}
+
+async function exportAs(kind) {
   if (S.busyExport) return;
+  const format = EXPORTS[kind] || EXPORTS.pdf;
   const base = String(S.title || S.name || 'Essay').replace(/\.txt$/i, '').replace(/[\\/:*?"<>|]+/g, '').trim() || 'Essay';
   let handle = null;
   let target = null;
   const native = nativeApi();
   if (native && native.choose_save) {
-    const where = await api('/api/export_target').catch(() => ({}));
+    const where = await api('/api/export_target', { kind: format.ext }).catch(() => ({}));
     const last = String(where.path || '');
     const parts = last.split(/[\\/]/);
     const lastName = parts.pop();
-    target = last ? await native.choose_save(lastName, parts.join('\\')) : await native.choose_save(`${base}.pdf`, where.folder || '');
+    target = last
+      ? await native.choose_save(lastName, parts.join('\\'), format.ext)
+      : await native.choose_save(`${base}.${format.ext}`, where.folder || '', format.ext);
     if (!target) return;
   } else if (window.showSaveFilePicker) {
     try {
       handle = await window.showSaveFilePicker({
-        suggestedName: `${base}.pdf`,
-        types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+        suggestedName: `${base}.${format.ext}`,
+        types: [{ description: format.description, accept: { [format.mime]: [`.${format.ext}`] } }],
       });
     } catch (error) {
       if (error && error.name === 'AbortError') return;
@@ -2186,7 +2248,7 @@ async function exportPdf() {
   S.busyExport = true;
   setStatus('busy');
   await settle();
-  const answer = await api('/api/export');
+  const answer = await api(format.route).catch((error) => ({ error: String(error) }));
   S.busyExport = false;
   setStatus('ok');
   if (answer.error) {
@@ -2197,7 +2259,12 @@ async function exportPdf() {
   if (target) {
     const copied = await api('/api/copy_export', { name: answer.name, path: target });
     if (copied.error) toast(copied.error, true);
-    else toast(`Saved ${String(target).split(/[\\/]/).pop()}`);
+    else {
+      toast(`Saved ${String(target).split(/[\\/]/).pop()}`, false, [
+        { label: 'Open', run: () => api('/api/open_path', { path: target }) },
+        { label: 'Show in folder', run: () => api('/api/reveal', { path: target }) },
+      ]);
+    }
     return;
   }
   if (handle) {
@@ -2463,7 +2530,7 @@ function zoomStep(direction) {
 
 function keepVersions() {
   const value = Number(localStorage.getItem('studio.keep'));
-  return localStorage.getItem('studio.keep') === null || !Number.isFinite(value) ? 30 : value;
+  return localStorage.getItem('studio.keep') === null || !Number.isFinite(value) ? 9999 : value;
 }
 
 function wantedDpi() {
@@ -2746,11 +2813,18 @@ function load(state) {
   savedSource = state.source;
   S.ranges = [];
   S.sel = null;
+  S.front = null;
+  S.title = '';
+  S.settings = {};
+  S.words = 0;
+  S.issues = [];
+  renderIssues();
   closeEditor(true);
   closePanel();
   closeSettings();
   $('#pages').replaceChildren();
   S.pages = [];
+  syncTitle();
   lockHits();
   schedule(0);
 }
@@ -2764,6 +2838,8 @@ function bind() {
   $('#zoomOut').innerHTML = icon('minus', 16);
   $('#zoomIn').innerHTML = icon('plus', 16);
   $('#export').onclick = exportPdf;
+  $('#exportMore').innerHTML = icon('chevron', 16);
+  $('#exportMore').onclick = openExportMenu;
   $('#issues').onclick = openIssues;
   $('#settingsBtn').onclick = () => (S.settingsOpen && !S.coverOpen ? closeSettings() : openSettings());
   $('#coverBtn').onclick = () => (S.settingsOpen && S.coverOpen ? closeSettings() : openCover());
@@ -2796,7 +2872,7 @@ function bind() {
   $('#outlineBtn').onclick = toggleOutline;
   bindTips();
   $('#homeBtn').querySelector('.home-arrow').innerHTML = icon('arrowLeft', 18);
-  $('#newEssay').onclick = async () => load(await api('/api/new'));
+  $('#newEssay').onclick = openGallery;
   $('#openEssay').onclick = async () => {
     const answer = await api('/api/pick');
     if (!answer.headless) {

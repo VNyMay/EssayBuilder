@@ -27,8 +27,25 @@ BACKUPS = DATA / "backups"
 PREFS = DATA / "prefs.json"
 THUMBS = DATA / "thumbs"
 LINKS = DATA / "exports.json"
+CHECKS = DATA / "checks.json"
 STARTER = "title: Untitled essay\nsubject:\ncover: no\ncontents: no\n---\n\n# Introduction\n\n"
+STARTER_DIR = STUDIO / "starters"
+OWN_TEMPLATES = DATA / "templates"
+STARTERS = (
+    ("extended-essay", "Extended Essay", "Core", ""),
+    ("tok-essay", "TOK Essay", "Core", ""),
+    ("tok-exhibition", "TOK Exhibition", "Core", ""),
+    ("science-ia", "Science IA", "Subjects", ""),
+    ("maths-ia", "Maths IA", "Subjects", "12–20 pages"),
+    ("cs-ia", "Computer Science IA", "Subjects", ""),
+    ("history-ia", "History IA", "Subjects", ""),
+    ("english-essay", "English Essay", "Subjects", ""),
+    ("essay", "Essay", "General", "Any length"),
+    ("report", "Report", "General", "Any length"),
+    ("lab-report", "Lab Report", "General", "Any length"),
+)
 PNG_DPI = 144
+DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 SMOOTH = [
     "--disable-frame-rate-limit",
     "--enable-gpu-rasterization",
@@ -40,6 +57,8 @@ SMOOTH = [
 sys.path.insert(0, str(ENGINE))
 
 import build  # noqa: E402
+import history  # noqa: E402
+import update  # noqa: E402
 from lib import setup  # noqa: E402
 
 
@@ -49,30 +68,28 @@ class State:
         self.work = Path(tempfile.mkdtemp(prefix="essay-studio-"))
         self.version = 0
         self.lock = threading.Lock()
+        self.history_lock = threading.Lock()
         self.last_ping = time.time()
         self.seen = False
         self.pool = ThreadPoolExecutor(6)
         self.cache = {}
         self.kept = []
 
-    def recent(self):
+    def stored(self):
         try:
             items = json.loads(RECENT.read_text(encoding="utf-8-sig")) if RECENT.exists() else []
         except (OSError, ValueError):
             items = []
         if isinstance(items, str):
             items = [items]
+        return [item for item in items if isinstance(item, str)] if isinstance(items, list) else []
+
+    def recent(self):
         return self.everything()[:8]
 
     def everything(self):
-        try:
-            items = json.loads(RECENT.read_text(encoding="utf-8-sig")) if RECENT.exists() else []
-        except (OSError, ValueError):
-            items = []
-        if isinstance(items, str):
-            items = [items]
         hidden = self.hidden()
-        found = [item for item in items if isinstance(item, str) and Path(item).is_file() and item not in hidden]
+        found = [item for item in self.stored() if Path(item).is_file() and item not in hidden]
         if ESSAYS.is_dir():
             skip = {BACKUPS.resolve(), DATA.resolve()}
             own = sorted((file for file in ESSAYS.rglob("*.txt") if not skip & set(file.resolve().parents)), key=lambda file: file.stat().st_mtime, reverse=True)
@@ -100,11 +117,7 @@ class State:
     def forget(self, path):
         hidden = self.hidden() | {str(path)}
         HIDDEN.write_text(json.dumps(sorted(hidden)), encoding="utf-8")
-        try:
-            items = json.loads(RECENT.read_text(encoding="utf-8-sig")) if RECENT.exists() else []
-        except (OSError, ValueError):
-            items = []
-        RECENT.write_text(json.dumps([item for item in items if item != str(path)]), encoding="utf-8")
+        RECENT.write_text(json.dumps([item for item in self.stored() if item != str(path)]), encoding="utf-8")
 
     def trash(self, path):
         target = Path(path)
@@ -127,26 +140,42 @@ class State:
         return folder
 
     def backup(self, source, force=False):
-        keep = getattr(self, "keep", 30)
-        if self.path is None or not source.strip():
-            return
-        if keep <= 0:
+        keep = getattr(self, "keep", history.FOREVER)
+        if self.path is None or not source.strip() or keep <= 0:
             return
         try:
-            folder = self.backup_folder()
-            files = sorted(folder.glob("*.txt"))
-            if files:
-                last = files[-1]
-                if last.read_text(encoding="utf-8") == source:
-                    return
-                if not force and time.time() - last.stat().st_mtime < 90:
-                    return
-            stamp = time.strftime("%Y-%m-%d %H-%M-%S")
-            (folder / f"{stamp}.txt").write_text(source, encoding="utf-8")
-            for old in sorted(folder.glob("*.txt"))[:-keep]:
-                old.unlink(missing_ok=True)
+            with self.history_lock:
+                history.snapshot(self.backup_folder(), source, keep, force=force)
         except OSError:
             pass
+
+    def name_version(self, name, label, current):
+        with self.history_lock:
+            if name:
+                history.rename(self.backup_folder(), name, label)
+            else:
+                history.name_current(self.backup_folder(), current, label, getattr(self, "keep", history.FOREVER))
+        return self.versions()
+
+    def restore_version(self, name, current):
+        with self.history_lock:
+            text = history.restore(self.backup_folder(), name, current, getattr(self, "keep", history.FOREVER))
+        self.path.write_text(text, encoding="utf-8")
+        return text
+
+    def copy_version(self, name):
+        text = self.read_version(name)
+        when = time.localtime(Path(self.backup_folder(), Path(name).name).stat().st_mtime)
+        stem = re.sub(r" \(\d+ \w+ \d{4} \d+\.\d+\)$", "", self.path.stem)
+        label = f"{stem} ({time.strftime('%d %b %Y %H.%M', when).lstrip('0')})"
+        target = self.path.with_name(f"{label}.txt")
+        number = 2
+        while target.exists():
+            target = self.path.with_name(f"{label} {number}.txt")
+            number += 1
+        target.write_text(text, encoding="utf-8")
+        fresh_versions(target)
+        self.open(target)
 
     def copy(self):
         if self.path is None:
@@ -170,21 +199,17 @@ class State:
     def versions(self):
         if self.path is None:
             return []
-        out = []
-        for file in sorted(self.backup_folder().glob("*.txt"), reverse=True):
-            text = file.read_text(encoding="utf-8")
-            out.append({"name": file.name, "time": file.stat().st_mtime, "words": len(re.findall(r"\w+", text))})
-        return out
+        with self.history_lock:
+            return history.listing(self.backup_folder())
 
     def read_version(self, name):
-        file = self.backup_folder() / Path(name).name
-        return file.read_text(encoding="utf-8")
+        return history.read(self.backup_folder(), name)
 
     def remember(self, path):
         hidden = self.hidden()
         if str(path) in hidden:
             HIDDEN.write_text(json.dumps(sorted(hidden - {str(path)})), encoding="utf-8")
-        items = [str(path)] + [item for item in self.recent() if item != str(path)]
+        items = [str(path)] + [item for item in self.stored() if item != str(path) and Path(item).is_file()]
         RECENT.write_text(json.dumps(items[:8]), encoding="utf-8")
 
     def from_word(self, source):
@@ -277,13 +302,23 @@ class State:
         target.write_bytes(base64.b64decode(data))
         self.open(target)
 
-    def create(self):
+    def create(self, template=None):
+        names = {ident: name for ident, name, *_ in STARTERS}
+        own = OWN_TEMPLATES / f"{template[5:]}.txt" if template and template.startswith("mine:") else None
+        if template and template not in names and not (own and own.is_file()):
+            raise ValueError(f"Unknown template: {template}")
         ESSAYS.mkdir(parents=True, exist_ok=True)
-        number = 1
-        while (ESSAYS / f"Untitled essay {number}.txt").exists():
+        stem = own.stem if own else names.get(template, "Untitled essay")
+        if own:
+            text = own.read_text(encoding="utf-8")
+        else:
+            text = (STARTER_DIR / f"{template}.txt").read_text(encoding="utf-8") if template else STARTER
+        path = ESSAYS / (f"{stem}.txt" if template else f"{stem} 1.txt")
+        number = 2
+        while path.exists():
+            path = ESSAYS / f"{stem} {number}.txt"
             number += 1
-        path = ESSAYS / f"Untitled essay {number}.txt"
-        path.write_text(STARTER, encoding="utf-8")
+        path.write_text(text, encoding="utf-8")
         fresh_versions(path)
         self.open(path)
 
@@ -415,6 +450,22 @@ class State:
             return {"error": "no PDF was produced"}
         return {"name": target.name}
 
+    def export_docx(self):
+        from lib import docx_export
+
+        with self.lock:
+            target = self.work / "export" / f"{self.path.stem}.docx"
+            target.parent.mkdir(exist_ok=True)
+            try:
+                docx_export.export(self.path, target)
+            except (SystemExit, ValueError) as error:
+                return {"error": str(error)}
+            except Exception as error:
+                return {"error": f"{type(error).__name__}: {error}"}
+        if not target.is_file():
+            return {"error": "no Word document was produced"}
+        return {"name": target.name}
+
     def upload(self, name, data):
         folder = self.path.parent / "assets"
         folder.mkdir(exist_ok=True)
@@ -539,6 +590,89 @@ def thumb_url(path):
     return f"/thumb/{file.name}?t={int(file.stat().st_mtime)}"
 
 
+def save_template(name, page=""):
+    if STATE.path is None:
+        return {"error": "Open an essay first"}
+    clean = re.sub(r'[\\/:*?"<>|]+', "", str(name or "")).strip()[:60]
+    if not clean:
+        return {"error": "Give the template a name"}
+    OWN_TEMPLATES.mkdir(parents=True, exist_ok=True)
+    base = STATE.path.parent
+    lines = []
+    for line in STATE.path.read_text(encoding="utf-8").split("\n"):
+        found = re.match(r"^(\s*(?:src|cover-image|cover-logo|logo)\s*:\s*)(.+?)\s*$", line)
+        if found and not re.match(r"^([a-zA-Z]:[\\/]|/|https?:)", found.group(2)):
+            target = (base / found.group(2)).resolve()
+            if target.exists():
+                line = f"{found.group(1)}{target}"
+        lines.append(line)
+    (OWN_TEMPLATES / f"{clean}.txt").write_text("\n".join(lines), encoding="utf-8")
+    picture = STATE.work / Path(str(page)).name if page else None
+    if picture and picture.is_file() and picture.suffix == ".png":
+        try:
+            from PIL import Image
+
+            with Image.open(picture) as image:
+                image.thumbnail((360, 520))
+                image.save(OWN_TEMPLATES / f"{clean}.png")
+        except Exception:
+            shutil.copyfile(picture, OWN_TEMPLATES / f"{clean}.png")
+    return {"ok": True, "id": f"mine:{clean}"}
+
+
+def remove_template(ident):
+    name = str(ident or "")
+    if not name.startswith("mine:"):
+        return {"error": "Only your own templates can be removed"}
+    for suffix in (".txt", ".png"):
+        file = OWN_TEMPLATES / f"{Path(name[5:]).name}{suffix}"
+        if file.is_file():
+            file.unlink()
+    return {"ok": True}
+
+
+def own_templates():
+    out = []
+    if not OWN_TEMPLATES.is_dir():
+        return out
+    for file in sorted(OWN_TEMPLATES.glob("*.txt"), key=lambda item: item.stat().st_mtime, reverse=True):
+        head = file.read_text(encoding="utf-8").split("\n---", 1)[0]
+        limit = re.search(r"^word-limit:\s*(\d+)\s*$", head, re.M)
+        thumb = file.with_suffix(".png")
+        out.append(
+            {
+                "id": f"mine:{file.stem}",
+                "name": file.stem,
+                "group": "Mine",
+                "note": f"{int(limit.group(1)):,} words" if limit else "Your template",
+                "thumb": f"/mytemplates/{quote(thumb.name)}?t={int(thumb.stat().st_mtime)}" if thumb.is_file() else "",
+                "mine": True,
+            }
+        )
+    return out
+
+
+def starters():
+    out = own_templates()
+    for ident, name, group, note in STARTERS:
+        file = STARTER_DIR / f"{ident}.txt"
+        if not file.is_file():
+            continue
+        head = file.read_text(encoding="utf-8").split("\n---", 1)[0]
+        limit = re.search(r"^word-limit:\s*(\d+)\s*$", head, re.M)
+        thumb = STARTER_DIR / f"{ident}.png"
+        out.append(
+            {
+                "id": ident,
+                "name": name,
+                "group": group,
+                "note": f"{int(limit.group(1)):,} words" if limit else note,
+                "thumb": f"/starters/{ident}.png?t={int(thumb.stat().st_mtime)}" if thumb.is_file() else "",
+            }
+        )
+    return out
+
+
 def details(paths):
     out = {}
     for item in paths:
@@ -597,6 +731,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(STATE.snapshot())
         if route == "/api/places":
             return self.send_json(places())
+        if route == "/api/update":
+            return self.send_json(update.status(DATA / "update.json"))
         if route == "/api/ping":
             STATE.last_ping = time.time()
             STATE.seen = True
@@ -610,12 +746,17 @@ class Handler(BaseHTTPRequestHandler):
             file = STATE.work / "export" / Path(unquote(route)).name
             if file.is_file():
                 disposition = {"Content-Disposition": f'attachment; filename="{file.name}"'}
-                return self.send_bytes(200, file.read_bytes(), "application/pdf", disposition)
+                kind = DOCX_TYPE if file.suffix.lower() == ".docx" else "application/pdf"
+                return self.send_bytes(200, file.read_bytes(), kind, disposition)
         if route.startswith("/file/") and STATE.path:
             file = (STATE.path.parent / route[len("/file/"):]).resolve()
             if file.is_file() and STATE.path.parent in file.parents:
                 kind = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
                 return self.send_bytes(200, file.read_bytes(), kind)
+        if route.startswith("/vendor/") and route.endswith(".js") and route.count("/") == 2:
+            file = STUDIO / "vendor" / Path(route).name
+            if file.is_file():
+                return self.send_bytes(200, file.read_bytes(), "text/javascript; charset=utf-8", {"Cache-Control": "max-age=86400"})
         if route == "/vendor/asciimath.js":
             source = (ENGINE / "node_modules" / "asciimath2tex" / "dist" / "asciimath2tex.mjs").read_text(encoding="utf-8")
             source = source.replace("export{a as default};", ";window.AsciiMath=a;")
@@ -651,6 +792,16 @@ class Handler(BaseHTTPRequestHandler):
             file = (STUDIO / "previews" / Path(route).name).resolve()
             if file.is_file() and file.suffix == ".webp":
                 return self.send_bytes(200, file.read_bytes(), "image/webp", {"Cache-Control": "max-age=86400"})
+        if route.startswith("/mytemplates/"):
+            file = (OWN_TEMPLATES / Path(unquote(route)).name).resolve()
+            if file.parent == OWN_TEMPLATES.resolve() and file.suffix == ".png" and file.is_file():
+                return self.send_bytes(200, file.read_bytes(), "image/png", {"Cache-Control": "max-age=86400"})
+            return self.send_bytes(404, b"not found", "text/plain")
+        if route.startswith("/starters/"):
+            file = (STARTER_DIR / Path(route).name).resolve()
+            if file.parent == STARTER_DIR.resolve() and file.suffix == ".png" and file.is_file():
+                return self.send_bytes(200, file.read_bytes(), "image/png", {"Cache-Control": "max-age=86400"})
+            return self.send_bytes(404, b"not found", "text/plain")
         name = "index.html" if route in {"/", ""} else route.lstrip("/")
         file = STUDIO / name
         if name == "index.html" and file.is_file():
@@ -668,7 +819,7 @@ class Handler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         try:
             if route == "/api/prefs":
-                clean = {str(key): str(value)[:2000] for key, value in body.items() if str(key).startswith("studio.")}
+                clean = {str(key): str(value) for key, value in body.items() if str(key).startswith("studio.") and len(str(value)) <= 500_000}
                 PREFS.write_text(json.dumps(clean, indent=1), encoding="utf-8")
                 return self.send_json({"ok": True})
             if route == "/api/link":
@@ -688,19 +839,33 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(STATE.snapshot())
             if route == "/api/save":
                 if "keep" in body:
-                    STATE.keep = max(0, min(200, int(body["keep"])))
+                    STATE.keep = max(0, min(history.FOREVER, int(body["keep"])))
                 STATE.save(body["source"])
                 return self.send_json({"ok": True})
             if route == "/api/versions":
                 return self.send_json({"versions": STATE.versions()})
             if route == "/api/version":
                 return self.send_json({"source": STATE.read_version(body["name"])})
+            if route == "/api/version_name":
+                return self.send_json({"versions": STATE.name_version(body.get("name"), body.get("label", ""), body.get("current", ""))})
+            if route == "/api/version_restore":
+                source = STATE.restore_version(body["name"], body.get("current", ""))
+                return self.send_json({"source": source, "versions": STATE.versions()})
+            if route == "/api/version_copy":
+                STATE.copy_version(body["name"])
+                return self.send_json(STATE.snapshot())
             if route == "/api/close":
                 STATE.path = None
                 return self.send_json(STATE.snapshot())
             if route == "/api/new":
-                STATE.create()
+                STATE.create(body.get("template") or None)
                 return self.send_json(STATE.snapshot())
+            if route == "/api/starters":
+                return self.send_json({"items": starters()})
+            if route == "/api/save_template":
+                return self.send_json(save_template(body.get("name"), body.get("page") or ""))
+            if route == "/api/remove_template":
+                return self.send_json(remove_template(body.get("id")))
             if route == "/api/pick":
                 chosen = pick_file()
                 if chosen is None:
@@ -727,16 +892,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(STATE.snapshot())
             if route == "/api/export":
                 return self.send_json(STATE.export())
+            if route == "/api/export_docx":
+                return self.send_json(STATE.export_docx())
             if route == "/api/copy_export":
                 source = STATE.work / "export" / Path(body["name"]).name
                 shutil.copyfile(source, body["path"])
                 saved = load_links()
-                saved["links"][str(STATE.path)] = str(Path(body["path"]).resolve())
+                key = str(STATE.path) + ("#docx" if source.suffix.lower() == ".docx" else "")
+                saved["links"][key] = str(Path(body["path"]).resolve())
                 save_links(saved)
                 return self.send_json({"ok": True})
             if route == "/api/export_target":
                 saved = load_links()
-                return self.send_json({"path": saved["links"].get(str(STATE.path), ""), "folder": saved.get("folder", "")})
+                key = str(STATE.path) + ("#docx" if body.get("kind") == "docx" else "")
+                return self.send_json({"path": saved["links"].get(key, ""), "folder": saved.get("folder", "")})
             if route == "/api/pdf_folder":
                 saved = load_links()
                 saved["folder"] = str(body.get("folder") or "")
@@ -744,6 +913,49 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"folder": saved["folder"]})
             if route == "/api/upload":
                 return self.send_json({"path": STATE.upload(body["name"], body["data"])})
+            if route == "/api/check":
+                from lib import checks
+
+                if STATE.path is None:
+                    return self.send_json({"findings": [], "tasks": checks.tasks(), "criteria": [], "ticks": []})
+                source = body.get("source")
+                if not isinstance(source, str):
+                    source = STATE.path.read_text(encoding="utf-8-sig")
+                pages = body.get("pages")
+                pages = int(pages) if isinstance(pages, (int, float)) and pages > 0 else None
+                extra = [item for item in body.get("issues") or [] if isinstance(item, dict)]
+                return self.send_json(checks.essay_report(CHECKS, STATE.path, source, pages, extra))
+            if route == "/api/check_save":
+                from lib import checks
+
+                if STATE.path is None:
+                    return self.send_json({"ok": False})
+                ticks = body.get("ticks") if isinstance(body.get("ticks"), dict) else None
+                own = body.get("own") if isinstance(body.get("own"), list) else None
+                checks.save(CHECKS, STATE.path, body.get("task"), ticks, own)
+                return self.send_json({"ok": True})
+            if route == "/api/lookup":
+                from lib import lookup
+
+                try:
+                    return self.send_json({"source": lookup.find(str(body.get("query", ""))[:2000])})
+                except lookup.NotFound as error:
+                    return self.send_json({"error": str(error)})
+            if route == "/api/reference":
+                from lib import lookup
+
+                return self.send_json(lookup.preview(body.get("fields") or {}, body.get("style") or "apa"))
+            if route == "/api/open_path":
+                target = Path(str(body.get("path") or ""))
+                if not target.is_file() or target.suffix.lower() not in {".pdf", ".docx"}:
+                    return self.send_json({"error": "File not found"})
+                if sys.platform == "win32":
+                    os.startfile(str(target))
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", str(target)])
+                else:
+                    subprocess.Popen(["xdg-open", str(target)])
+                return self.send_json({"ok": True})
             if route == "/api/reveal" and STATE.path:
                 target = body.get("path") or str(STATE.path)
                 subprocess.Popen(["explorer", "/select,", str(Path(target))])
@@ -824,10 +1036,15 @@ def launch(url):
     webbrowser.open(url)
 
 
+class Server(ThreadingHTTPServer):
+    request_queue_size = 256
+    daemon_threads = True
+
+
 def create(essay=None, port=0, host="127.0.0.1", watching=True):
     if essay:
         STATE.open(essay)
-    server = ThreadingHTTPServer((host, port), Handler)
+    server = Server((host, port), Handler)
     if watching:
         threading.Thread(target=watch, args=(server,), daemon=True).start()
     return server, f"http://127.0.0.1:{server.server_address[1]}/"

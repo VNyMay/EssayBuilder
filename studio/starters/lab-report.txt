@@ -1,0 +1,81 @@
+title: Lab report
+look: compact
+citations: apa
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Title of the experiment
+:::
+
+:::text
+align: center
+size: 10
+---
+Your name · Class · Date
+:::
+
+# Aim
+
+State what the experiment investigates in one or two sentences.
+
+# Hypothesis
+
+Predict the result and explain the scientific reason for your prediction [@source2024].
+
+# Variables
+
+Table: Variables.
+
+| Variable | Type | How it is changed, measured or controlled |
+|:--|:--|:--|
+| Name the variable | Independent | Range of values |
+| Name the variable | Dependent | Instrument used |
+| Name the variable | Controlled | How it is kept constant |
+
+# Materials
+
+- Item and quantity
+- Item and quantity
+
+# Method
+
+1. First step.
+2. Second step.
+3. Repeat and record the results.
+
+# Results
+
+Table: Results.
+
+| Independent variable / unit | Trial 1 / unit | Trial 2 / unit | Mean / unit |
+|--:|--:|--:|--:|
+| 0.0 | 0.0 | 0.0 | 0.0 |
+| 0.0 | 0.0 | 0.0 | 0.0 |
+
+Describe the trend shown by the data and add a graph.
+
+# Conclusion
+
+State whether the results support the hypothesis and explain why.
+
+# Evaluation
+
+Note sources of error and how the experiment could be improved.
+
+# References
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the source
+publisher: Publisher
+:::
+
+:::bibliography
+:::

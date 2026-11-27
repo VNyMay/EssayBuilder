@@ -3,4 +3,5 @@ pygments
 openpyxl
 websockets
 Pillow
+python-docx
 pywebview; sys_platform == "win32"

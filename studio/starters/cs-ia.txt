@@ -1,0 +1,87 @@
+title: Computer Science IA
+look: compact
+code-font: Fira Code
+citations: ieee
+word-limit: 2000
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Name of your computational solution
+:::
+
+:::text
+align: center
+size: 10
+---
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Problem specification
+
+Describe the problem scenario and its computational context: who has the problem, what they need and why a computational solution fits.
+
+## Success criteria
+
+1. A specific, testable thing the solution must do.
+2. Another specific, testable criterion.
+3. Another specific, testable criterion.
+
+# Planning
+
+Break the problem down into smaller parts and explain the order you will build them in.
+
+Table: Development plan.
+
+| Stage | Task | Target date |
+|:--|:--|:--|
+| 1 | Describe the task | Date |
+| 2 | Describe the task | Date |
+
+# System overview
+
+Explain the design of the solution: its structure, data and algorithms. Add diagrams such as a flowchart or class diagram.
+
+:::flow
+caption: Overview of the main algorithm.
+---
+Input -> Process -> Output
+:::
+
+# Development
+
+Explain the key techniques you used and why they were appropriate, with short code excerpts [@source2024].
+
+:::code python
+caption: An important part of the solution.
+---
+def main():
+    print("Replace this with your own code")
+:::
+
+# Evaluation
+
+Evaluate the solution against each success criterion, using evidence from testing. Suggest realistic improvements.
+
+# References
+
+:::sources
+@source2024
+type: website
+author: Surname, Firstname
+year: 2024
+title: Title of the page
+site: Website name
+url: https://example.com
+accessed: 2026-11-01
+:::
+
+:::bibliography
+:::
+
+# Appendix A: Source code
+
+Paste or insert the full source code of your solution here.

@@ -18,6 +18,7 @@ PYTHON = [
     ("pygments", "pygments", True),
     ("openpyxl", "openpyxl", False),
     ("websockets", "websockets", False),
+    ("docx", "python-docx", False),
 ]
 if sys.platform == "win32":
     PYTHON.append(("webview", "pywebview", False))

@@ -223,9 +223,10 @@ class Api:
     def close(self):
         self._window.destroy()
 
-    def choose_save(self, name, directory=""):
+    def choose_save(self, name, directory="", kind="pdf"):
         folder = directory if directory and Path(directory).is_dir() else ""
-        picked = self._window.create_file_dialog(webview.SAVE_DIALOG, directory=folder, save_filename=name, file_types=("PDF (*.pdf)",))
+        types = ("Word document (*.docx)",) if kind == "docx" else ("PDF (*.pdf)",)
+        picked = self._window.create_file_dialog(webview.SAVE_DIALOG, directory=folder, save_filename=name, file_types=types)
         if not picked:
             return None
         return str(picked[0] if isinstance(picked, (list, tuple)) else picked)

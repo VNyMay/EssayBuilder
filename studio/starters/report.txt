@@ -1,0 +1,54 @@
+title: Title of your report
+subject: Subject or course
+subtitle: A short description of what the report covers
+author: Your name
+date: today
+cover-style: modern
+look: essay
+contents: yes
+section-breaks: no
+citations: apa
+---
+
+# Summary {nonumber}
+
+Summarise the purpose, main findings and recommendations of the report in a few sentences.
+
+# Introduction
+
+Explain the purpose and scope of the report and the question or problem it addresses.
+
+# Method
+
+Describe how you gathered and analysed the information.
+
+# Findings
+
+Present what you found, with tables and figures where they help [@source2024].
+
+# Discussion
+
+Interpret the findings: what they mean, how reliable they are and what they leave out.
+
+# Recommendations
+
+1. A specific action that follows from the findings.
+2. Another specific action.
+
+# Conclusion
+
+Restate the main findings and why they matter.
+
+# References
+
+:::sources
+@source2024
+type: report
+author: {Organisation name}
+year: 2024
+title: Title of the report
+publisher: Publisher
+:::
+
+:::bibliography
+:::

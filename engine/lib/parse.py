@@ -239,6 +239,13 @@ class Compiler(*KITS):
                     self.cfg[key] = value
         elif look:
             self.report.error(lines[i].where, f"look must be one of: {', '.join(LOOKS)}{suggest(look, list(LOOKS))}")
+        for key, scale in (("margins", {"": 1, "mm": 1, "cm": 10, "in": 25.4}), ("font-size", {"": 1, "pt": 1})):
+            found = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([a-z]*)", self.cfg.get(key, DEFAULTS[key]).strip().lower())
+            if found and found.group(2) in scale:
+                self.cfg[key] = f"{float(found.group(1)) * scale[found.group(2)]:g}"
+            else:
+                self.report.warn(lines[i].where, f"{key} must be a number like {DEFAULTS[key]}, so {DEFAULTS[key]} is used")
+                self.cfg[key] = DEFAULTS[key]
         return rest
 
     # ---- block parser ----------------------------------------------------------------
@@ -519,7 +526,9 @@ class Compiler(*KITS):
             style = "classic"
         hint = (lambda label: f'<span class="ph">{label}</span>') if self.studio else (lambda label: "")
         subject = render_inline(self.cfg.get("subject", ""), self) or hint("Subject")
-        question = render_inline(self.cfg.get("question") or self.cfg.get("title", ""), self) or hint("Title of your essay")
+        question = render_inline(self.cfg.get("title") or self.cfg.get("question", ""), self) or hint("Title of your essay")
+        both = self.cfg.get("title", "").strip() and self.cfg.get("question", "").strip()
+        asked_line = f'<p class="cv-subtitle">{render_inline(self.cfg["question"], self)}</p>' if both else ""
         extra = "".join(f"{render_inline(text, self)}<br>" for text in self.cover_lines)
         if style == "classic":
             extra = "".join(
@@ -596,7 +605,7 @@ class Compiler(*KITS):
         self.emit(
             f'<section class="{classes}" style="{";".join(colors)}">{art}'
             f'<div class="cv-top"><div class="cv-head">{logo}<div class="cv-kicker">{subject}</div></div>'
-            f'<div class="cv-mid"><div class="cv-title">{question}</div>{subtitle}</div></div>'
+            f'<div class="cv-mid"><div class="cv-title">{question}</div>{asked_line}{subtitle}</div></div>'
             f'<div class="cv-bottom">{f"<div class={chr(34)}cv-meta{chr(34)}>{items}</div>" if items else ""}'
             f'<div class="cv-foot">{foot}</div></div></section>'
         )

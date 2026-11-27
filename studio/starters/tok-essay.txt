@@ -1,0 +1,55 @@
+title: TOK essay
+look: compact
+heading-numbers: no
+citations: mla
+word-limit: 1600
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Copy your prescribed title here, word for word
+:::
+
+:::text
+align: center
+size: 10
+---
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Introduction
+
+Unpack the prescribed title: define its key terms and state the knowledge question you will explore. Name the two areas of knowledge you will use and give a short thesis.
+
+# First area of knowledge
+
+Make a claim that answers the title from this area of knowledge. Support it with a specific, real example [@source2024].
+
+Give a counterclaim with its own example, then weigh the two and say what this shows about the title.
+
+# Second area of knowledge
+
+Make a claim from your second area of knowledge and support it with a specific example.
+
+Give a counterclaim, evaluate it and link the result back to the title and to your first area of knowledge.
+
+# Conclusion
+
+Answer the prescribed title, drawing together your arguments. Note the implications of your answer and one perspective that remains open.
+
+# Works Cited
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the source
+publisher: Publisher
+:::
+
+:::bibliography
+:::

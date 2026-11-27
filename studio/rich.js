@@ -91,6 +91,10 @@ function inlineNodes(text) {
       flush();
       frag.append(chip('math', m[0], m[1]));
       i += m[0].length;
+    } else if ((m = rest.match(/^\[\^([\w-]+)\]/))) {
+      flush();
+      frag.append(chip('note', m[0], '†'));
+      i += m[0].length;
     } else if ((m = rest.match(/^\^\[([^\]]*)\]/))) {
       flush();
       frag.append(chip('note', m[0], '\u2020'));
@@ -940,7 +944,7 @@ function openRich(range, selectAll) {
     setTimeout(() => {
       if (!S.edit || S.edit.ta !== el) return;
       const active = document.activeElement;
-      if (el.contains(active) || (active && active.closest && active.closest('.menu, .cpop, .fpop, .fmtbar, .chip-pop, #palette'))) return;
+      if (el.contains(active) || (active && active.closest && active.closest('.menu, .cpop, .fpop, .fmtbar, .chip-pop, #palette, .src-back'))) return;
       closeChipPop();
       closeEditor();
     }, 0);
@@ -1031,6 +1035,7 @@ function inlineItems() {
   const items = [{ label: 'Equation', hint: 'maths', run: () => newMath() }];
   Object.entries(S.labels || {}).forEach(([key, label]) => items.push({ label, hint: 'reference', run: () => insertInlineChip('ref', `@${key}`, label) }));
   Object.entries(S.sources || {}).forEach(([key, label]) => items.push({ label, hint: 'source', run: () => insertInlineChip('cite', `[@${key}]`, (S.cites && S.cites[`@${key}`]) || label) }));
+  if (typeof openSourceLookup === 'function') items.push({ label: 'Add source', hint: 'DOI, ISBN or link', run: () => openSourceLookup() });
   items.push({ label: 'Link', hint: 'web address', run: () => newLink() });
   items.push({ label: 'Footnote', hint: 'note at the page foot', run: () => newNote() });
   items.push({ label: 'Symbols', hint: 'Greek, operators', run: () => richMathPalette(S.edit.bar.querySelector('.math')) });

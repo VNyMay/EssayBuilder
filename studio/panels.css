@@ -545,7 +545,7 @@ input[type='range']::-webkit-slider-thumb {
 #palette {
   display: block;
   width: 700px;
-  max-height: calc((100vh - 150px) / var(--ui));
+  max-height: calc(100vh / var(--ui) - 160px);
   overflow: auto;
   padding: 14px 18px 18px;
 }

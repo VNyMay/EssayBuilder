@@ -83,7 +83,7 @@ registerKit({
       kind: 'decisiontree',
       label: 'Decision tree',
       icon: 'diagram',
-      bodyTitle: 'Options',
+      bodyTitle: 'Choices and outcomes',
       hint: 'Build factory (cost 100000)\n  Strong demand (0.6): 400000\n  Weak demand (0.4): 50000\nDo nothing: 0',
       options: [
         { key: 'decision', label: 'Question', type: 'text', placeholder: 'Expand?' },

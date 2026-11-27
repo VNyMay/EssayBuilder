@@ -1,0 +1,94 @@
+title: Science IA
+look: compact
+citations: apa
+word-limit: 3000
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+How does the independent variable affect the dependent variable? Write your research question here.
+:::
+
+:::text
+align: center
+size: 10
+---
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Research design
+
+## Research question
+
+State a focused research question that names the independent and dependent variables and the system you studied.
+
+## Background
+
+Explain the scientific theory behind your investigation and why the question is worth asking [@source2024]. State a hypothesis with a reason.
+
+## Variables
+
+Table: Variables in the investigation.
+
+| Variable | Type | How it is changed, measured or controlled |
+|:--|:--|:--|
+| Name the variable | Independent | Range and number of values |
+| Name the variable | Dependent | Instrument and its uncertainty |
+| Name the variable | Controlled | How it is kept constant |
+
+## Methodology
+
+List the apparatus and describe the method in enough detail for someone else to repeat it, including the number of trials.
+
+1. First step of the method.
+2. Second step of the method.
+3. Repeat the trials and record the results.
+
+Note any safety, ethical and environmental considerations.
+
+# Data analysis
+
+## Raw data
+
+Table: Raw data with uncertainties.
+
+| Independent variable / unit | Trial 1 / unit | Trial 2 / unit | Trial 3 / unit |
+|--:|--:|--:|--:|
+| 0.0 | 0.0 | 0.0 | 0.0 |
+| 0.0 | 0.0 | 0.0 | 0.0 |
+
+## Processed data
+
+Show one sample calculation, then present the processed data and a graph with error bars.
+
+$$ "mean" = (x_1 + x_2 + x_3) / 3 $$
+
+Describe the trend, its uncertainty and any anomalies.
+
+# Conclusion
+
+Answer the research question using your processed data. Compare the result with the accepted scientific context and your hypothesis.
+
+# Evaluation
+
+Identify the strengths and weaknesses of the method and how they affected the data. Suggest realistic improvements and an extension to the investigation.
+
+# References
+
+:::sources
+@source2024
+type: article
+author: Surname, Firstname
+year: 2024
+title: Title of the article
+journal: Journal name
+volume: 1
+issue: 1
+pages: 1-10
+:::
+
+:::bibliography
+:::

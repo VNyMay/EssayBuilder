@@ -17,6 +17,12 @@
 <link rel="stylesheet" href="press.css">
 <link rel="stylesheet" href="themes.css">
 <link rel="stylesheet" href="depth.css">
+<link rel="stylesheet" href="sources.css">
+<link rel="stylesheet" href="gallery.css">
+<link rel="stylesheet" href="history.css">
+<link rel="stylesheet" href="flow.css">
+<link rel="stylesheet" href="check.css">
+<link rel="stylesheet" href="rows.css">
 </head>
 <body>
 <header id="bar">
@@ -30,7 +36,11 @@
     <button id="coverBtn" class="pill soft" title="Cover"></button>
     <button id="themeBtn" class="pill soft" title="Appearance"></button>
     <button id="settingsBtn" class="pill soft" title="Settings"></button>
-    <button id="export" class="pill solid" title="Export PDF"></button>
+    <button id="checkBtn" class="pill soft" title="Check before submitting"></button>
+    <div id="exportGroup" class="split">
+      <button id="export" class="pill solid" title="Export PDF"></button>
+      <button id="exportMore" class="pill solid" title="Export as" aria-haspopup="menu"></button>
+    </div>
     <div id="winctl" hidden>
       <button id="wMin" class="wbtn" title="Minimise"></button>
       <button id="wMax" class="wbtn" title="Maximise"></button>
@@ -82,6 +92,8 @@
 <script src="controls.js"></script>
 <script src="pickers.js"></script>
 <script src="panels.js"></script>
+<script src="rowkinds.js"></script>
+<script src="rows.js"></script>
 <script src="cover.js"></script>
 <script src="coverfree.js"></script>
 <script src="coverpage.js"></script>
@@ -96,8 +108,16 @@
 <script src="sheet.js"></script>
 <script src="place.js"></script>
 <script src="commands.js"></script>
+<script src="sources.js"></script>
 <script src="tour.js"></script>
 <script src="pagemove.js"></script>
+<script src="gallery.js"></script>
+<script src="history.js"></script>
 <script src="studio.js"></script>
+<script src="/vendor/tiptap.js"></script>
+<script src="flow.js"></script>
+<script src="check.js"></script>
+<script src="update.js"></script>
+<script src="helpcenter.js"></script>
 </body>
 </html>

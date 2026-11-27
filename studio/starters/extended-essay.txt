@@ -1,0 +1,64 @@
+title: Title of your extended essay
+subject: Subject of your essay
+question: To what extent ...? Write your research question here.
+cover-line: Session: May 2027
+look: essay
+contents: yes
+citations: apa
+word-limit: 4000
+---
+
+# Introduction
+
+Introduce your topic and state your research question. Explain why it is worth investigating and what a reader needs to know before the argument begins.
+
+Outline how the essay answers the question: the sources, data or methods you used and the order of the sections that follow.
+
+# Background
+
+Summarise the theory, context and earlier research your essay builds on. Define key terms and cite the sources you rely on [@source2024].
+
+# Methodology
+
+Describe how you gathered your evidence: primary data, secondary sources, experiments or texts. Justify why this approach suits the research question and note its limits.
+
+# Analysis and discussion
+
+## First line of argument
+
+Present your first piece of evidence and analyse what it shows. Link every point back to the research question.
+
+## Second line of argument
+
+Develop the argument with further evidence. Compare interpretations and explain where sources agree or disagree.
+
+## Counter-arguments
+
+Consider other views and the weaknesses in your evidence. Explain how they affect your answer.
+
+# Evaluation
+
+Evaluate the reliability of your sources and methods. Explain what you would change and which questions remain open.
+
+# Conclusion
+
+Answer the research question directly, drawing together the key findings. Do not introduce new evidence here.
+
+# References
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the source
+publisher: Publisher
+city: City
+:::
+
+:::bibliography
+:::
+
+# Appendix A: Supporting material
+
+Put raw data, transcripts or extra figures here. Appendices are outside the word count.
