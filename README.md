@@ -9,7 +9,7 @@ Made for IB students, but it works for any long piece of writing. It comes with 
 
 - **Core:** Extended Essay, TOK essay, TOK exhibition, CAS reflection, CAS project
 - **Subjects:** Science IA (Biology, Chemistry, Physics), Maths IA (AA and AI), Computer Science IA, Business Management IA, Digital Society IA, History IA
-- **Languages:** English essay, English Individual Oral, French and Arabic writing tasks (Arabic is written right to left)
+- **Languages:** English essay, English Individual Oral, French and Arabic writing tasks
 
 ## Get it
 
