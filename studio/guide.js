@@ -37,6 +37,8 @@ const GUIDE = {
       ['Values', 'The columns to plot. Each becomes its own line or bar.'],
       ['X title  /  Y title', 'The words written along each axis.'],
       ['Value labels (switch)', 'Prints the value on each bar.'],
+      ['Error bars', 'Under Uncertainty: name a column of uncertainties, or type a fixed value like 0.05 or a percentage like 5%.'],
+      ['Best-fit line (switch)', 'Draws a straight line of best fit and prints its equation and R².'],
       ['Hline: 4.6692 | limit', 'In More options: a flat reference line with a label. Vline does the same upright.'],
     ],
     tips: [

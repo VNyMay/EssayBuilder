@@ -426,7 +426,7 @@ textarea.fpop-input {
 
 .flow-doc {
   outline: none;
-  font-family: var(--doc-font);
+  font-family: 'EB Arabic', var(--doc-font);
   font-size: calc(12 * var(--u));
   line-height: var(--lh);
   color: #141414;
@@ -449,8 +449,8 @@ textarea.fpop-input {
 .flow-doc h2,
 .flow-doc h3 {
   position: relative;
-  text-align: left;
-  font-family: var(--head-font);
+  text-align: start;
+  font-family: 'EB Arabic', var(--head-font);
 }
 
 .flow-doc h1 {
@@ -483,7 +483,7 @@ textarea.fpop-input {
 }
 
 .flow-doc .hnum {
-  margin-right: 0.55em;
+  margin-inline-end: 0.55em;
   user-select: none;
 }
 
@@ -501,7 +501,7 @@ textarea.fpop-input {
 .flow-doc ul,
 .flow-doc ol {
   margin: 0 0 calc(10 * var(--u));
-  padding-left: 1.6em;
+  padding-inline-start: 1.6em;
 }
 
 .flow-doc li {
@@ -600,18 +600,26 @@ textarea.fpop-input {
 .fb {
   position: relative;
   margin: calc(6 * var(--u)) calc(-10px) calc(14 * var(--u));
-  padding: 6px 10px;
+  padding: 0 10px;
   border-radius: 10px;
   cursor: pointer;
-  transition: box-shadow 140ms ease, background-color 140ms ease;
 }
 
-.fb:hover {
+.fb::before {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
+  border-radius: 10px;
+  pointer-events: none;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.fb:hover::before {
   box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 0.35);
 }
 
-.fb.on,
-.fb.ProseMirror-selectednode {
+.fb.on::before,
+.fb.ProseMirror-selectednode::before {
   box-shadow: 0 0 0 2px var(--green);
   background: rgb(var(--accent-rgb) / 0.03);
 }

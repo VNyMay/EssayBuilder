@@ -1,0 +1,60 @@
+title: English Individual Oral
+look: compact
+heading-numbers: no
+page-numbers: no
+citations: mla
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Individual Oral outline
+:::
+
+:::text
+align: center
+size: 10
+---
+Global issue: write your global issue here\\
+Literary work: Title of the work, by its author\\
+Second work: Title of the work, by its creator
+:::
+
+# Outline
+
+You may take up to 10 bullet points into the oral. Keep each one short: these are prompts, not a script.
+
+1. Introduce the global issue and why it matters.
+2. Introduce the extract from the first work and its place in the whole work.
+3. First point: how the author presents the global issue in the extract.
+4. Evidence and analysis from the extract.
+5. Link to the rest of the first work.
+6. Introduce the extract from the second work.
+7. How the second work presents the global issue.
+8. Evidence and analysis from the second extract.
+9. Compare the two works' choices and their effects.
+10. Conclude: what the two works show about the global issue.
+
+# Extracts
+
+Paste each extract here (up to 40 lines each) so you can annotate it.
+
+> First extract [@source2024].
+
+> Second extract.
+
+# Works Cited
+
+:::sources
+@source2024
+type: book
+author: Surname, Firstname
+year: 2024
+title: Title of the work
+publisher: Publisher
+:::
+
+:::bibliography
+:::

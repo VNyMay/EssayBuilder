@@ -318,9 +318,14 @@ function chartPanel(model, body, range) {
       commitPanel(150);
     })));
   }
+  const xy = ['', 'line', 'scatter'].includes(type);
+  const science = [];
+  if (xy || type === 'bar' || type === 'hbar') science.push(textLine('Error bars', model, 'yerr', { placeholder: 'A column, 0.05 or 5%' }));
+  if (xy) science.push(textLine('Sideways error bars', model, 'xerr', { placeholder: 'A column, 0.05 or 5%' }), yesNoLine('Best-fit line', model, 'trendline'));
   body.append(
     captionSection(model),
     section('Labels', ...show),
+    ...(science.length ? [section('Uncertainty', ...science)] : []),
     section('Shape', segmented([
       { value: '', label: 'Auto' },
       { value: '16:9', label: 'Wide' },
@@ -332,7 +337,7 @@ function chartPanel(model, body, range) {
     })),
     layoutSection(model, 'chart', range),
   );
-  moreSection(body, model, 'chart', ['type', 'src', 'x', 'y', 'xlabel', 'ylabel', 'grid', 'legend', 'labels', 'f', 'domain', 'ratio', 'width', 'align', 'wrap', 'caption', 'source']);
+  moreSection(body, model, 'chart', ['type', 'src', 'x', 'y', 'xlabel', 'ylabel', 'grid', 'legend', 'labels', 'yerr', 'xerr', 'trendline', 'f', 'domain', 'ratio', 'width', 'align', 'wrap', 'caption', 'source']);
 }
 
 const SHAPES = ['circle', 'square', 'triangle', 'diamond', 'star', 'cross'];

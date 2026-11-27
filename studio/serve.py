@@ -20,7 +20,6 @@ STUDIO = Path(__file__).resolve().parent
 ROOT = STUDIO.parent
 ENGINE = ROOT / "engine"
 DATA = Path(os.environ.get("ESSAY_BUILDER_DATA") or STUDIO)
-ESSAYS = Path(os.environ.get("ESSAY_BUILDER_ESSAYS") or ROOT / "Essays")
 RECENT = DATA / "recent.json"
 HIDDEN = DATA / "hidden.json"
 BACKUPS = DATA / "backups"
@@ -35,11 +34,18 @@ STARTERS = (
     ("extended-essay", "Extended Essay", "Core", ""),
     ("tok-essay", "TOK Essay", "Core", ""),
     ("tok-exhibition", "TOK Exhibition", "Core", ""),
-    ("science-ia", "Science IA", "Subjects", ""),
-    ("maths-ia", "Maths IA", "Subjects", "12–20 pages"),
+    ("cas-reflection", "CAS Reflection", "Core", "One experience"),
+    ("cas-project", "CAS Project", "Core", "Five stages"),
+    ("science-ia", "Science IA", "Subjects", "Biology, Chemistry, Physics"),
+    ("maths-ia", "Maths IA", "Subjects", "AA and AI, 12–20 pages"),
     ("cs-ia", "Computer Science IA", "Subjects", ""),
+    ("business-ia", "Business Management IA", "Subjects", ""),
+    ("digital-society-ia", "Digital Society IA", "Subjects", ""),
     ("history-ia", "History IA", "Subjects", ""),
-    ("english-essay", "English Essay", "Subjects", ""),
+    ("english-essay", "English Essay", "Languages", ""),
+    ("english-io", "English Individual Oral", "Languages", "10-point outline"),
+    ("french-writing", "French Writing Task", "Languages", ""),
+    ("arabic-writing", "Arabic Writing Task", "Languages", ""),
     ("essay", "Essay", "General", "Any length"),
     ("report", "Report", "General", "Any length"),
     ("lab-report", "Lab Report", "General", "Any length"),
@@ -59,7 +65,12 @@ sys.path.insert(0, str(ENGINE))
 import build  # noqa: E402
 import history  # noqa: E402
 import update  # noqa: E402
+from storage import Storage  # noqa: E402
 from lib import setup  # noqa: E402
+
+STORAGE = Storage(DATA, os.environ.get("ESSAY_BUILDER_ESSAYS") or (None if (ROOT / "installed.flag").is_file() else ROOT / "Essays"))
+ESSAYS = STORAGE.initial()
+UPDATER = update.Updater(DATA / "updates", (ROOT / "installed.flag").is_file())
 
 
 class State:
@@ -104,7 +115,7 @@ class State:
                 modified = path.stat().st_mtime
             except OSError:
                 continue
-            out.append({"path": item, "name": path.stem, "folder": path.parent.name, "modified": modified, "thumb": thumb_url(item)})
+            out.append({"path": item, "name": essay_title(item) or path.stem, "folder": path.parent.name, "modified": modified, "thumb": thumb_url(item), "title": essay_title(item)})
         return out
 
     def hidden(self):
@@ -161,6 +172,7 @@ class State:
         with self.history_lock:
             text = history.restore(self.backup_folder(), name, current, getattr(self, "keep", history.FOREVER))
         self.path.write_text(text, encoding="utf-8")
+        self.known = text
         return text
 
     def copy_version(self, name):
@@ -190,11 +202,50 @@ class State:
         fresh_versions(target)
         self.open(target)
 
-    def save(self, source):
+    def disk(self):
+        try:
+            return self.path.read_text(encoding="utf-8-sig")
+        except (OSError, AttributeError):
+            return None
+
+    def save(self, source, leaving=False):
         if self.path is None:
-            return
+            return None
+        disk = self.disk()
+        known = getattr(self, "known", None)
+        if disk is not None and known is not None and disk != known and disk != source:
+            if leaving:
+                self.keep_copy(source, "this computer")
+            return disk
         self.path.write_text(source, encoding="utf-8")
+        self.known = source
         self.backup(source)
+        return None
+
+    def keep_copy(self, text, label):
+        stem = self.path.stem
+        target = self.path.with_name(f"{stem} ({label}).txt")
+        number = 2
+        while target.exists():
+            target = self.path.with_name(f"{stem} ({label} {number}).txt")
+            number += 1
+        target.write_text(text, encoding="utf-8")
+        return target
+
+    def resolve(self, mode, source):
+        disk = self.disk()
+        if disk is None:
+            self.save(source)
+            return {"ok": True}
+        if mode == "theirs":
+            self.backup(source, force=True)
+            self.known = disk
+            return {"ok": True, "source": disk}
+        copy = self.keep_copy(disk, "other version")
+        self.path.write_text(source, encoding="utf-8")
+        self.known = source
+        self.backup(source)
+        return {"ok": True, "copy": copy.stem}
 
     def versions(self):
         if self.path is None:
@@ -278,6 +329,7 @@ class State:
             path = self.from_word(path)
         self.path = path
         self.remember(path)
+        self.known = self.disk()
         try:
             self.backup(path.read_text(encoding="utf-8-sig"), force=True)
         except OSError:
@@ -388,7 +440,7 @@ class State:
         import pymupdf
 
         with self.lock:
-            self.save(source)
+            conflict = self.save(source)
             self.version += 1
             version = self.version
             output = self.work / f"r{version}.pdf"
@@ -399,6 +451,8 @@ class State:
             except Exception as error:
                 return {"version": version, "fatal": f"{type(error).__name__}: {error}"}
             result["version"] = version
+            if result.get("title") is not None:
+                result["title"] = display_title(source, str(result["title"]))
             if "pdf" in result:
                 dpi = max(96, min(300, int(dpi or PNG_DPI)))
                 pages, names = self.rasterise(output, version, dpi)
@@ -420,6 +474,8 @@ class State:
                 result.pop("pdf")
                 result.pop("sizes", None)
                 self.clean(version)
+            if conflict is not None and isinstance(result, dict):
+                result["conflict"] = True
             return result
 
     def make_thumb(self, pdf):
@@ -445,6 +501,10 @@ class State:
             try:
                 build.build(self.path, target)
             except SystemExit as error:
+                found = re.search(r"(\d+) error", str(error))
+                if found:
+                    count = int(found.group(1))
+                    return {"error": f"Fix {'this problem' if count == 1 else f'these {count} problems'} first, then export again.", "problems": count}
                 return {"error": str(error)}
         if not target.is_file():
             return {"error": "no PDF was produced"}
@@ -666,11 +726,41 @@ def starters():
                 "id": ident,
                 "name": name,
                 "group": group,
-                "note": f"{int(limit.group(1)):,} words" if limit else note,
+                "note": " · ".join(part for part in (note, f"{int(limit.group(1)):,} words" if limit else "") if part),
                 "thumb": f"/starters/{ident}.png?t={int(thumb.stat().st_mtime)}" if thumb.is_file() else "",
             }
         )
     return out
+
+
+def essay_title(path):
+    path = Path(path)
+    if path.suffix.lower() != ".txt":
+        return ""
+    try:
+        with path.open(encoding="utf-8-sig", errors="replace") as handle:
+            text = handle.read(8192)
+    except OSError:
+        return ""
+    return display_title(text)
+
+
+GENERIC_TITLES = {"tok essay", "essay", "report", "lab report", "extended essay"}
+
+
+def display_title(text, title=None):
+    head, _, body = text.partition("\n---")
+    if title is None:
+        found = re.search(r"^title\s*:\s*(.+?)\s*$", head, re.M)
+        title = found.group(1).replace("*", "").strip() if found else ""
+    if title.lower() in GENERIC_TITLES:
+        lead = body.split("\n# ", 1)[0]
+        block = re.search(r"^:::text\s*\n(?:[\w-]+\s*:.*\n)*---\s*\n(.+?)\s*\n:::", lead, re.M)
+        if block:
+            line = block.group(1).replace("*", "").strip()
+            if line and not re.search(r"\b(copy your|your|here)\b", line, re.I):
+                return line[:120]
+    return title[:120]
 
 
 def details(paths):
@@ -680,7 +770,7 @@ def details(paths):
             modified = Path(item).stat().st_mtime
         except OSError:
             modified = 0
-        out[item] = {"thumb": thumb_url(item), "modified": modified}
+        out[item] = {"thumb": thumb_url(item), "modified": modified, "title": essay_title(item)}
     return out
 
 
@@ -732,7 +822,10 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/api/places":
             return self.send_json(places())
         if route == "/api/update":
-            return self.send_json(update.status(DATA / "update.json"))
+            info = update.status(DATA / "update.json")
+            info["canInstall"] = UPDATER.can_install() and bool(info.get("installer"))
+            info["progress"] = UPDATER.progress()
+            return self.send_json(info)
         if route == "/api/ping":
             STATE.last_ping = time.time()
             STATE.seen = True
@@ -840,8 +933,13 @@ class Handler(BaseHTTPRequestHandler):
             if route == "/api/save":
                 if "keep" in body:
                     STATE.keep = max(0, min(history.FOREVER, int(body["keep"])))
-                STATE.save(body["source"])
-                return self.send_json({"ok": True})
+                theirs = STATE.save(body["source"], bool(body.get("leaving")))
+                return self.send_json({"ok": theirs is None, "conflict": theirs is not None})
+            if route == "/api/disk":
+                disk = STATE.disk()
+                return self.send_json({"changed": disk is not None and disk != getattr(STATE, "known", disk)})
+            if route == "/api/resolve":
+                return self.send_json(STATE.resolve(str(body.get("mode", "both")), body.get("source", "")))
             if route == "/api/versions":
                 return self.send_json({"versions": STATE.versions()})
             if route == "/api/version":
@@ -856,6 +954,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(STATE.snapshot())
             if route == "/api/close":
                 STATE.path = None
+                return self.send_json(STATE.snapshot())
+            if route == "/api/sample":
+                source = STUDIO / "sample" / "Demo Essay"
+                target = ESSAYS / "Sample essay"
+                essay = target / "Industrial Revolution Essay.txt"
+                if not essay.is_file():
+                    shutil.copytree(source, target, dirs_exist_ok=True)
+                STATE.open(essay)
                 return self.send_json(STATE.snapshot())
             if route == "/api/new":
                 STATE.create(body.get("template") or None)
@@ -873,6 +979,19 @@ class Handler(BaseHTTPRequestHandler):
                 if chosen:
                     STATE.open(chosen)
                 return self.send_json(STATE.snapshot())
+            if route == "/api/report":
+                return self.send_json(report_details())
+            if route == "/api/update_download":
+                info = update.status(DATA / "update.json")
+                return self.send_json(UPDATER.start(info.get("installer"), info.get("latest", "")))
+            if route == "/api/update_progress":
+                return self.send_json(UPDATER.progress())
+            if route == "/api/update_install":
+                return self.send_json(UPDATER.install())
+            if route == "/api/storage":
+                return self.send_json(STORAGE.describe(ESSAYS))
+            if route == "/api/storage_set":
+                return self.send_json(change_storage(str(body.get("path", "")), bool(body.get("move"))))
             if route == "/api/library":
                 return self.send_json({"items": STATE.library()})
             if route == "/api/fonts":
@@ -1034,6 +1153,52 @@ def launch(url):
                 subprocess.Popen([str(candidate), f"--app={url}", "--window-size=1280,860", *SMOOTH])
                 return
     webbrowser.open(url)
+
+
+def report_details():
+    import platform
+
+    log = DATA / "studio.log"
+    try:
+        lines = log.read_text(encoding="utf-8", errors="replace").splitlines()[-80:]
+    except OSError:
+        lines = []
+    home = str(Path.home())
+    clean = [line.replace(home, "~").replace(home.replace("\\", "/"), "~") for line in lines]
+    return {
+        "version": update.current(),
+        "system": f"{platform.system()} {platform.release()} ({platform.version()})",
+        "python": platform.python_version(),
+        "installed": (ROOT / "installed.flag").is_file(),
+        "log": clean,
+    }
+
+
+def change_storage(path, move):
+    global ESSAYS
+    if not path.strip():
+        return {"error": "Choose a folder first."}
+    try:
+        target = STORAGE.choose(Path(path).expanduser())
+    except OSError as error:
+        return {"error": f"Essay Builder can't save in that folder ({error.strerror or error})."}
+    moved = STORAGE.move(ESSAYS, target, skip=[DATA, BACKUPS]) if move else {}
+    if moved:
+        def shift(item):
+            for old, new in moved.items():
+                if item == old or item.startswith(old + os.sep):
+                    return new + item[len(old):]
+            return item
+
+        for file in (RECENT, HIDDEN):
+            try:
+                items = json.loads(file.read_text(encoding="utf-8-sig")) if file.exists() else []
+            except (OSError, ValueError):
+                continue
+            if isinstance(items, list):
+                file.write_text(json.dumps([shift(item) if isinstance(item, str) else item for item in items]), encoding="utf-8")
+    ESSAYS = target
+    return dict(STORAGE.describe(ESSAYS), moved=len(moved))
 
 
 class Server(ThreadingHTTPServer):

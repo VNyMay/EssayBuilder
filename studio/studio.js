@@ -81,6 +81,8 @@ function setStatus(kind) {
   node.className = kind === 'busy' ? 'busy' : kind === 'bad' ? 'bad' : '';
   node.textContent = kind === 'busy' ? 'Saving' : kind === 'bad' ? 'Fix needed' : 'Saved';
   if (kind === 'ok') S.savedAt = new Date();
+  node.onclick = kind === 'bad' && typeof checkOpen === 'function' ? () => checkOpen() : null;
+  node.title = kind === 'bad' ? 'See what needs fixing' : '';
   updatePill(kind);
 }
 
@@ -205,7 +207,11 @@ async function saveNow() {
   if (!S.name || S.source === savedSource) return;
   const text = S.source;
   try {
-    await api('/api/save', { source: text, keep: keepVersions() });
+    const answer = await api('/api/save', { source: text, keep: keepVersions() });
+    if (answer && answer.conflict) {
+      if (typeof conflictAsk === 'function') conflictAsk();
+      return;
+    }
     savedSource = text;
   } catch (error) {
     savedSource = null;
@@ -214,7 +220,7 @@ async function saveNow() {
 
 function saveOnLeave() {
   if (!S.name || S.source === savedSource) return;
-  navigator.sendBeacon('/api/save', new Blob([JSON.stringify({ source: S.source })], { type: 'application/json' }));
+  navigator.sendBeacon('/api/save', new Blob([JSON.stringify({ source: S.source, leaving: true })], { type: 'application/json' }));
 }
 
 function schedule(delay = 700) {
@@ -273,9 +279,20 @@ function parseIssues(result) {
 function renderIssues() {
   const button = $('#issues');
   const errors = S.issues.filter((item) => item.level === 'error').length;
-  button.hidden = !S.issues.length;
-  button.className = `pill soft ${errors ? 'error' : 'warn'}`;
-  button.innerHTML = `${icon('warn', 16)}<span>${S.issues.length}</span>`;
+  button.hidden = true;
+  const check = $('#checkBtn');
+  if (!check) return;
+  let count = check.querySelector('.check-alert');
+  if (!errors) {
+    if (count) count.remove();
+    return;
+  }
+  if (!count) {
+    count = h('span', { class: 'check-alert' });
+    check.append(count);
+  }
+  count.textContent = String(errors);
+  count.title = `${errors} ${errors === 1 ? 'problem' : 'problems'} to fix before you can export`;
 }
 
 function loadImage(url) {
@@ -288,9 +305,11 @@ function loadImage(url) {
 }
 
 async function applyResult(result, sent) {
+  if (result && result.conflict && typeof conflictAsk === 'function') conflictAsk();
   S.issues = parseIssues(result);
   renderIssues();
-  if (result.fatal || (result.errors && result.errors.length)) {
+  const problems = Boolean(result.errors && result.errors.length);
+  if (result.fatal || (problems && !(result.pages && result.pages.length))) {
     S.dirty = false;
     setStatus('bad');
     if (result.title !== undefined) S.title = result.title;
@@ -333,7 +352,7 @@ async function applyResult(result, sent) {
   }
   S.dirty = false;
   unlockHits();
-  setStatus('ok');
+  setStatus(problems ? 'bad' : 'ok');
   syncTitle();
   document.querySelectorAll('.page.leaving').forEach((node) => node.classList.remove('leaving'));
   layout();
@@ -1823,6 +1842,18 @@ function citationTitle(style) {
   return { mla: 'Works Cited', chicago: 'Bibliography' }[String(style || 'apa').toLowerCase()] || 'References';
 }
 
+function headerSettings(source) {
+  const out = {};
+  const lines = String(source).split('\n');
+  const end = lines.findIndex((line) => line.trim() === '---');
+  if (end < 0) return out;
+  lines.slice(0, end).forEach((line) => {
+    const found = line.match(/^([A-Za-z][\w-]*)\s*:\s*(.*)$/);
+    if (found && !(found[1].toLowerCase() in out)) out[found[1].toLowerCase()] = found[2].trim();
+  });
+  return out;
+}
+
 function headerValue(key) {
   if (S.front) {
     const all = lines();
@@ -2173,6 +2204,7 @@ function bindNative() {
 
 async function goHome() {
   if (!S.name) return;
+  if (typeof TOUR !== 'undefined' && TOUR.root) endTour();
   closeEditor(true);
   closePanel();
   closeSettings();
@@ -2259,9 +2291,9 @@ async function exportAs(kind) {
   await settle();
   const answer = await api(format.route).catch((error) => ({ error: String(error) }));
   S.busyExport = false;
-  setStatus('ok');
+  setStatus(answer && answer.problems ? 'bad' : 'ok');
   if (answer.error) {
-    toast(answer.error, true);
+    toast(answer.error, true, answer.problems ? [{ label: 'Show me', run: () => (typeof checkOpen === 'function' ? checkOpen() : openIssues()) }] : []);
     return;
   }
   const url = `/export/${encodeURIComponent(answer.name)}`;
@@ -2643,6 +2675,7 @@ function timeAgo(seconds) {
 
 function showStart(state) {
   reveal($('#start'));
+  if (typeof storageLine === 'function') storageLine();
   document.documentElement.classList.add('home');
   updatePill();
   renderOutline();
@@ -2706,10 +2739,11 @@ function showStart(state) {
     })] : []),
     ...items.map((path, index) => {
       const parts = path.split(/[\\/]/);
-      const name = (parts.pop() || '').replace(/\.(txt|pdf)$/i, '');
+      const info = essayInfo(state, path);
+      const name = info.title || (parts.pop() || '').replace(/\.(txt|pdf)$/i, '');
+      if (info.title) parts.pop();
       const folder = parts.pop() || '';
       const turn = ((name.length * 37 + index * 53) % 9) / 2 - 2;
-      const info = essayInfo(state, path);
       const card = h('button', {
         class: `sheet${info.thumb ? ' has-thumb' : ''}${S.recentPick && S.recentPick.has(path) ? ' picked' : ''}`,
         'data-path': path,
@@ -2817,6 +2851,7 @@ function load(state) {
   document.documentElement.classList.remove('home');
   S.source = state.source;
   S.name = state.name;
+  S.path = state.path || state.name;
   S.history = [state.source];
   S.index = 0;
   savedSource = state.source;
@@ -2824,7 +2859,7 @@ function load(state) {
   S.sel = null;
   S.front = null;
   S.title = '';
-  S.settings = {};
+  S.settings = headerSettings(state.source || '');
   S.words = 0;
   S.issues = [];
   renderIssues();
@@ -3173,6 +3208,7 @@ async function main() {
   buildPalette();
   loadPlaces();
   const state = await (await fetch('/api/state')).json();
+  if (document.readyState === 'loading') await new Promise((done) => document.addEventListener('DOMContentLoaded', done, { once: true }));
   load(state);
   pickTheme();
 }

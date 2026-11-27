@@ -24,6 +24,7 @@ RELATION = re.compile(r"=|\\(?:lt|gt|geq|leq|neq|approx|in|to)\b")
 PAPERS = {"a4": (210, 297), "a5": (148, 210), "letter": (215.9, 279.4), "legal": (215.9, 355.6)}
 BAND = re.compile(r'<div class="fnb" data-b="(\d+)" data-n="([\d ]+)"></div>')
 NOTE_PAGES = re.compile(r'<section class="fnm">[\s\S]*?</section>')
+WORD_RX = re.compile(r"[^\W_][\w\u0300-\u036f\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed’'.\-]*")
 NOTE_KEY = re.compile(r"FN\d+")
 BAND_BLUE, NOTE_BLUE = 254 / 255, 253 / 255
 BAND_GAP = 6.0
@@ -102,7 +103,7 @@ def body_words(src):
         r"<!--cite-->[\s\S]*?<!--/cite-->",
         r"<(table|figure|nav|style|script|svg)\b[\s\S]*?</\1>",
         r'<(div|p) class="(?:cap|src)[^"]*">[\s\S]*?</\1>',
-        r'<span class="num">[^<]*</span>',
+        r'<span class="num"[^>]*>[^<]*</span>',
         r'<div class="eq[\s\S]*?</div>',
         r"\$\$[\s\S]+?\$\$",
     ]:
@@ -120,7 +121,7 @@ def body_words(src):
         r"<[^>]+>",
     ]:
         body = re.sub(pattern, " ", body)
-    return len(re.findall(r"[A-Za-z0-9][\w’'.\-]*", html.unescape(body)))
+    return len(WORD_RX.findall(html.unescape(body)))
 
 
 def settings_css(cfg, font):
@@ -211,6 +212,27 @@ def settings_css(cfg, font):
     return "\n".join(rules)
 
 
+RTL_TEXT = re.compile(r"[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]")
+RTL_TAGS = re.compile(r"<(p|ul|ol|h[1-4]|td|th|blockquote|figcaption|dt|dd)(?=[\s>])(?![^>]*\bdir=)")
+
+
+def rtl_faces():
+    css = fonts.resolve("Noto Naskh Arabic", lambda message: None)
+    blocks = re.findall(r"/\* [\w-]+-arabic-\d+-\w+ \*/\s*@font-face\s*\{[^}]*\}", css)
+    return re.sub(r"font-family:\s*'[^']*'", "font-family: 'EB Arabic'", "\n".join(blocks))
+
+
+def rtl_font_css():
+    faces = rtl_faces()
+    if not faces:
+        return ""
+    rules = (
+        "[dir=auto]{font-family:'EB Arabic',var(--font),Cambria,Georgia,serif}"
+        "h1[dir],h2[dir],h3[dir],h4[dir]{font-family:'EB Arabic',var(--hfont,var(--font)),Cambria,Georgia,serif}"
+    )
+    return f"\n{faces}\n{rules}\n"
+
+
 def prepare(src, cfg, folder, font_css=""):
     latex = meta(src, "numbers", "text") == "latex"
     words = word_count(src)
@@ -218,6 +240,9 @@ def prepare(src, cfg, folder, font_css=""):
 
     src = src.replace("{{WORDS}}", count)
     src = legacy_code(src, folder)
+    if RTL_TEXT.search(src):
+        src = RTL_TAGS.sub(lambda match: f'<{match.group(1)} dir="auto"', src)
+        font_css += rtl_font_css()
 
     css = (HERE / "essay.css").read_text(encoding="utf-8")
     for extra in sorted((HERE / "css").glob("*.css")):
@@ -512,7 +537,7 @@ def section_list(src, pages):
     found = []
     for match in re.finditer(r'<h1 id="([^"]+)"[^>]*>([\s\S]*?)</h1>', src):
         if match.group(1) in pages and match.group(1) != "contents":
-            text = re.sub(r'<span class="num">[^<]*</span>|<[^>]+>', "", match.group(2))
+            text = re.sub(r'<span class="num"[^>]*>[^<]*</span>|<[^>]+>', "", match.group(2))
             found.append((pages[match.group(1)] - 1, html.unescape(text).strip()))
     return sorted(found)
 
@@ -735,13 +760,13 @@ def number_pages(
 
 
 def compile_essay(essay):
-    from lib.parse import compile_text
+    from lib.parse import compile_text, page_lang
 
     compiler, head, body, title, report = compile_text(essay)
     wanted = [compiler.cfg.get("font", ""), compiler.cfg.get("heading-font", ""), compiler.cfg.get("code-font", "")]
     wanted = [fonts.parse_family(f)[0] for f in wanted] + sorted(compiler.text_fonts)
     font_css = fonts.prepare(wanted, lambda message: report.warn(essay.name, message))
-    page = f'<!doctype html>\n<html lang="en">\n{head}\n<body>\n{body}\n</body>\n</html>\n'
+    page = f'<!doctype html>\n<html lang="{page_lang(compiler.cfg)}">\n{head}\n<body>\n{body}\n</body>\n</html>\n'
     page = compiler.run_jobs(page, fonts.parse_family(compiler.cfg["font"])[0], font_css)
     return compiler.cfg, page, title, report, font_css
 
@@ -856,7 +881,7 @@ def scan_page(page):
     digest = page_digest(page)
     if digest in SCANNED:
         return SCANNED[digest]
-    marks, spots, panels = [], [], []
+    marks, spots, panels, rules = [], [], [], []
     for x0, y0, x1, y1, word, *_ in page.get_text("words"):
         match = re.fullmatch(r"@@B(\d+)@@", word)
         if match:
@@ -867,13 +892,20 @@ def scan_page(page):
         spots.append((info["bbox"][1], info["bbox"][3]))
     for drawing in page.get_drawings():
         rect = drawing["rect"]
+        color = drawing.get("color") or ()
+        if rect.height < 1.5 and rect.width > 20 and len(color) == 3 and all(abs(c - 0.35) < 0.02 for c in color) and rect.y0 > page.rect.height * 0.3:
+            rules.append(rect.y0)
+            continue
         if rect.height < page.rect.height * 0.7 and rect.y0 < page.rect.height - 48:
             spots.append((rect.y0, rect.y1))
             if drawing.get("fill") is not None and rect.height >= 6 and rect.width > 30:
                 panels.append((rect.y0, rect.y1))
     if len(SCANNED) > 400:
         SCANNED.clear()
-    SCANNED[digest] = (marks, spots, panels)
+    note_top = min(rules) if rules else None
+    if note_top is not None:
+        spots = [spot for spot in spots if spot[0] < note_top - 1]
+    SCANNED[digest] = (marks, spots, panels, note_top)
     return SCANNED[digest]
 
 
@@ -883,13 +915,15 @@ def studio_regions(pdf, margin=0):
     found = []
     boxes = []
     panels = []
+    notes_at = []
     with pymupdf.open(pdf) as doc:
         sizes = [(page.rect.width, page.rect.height) for page in doc]
         for number, page in enumerate(doc):
-            marks, spots, backs = scan_page(page)
+            marks, spots, backs, note_top = scan_page(page)
             if margin:
                 low, high = margin - 2, page.rect.height - margin - 4
                 spots = [b for b in spots if b[1] > low and b[0] < high]
+            notes_at.append(note_top)
             found.extend((ident, number, y0) for ident, y0 in marks)
             boxes.append(spots)
             panels.append(backs)
@@ -907,6 +941,9 @@ def studio_regions(pdf, margin=0):
         next_top = top_of(following[1], following[2]) if following else None
         if following is None:
             spans.append({"page": number, "y0": y0, "y1": sizes[number][1]})
+            for after in range(number + 1, len(sizes)):
+                if any(b[0] > 1 for b in boxes[after]):
+                    spans.append({"page": after, "y0": 0, "y1": sizes[after][1]})
         elif following[1] == number:
             spans.append({"page": number, "y0": y0, "y1": next_top})
         else:
@@ -933,6 +970,10 @@ def studio_regions(pdf, margin=0):
                 own = [b for b in boxes[span["page"]] if b[0] >= span["y0"] - 1 and b[0] < span["y1"] - 0.5]
                 if own:
                     span["y1"] = min(span["y1"], max(b[1] for b in own) + 2)
+        for span in spans:
+            rule = notes_at[span["page"]]
+            if rule is not None and span["y0"] < rule:
+                span["y1"] = min(span["y1"], rule - 2)
         regions[ident] = [span for span in spans if span["y1"] - span["y0"] > 4]
     return sizes, regions
 
@@ -947,15 +988,17 @@ def source_labels(compiler):
 
 
 def studio_build(essay, source, output):
-    from lib.parse import compile_text
+    from lib.parse import compile_text, page_lang
 
     essay = Path(essay).resolve()
     compiler, head, body, title, report = compile_text(essay, source, True)
     wanted = [compiler.cfg.get("font", ""), compiler.cfg.get("heading-font", ""), compiler.cfg.get("code-font", "")]
     wanted = [fonts.parse_family(f)[0] for f in wanted] + sorted(compiler.text_fonts)
     font_css = fonts.prepare(wanted, lambda message: report.warn(essay.name, message))
-    page = f'<!doctype html>\n<html lang="en">\n{head}\n<body>\n{body}\n</body>\n</html>\n'
+    page = f'<!doctype html>\n<html lang="{page_lang(compiler.cfg)}">\n{head}\n<body>\n{body}\n</body>\n</html>\n'
     page = compiler.run_jobs(page, fonts.parse_family(compiler.cfg["font"])[0], font_css)
+    if RTL_TEXT.search(body):
+        font_css += "\n" + rtl_faces()
     result = {
         "errors": list(report.errors),
         "warnings": list(report.warnings),
@@ -976,33 +1019,36 @@ def studio_build(essay, source, output):
         },
         "fontCss": font_css,
     }
-    if report.errors:
-        return result
-    src, words, latex, font = prepare(page, compiler.cfg, essay.parent, font_css)
-    work = Path(tempfile.mkdtemp())
-    printable = work / "print.html"
-    raw = work / "raw.pdf"
     try:
-        needs_pages = "<!--TOC-->" in src or "@PG:" in src or 'class="pn"' in src
-        cfg = compiler.cfg
-        pages, raw = paginate(src, work, printable, raw, cfg, needs_pages, str(essay))
-        pages = {k: v for k, v in pages.items() if not re.fullmatch(r"B\d+", k)}
-        body_pages = [n for key, n in pages.items() if key != "contents" and not key.startswith(("fig-", "tbl-"))]
-        has_cover = cfg.get("cover", "yes").lower() not in OFF
-        first = (min(body_pages) - 1 if body_pages else 0) if needs_pages else (1 if has_cover else 0)
-        font_file = KATEX_FONT if latex else (fonts.find_system(font) or KATEX_FONT)
-        numbered = cfg.get("page-numbers", "yes").lower() not in OFF
-        continuous = cfg.get("page-numbering", "body").lower() == "continuous"
-        count = number_pages(
-            raw, output, first, font_file, title, numbered, continuous, has_cover,
-            cfg, section_list(src, pages), True, rules=numbering_rules(pages),
-        )
-        sizes, regions = studio_regions(output, margin_of(cfg))
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
-    overlays = {key: number - 1 for key, number in pages.items() if key.startswith("ov-")}
-    result.update({"pdf": str(output), "pages": count, "words": words, "sizes": sizes, "regions": regions, "overlays": overlays})
-    return result
+        src, words, latex, font = prepare(page, compiler.cfg, essay.parent, font_css)
+        work = Path(tempfile.mkdtemp())
+        printable = work / "print.html"
+        raw = work / "raw.pdf"
+        try:
+            needs_pages = "<!--TOC-->" in src or "@PG:" in src or 'class="pn"' in src
+            cfg = compiler.cfg
+            pages, raw = paginate(src, work, printable, raw, cfg, needs_pages, str(essay))
+            pages = {k: v for k, v in pages.items() if not re.fullmatch(r"B\d+", k)}
+            body_pages = [n for key, n in pages.items() if key != "contents" and not key.startswith(("fig-", "tbl-"))]
+            has_cover = cfg.get("cover", "yes").lower() not in OFF
+            first = (min(body_pages) - 1 if body_pages else 0) if needs_pages else (1 if has_cover else 0)
+            font_file = KATEX_FONT if latex else (fonts.find_system(font) or KATEX_FONT)
+            numbered = cfg.get("page-numbers", "yes").lower() not in OFF
+            continuous = cfg.get("page-numbering", "body").lower() == "continuous"
+            count = number_pages(
+                raw, output, first, font_file, title, numbered, continuous, has_cover,
+                cfg, section_list(src, pages), True, rules=numbering_rules(pages),
+            )
+            sizes, regions = studio_regions(output, margin_of(cfg))
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+        overlays = {key: number - 1 for key, number in pages.items() if key.startswith("ov-")}
+        result.update({"pdf": str(output), "pages": count, "words": words, "sizes": sizes, "regions": regions, "overlays": overlays})
+        return result
+    except Exception:
+        if report.errors:
+            return result
+        raise
 
 
 def main():

@@ -1,12 +1,41 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.1",
   "items": [
-    ["Real pages while you write", "Write view now shows your actual pages, with the same breaks, headers and footers as your PDF."],
-    ["Smooth zoom", "Zoom in and out of Write view as smoothly as the page view, with Ctrl and + or -, or a pinch."],
-    ["Simpler toolbar", "One Add button for maths, citations, footnotes, tables, charts and pictures."],
-    ["Footnotes and citations everywhere", "Find them in Add, in the Insert panel and by typing /footnote or /cite."],
-    ["Fewer dead ends", "The cover designer and print preview take you back to where you were writing."],
-    ["Friendlier checks", "Problems show the section they are in, and charts with a wrong column still build."],
-    ["Fair word count", "Footnotes no longer count toward your words, like the IB rules."]
+    [
+      "Templates for every subject",
+      "New starters with their own Check lists: Business Management IA, Digital Society IA, English Individual Oral, French and Arabic writing tasks, and CAS reflections and projects. Arabic and French words now count properly."
+    ],
+    [
+      "Error bars and best-fit lines",
+      "Science graphs can show error bars from a column, a fixed value or a percentage, plus a line of best fit with its equation and R²."
+    ],
+    [
+      "Back up your essays for free",
+      "Keep your essays in OneDrive, Google Drive or Dropbox with one click from the home screen. Nothing is lost if your computer breaks."
+    ],
+    [
+      "Updates install themselves",
+      "When a new version is ready, press Update and Essay Builder restarts on the new version by itself."
+    ],
+    [
+      "Page numbers in citations",
+      "Click any citation to add a page, like (Smith, 2020, p. 45), or write it as Smith (2020, p. 45) in your sentence."
+    ],
+    [
+      "Pages you can trust",
+      "Write view now matches your PDF exactly, footnotes show at the bottom of the page, and pages keep updating even while something needs fixing."
+    ],
+    [
+      "A cleaner, smoother app",
+      "One Design menu, one Add button, menus that work with the keyboard, and smooth motion everywhere."
+    ],
+    [
+      "Never lose work",
+      "If your essay is changed on another computer, Essay Builder keeps both versions instead of overwriting."
+    ],
+    [
+      "Report a problem",
+      "Help has a Report a problem button. You can see exactly what is sent, and your essay text is never included."
+    ]
   ]
 }

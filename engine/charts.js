@@ -29,9 +29,9 @@ function niceStep(range, target) {
   return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * pow;
 }
 
-function linearScale(lo, hi, size, fixedLo, fixedHi, target, flip) {
+function linearScale(lo, hi, size, fixedLo, fixedHi, target, flip, whole) {
   if (lo === hi) { lo -= 1; hi += 1; }
-  const step = niceStep(hi - lo, target);
+  const step = whole ? Math.max(1, niceStep(hi - lo, target)) : niceStep(hi - lo, target);
   const min = fixedLo !== undefined ? fixedLo : Math.floor(lo / step + 1e-9) * step;
   const max = fixedHi !== undefined ? fixedHi : Math.ceil(hi / step - 1e-9) * step;
   const ticks = [];
@@ -211,6 +211,41 @@ function seriesStyle(series) {
   return series.map((s, i) => ({ name: s.name, color: s.color || PALETTE[i % PALETTE.length], dash: DASH[i % DASH.length], mark: i % 4 }));
 }
 
+function sig(v) {
+  return String(parseFloat(v.toPrecision(3)));
+}
+
+function trend(s, color) {
+  const pairs = s.x.map((x, k) => [x, s.y[k]]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+  if (pairs.length < 2) return null;
+  const n = pairs.length;
+  const mx = pairs.reduce((a, [x]) => a + x, 0) / n;
+  const my = pairs.reduce((a, [, y]) => a + y, 0) / n;
+  let sxx = 0, sxy = 0, syy = 0;
+  pairs.forEach(([x, y]) => { sxx += (x - mx) ** 2; sxy += (x - mx) * (y - my); syy += (y - my) ** 2; });
+  if (!sxx) return null;
+  const m = sxy / sxx;
+  return { m, c: my - m * mx, r2: syy ? (sxy * sxy) / (sxx * syy) : 1, color, name: s.name };
+}
+
+function errorBars(s, pts, ok, xs, ys, left, top, color) {
+  const cap = 3.2;
+  let out = '';
+  pts.forEach((p, k) => {
+    if (!ok(p, k)) return;
+    const ey = s.yerr && s.yerr[k], ex = s.xerr && s.xerr[k];
+    if (Number.isFinite(ey) && ey > 0) {
+      const a = top + ys.map(s.y[k] - ey), b = top + ys.map(s.y[k] + ey);
+      if (Number.isFinite(a) && Number.isFinite(b)) out += `<path d="M${r2(p[0])} ${r2(a)}V${r2(b)}M${r2(p[0] - cap)} ${r2(a)}h${cap * 2}M${r2(p[0] - cap)} ${r2(b)}h${cap * 2}" stroke="${color}" stroke-width="1" fill="none"/>`;
+    }
+    if (Number.isFinite(ex) && ex > 0) {
+      const a = left + xs.map(s.x[k] - ex), b = left + xs.map(s.x[k] + ex);
+      if (Number.isFinite(a) && Number.isFinite(b)) out += `<path d="M${r2(a)} ${r2(p[1])}H${r2(b)}M${r2(a)} ${r2(p[1] - cap)}v${cap * 2}M${r2(b)} ${r2(p[1] - cap)}v${cap * 2}" stroke="${color}" stroke-width="1" fill="none"/>`;
+    }
+  });
+  return out;
+}
+
 // ---- chart types --------------------------------------------------------------------
 function xyChart(spec, index) {
   const { W, H, id } = frame(spec, index);
@@ -239,6 +274,16 @@ function xyChart(spec, index) {
   const all = (k) => series.flatMap((s) => s[k]).filter((v) => Number.isFinite(v));
   let xlo = Math.min(...all('x')), xhi = Math.max(...all('x'));
   let ylo = Math.min(...all('y')), yhi = Math.max(...all('y'));
+  series.forEach((s) => {
+    s.y.forEach((v, k) => {
+      const e = s.yerr && s.yerr[k];
+      if (Number.isFinite(v) && Number.isFinite(e)) { ylo = Math.min(ylo, v - e); yhi = Math.max(yhi, v + e); }
+    });
+    s.x.forEach((v, k) => {
+      const e = s.xerr && s.xerr[k];
+      if (Number.isFinite(v) && Number.isFinite(e)) { xlo = Math.min(xlo, v - e); xhi = Math.max(xhi, v + e); }
+    });
+  });
 
   if (spec.functions) {
     const ys = all('y').sort((p, q) => p - q);
@@ -250,6 +295,11 @@ function xyChart(spec, index) {
     }
   }
   if (categories) { xlo = -0.5; xhi = categories.length - 0.5; }
+  else if (kind === 'scatter' && !spec.functions && !spec.xlog && xhi > xlo) {
+    const pad = (xhi - xlo) * 0.04;
+    xlo -= pad;
+    xhi += pad;
+  }
 
   const showLegend = spec.legend !== 'none' && (series.length > 1 || spec.legend === 'show');
   const leg = showLegend
@@ -263,7 +313,7 @@ function xyChart(spec, index) {
   const pw = W - left - 14, ph = H - top - bottom;
   const xs = spec.xlog ? logScale(Math.max(xlo, 1e-12), xhi, pw, spec.xmin, spec.xmax, false)
     : categories ? { min: xlo, max: xhi, ticks: categories.map((_, i) => i), map: (v) => ((v - xlo) / (xhi - xlo)) * pw }
-      : linearScale(xlo, xhi, pw, spec.xmin, spec.xmax, Math.max(3, Math.floor(pw / 70)), false);
+      : linearScale(xlo, xhi, pw, spec.xmin, spec.xmax, Math.max(3, Math.floor(pw / 70)), false, series.every((s) => s.x.every((v) => v === null || v === undefined || Number.isInteger(v))));
   const ys = spec.ylog ? logScale(Math.max(ylo, 1e-12), yhi, ph, spec.ymin, spec.ymax, true)
     : linearScale(ylo, yhi, ph, spec.ymin, spec.ymax, Math.max(3, Math.floor(ph / 42)), true);
   const ctx = { left, top, pw, ph, ylabels, xlabels: categories ? (t) => esc(categories[t]) : null };
@@ -286,10 +336,21 @@ function xyChart(spec, index) {
       });
       out += `<path d="${d}" fill="none" stroke="${st.color}" stroke-width="${spec.functions ? 2 : 1.8}" ${st.dash ? `stroke-dasharray="${st.dash}"` : ''} stroke-linejoin="round"/>`;
     }
+    out += errorBars(s, pts, ok, xs, ys, left, top, st.color);
     const markers = spec.markers === false ? false : spec.markers || kind === 'scatter' || (kind === 'line' && !spec.functions && pts.length <= 30);
     if (markers) pts.forEach((p, k) => { if (ok(p, k)) out += marker(st.mark, p[0], p[1], st.color, spec.markersize || 3.4); });
   });
+  const fits = spec.trend && !spec.functions && !categories ? series.map((s, i) => trend(s, style[i].color)).filter(Boolean) : [];
+  fits.forEach((f) => {
+    const a = [left + xs.map(xs.min), top + ys.map(f.m * xs.min + f.c)];
+    const b = [left + xs.map(xs.max), top + ys.map(f.m * xs.max + f.c)];
+    if ([...a, ...b].every(Number.isFinite)) out += `<line x1="${r2(a[0])}" y1="${r2(a[1])}" x2="${r2(b[0])}" y2="${r2(b[1])}" stroke="${f.color}" stroke-width="1.3" stroke-dasharray="6 3"/>`;
+  });
   out += '</g>';
+  fits.forEach((f, j) => {
+    const text = `${fits.length > 1 ? `${esc(f.name)}: ` : ''}y = ${sig(f.m)}x ${f.c < 0 ? '−' : '+'} ${sig(Math.abs(f.c))}, R² = ${f.r2.toFixed(3)}`;
+    out += `<text x="${left + 8}" y="${top + 14 + j * 15}" fill="${f.color}" font-size="${FS - 1}" stroke="#fff" stroke-width="3" paint-order="stroke">${text}</text>`;
+  });
   if (spec.xlabel) out += `<text x="${left + pw / 2}" y="${top + ph + 40}" text-anchor="middle" fill="${INK}" font-size="${FS + 0.5}">${esc(spec.xlabel)}</text>`;
   if (spec.ylabel) out += `<text transform="translate(${12} ${top + ph / 2}) rotate(-90)" text-anchor="middle" fill="${INK}" font-size="${FS + 0.5}">${esc(spec.ylabel)}</text>`;
   if (showLegend) out += `<g transform="translate(10 ${H - leg.height - 2})">${leg.svg}</g>`;
@@ -317,8 +378,9 @@ function barChart(spec, index) {
 
   const style = seriesStyle(series);
   const n = cats.length, m = series.length;
-  const ymax = Math.max(0, ...series.flatMap((s) => s.y.filter(Number.isFinite)));
-  const ymin = Math.min(0, ...series.flatMap((s) => s.y.filter(Number.isFinite)));
+  const reach = (s, sign) => s.y.map((v, i) => v + sign * ((s.yerr && Number.isFinite(s.yerr[i]) && s.yerr[i]) || 0)).filter(Number.isFinite);
+  const ymax = Math.max(0, ...series.flatMap((s) => reach(s, 1)));
+  const ymin = Math.min(0, ...series.flatMap((s) => reach(s, -1)));
   const showLegend = spec.legend !== 'none' && m > 1;
   const leg = showLegend ? legend(style.map((s) => ({ ...s })), W - 20, 0, 'bar') : { svg: '', height: 0 };
 
@@ -373,10 +435,20 @@ function barChart(spec, index) {
       if (!horizontal) {
         const y0 = Math.min(top + pos, top + zero), h = Math.abs(pos - zero);
         out += `<rect x="${r2(start)}" y="${r2(y0)}" width="${r2(barW)}" height="${r2(h)}" fill="${style[k].color}"/>`;
+        const e = s.yerr && s.yerr[i];
+        if (Number.isFinite(e) && e > 0) {
+          const cx = start + barW / 2, a = top + valueAxis.map(v - e), b = top + valueAxis.map(v + e), cap = Math.min(5, barW / 4);
+          if (Number.isFinite(a) && Number.isFinite(b)) out += `<path d="M${r2(cx)} ${r2(a)}V${r2(b)}M${r2(cx - cap)} ${r2(a)}h${r2(cap * 2)}M${r2(cx - cap)} ${r2(b)}h${r2(cap * 2)}" stroke="${INK}" stroke-width="1.1" fill="none"/>`;
+        }
         if (spec.labels) out += `<text x="${r2(start + barW / 2)}" y="${r2(y0 - 4)}" text-anchor="middle" fill="${INK}" font-size="${FS - 1}">${fmt(v)}</text>`;
       } else {
         const x0 = Math.min(left + pos, left + valueAxis.map(Math.max(valueAxis.min, 0) || valueAxis.min)), w = Math.abs(pos - valueAxis.map(Math.max(valueAxis.min, 0) || valueAxis.min));
         out += `<rect x="${r2(x0)}" y="${r2(start)}" width="${r2(w)}" height="${r2(barW)}" fill="${style[k].color}"/>`;
+        const e = s.yerr && s.yerr[i];
+        if (Number.isFinite(e) && e > 0) {
+          const cy = start + barW / 2, a = left + valueAxis.map(v - e), b = left + valueAxis.map(v + e), cap = Math.min(5, barW / 4);
+          if (Number.isFinite(a) && Number.isFinite(b)) out += `<path d="M${r2(a)} ${r2(cy)}H${r2(b)}M${r2(a)} ${r2(cy - cap)}v${r2(cap * 2)}M${r2(b)} ${r2(cy - cap)}v${r2(cap * 2)}" stroke="${INK}" stroke-width="1.1" fill="none"/>`;
+        }
         if (spec.labels) out += `<text x="${r2(x0 + w + 4)}" y="${r2(start + barW / 2 + 4)}" fill="${INK}" font-size="${FS - 1}">${fmt(v)}</text>`;
       }
     });

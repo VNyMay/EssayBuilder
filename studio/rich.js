@@ -761,6 +761,7 @@ function mountRichBar() {
   if (S.edit.prose) bar.querySelectorAll('.para-only').forEach((node) => node.remove());
   if (S.edit.range && S.edit.range.kind === 'heading') bar.prepend(headingTools(tool), h('span', { class: 'fmt-sep' }));
   S.edit.bar = bar;
+  if (!el.parentNode) return;
   el.parentNode.append(bar);
   placeFormatBar();
 }

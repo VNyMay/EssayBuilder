@@ -367,6 +367,12 @@ function startTour(again = false) {
 
 function pickTheme() {
   if (localStorage.getItem('studio.themed') || TOUR.picker) return;
+  if (!localStorage.getItem('studio.welcomed') && typeof welcomeSheet === 'function' && document.documentElement.classList.contains('home')) {
+    localStorage.setItem('studio.welcomed', '1');
+    localStorage.setItem('studio.themed', '1');
+    welcomeSheet();
+    return;
+  }
   const tiles = THEMES.map((theme) => {
     const tile = h(
       'button',
@@ -395,7 +401,7 @@ function pickTheme() {
       { class: 'theme-card' },
       h('div', { class: 'tour-title', text: 'Pick your look' }),
       h('div', { class: 'theme-grid' }, ...tiles),
-      h('div', { class: 'tour-foot' }, h('span', { class: 'theme-later', text: 'You can change it any time in Theme.' }), h('button', { type: 'button', class: 'tour-next', text: 'Continue', onclick: done })),
+      h('div', { class: 'tour-foot' }, h('span', { class: 'theme-later', text: 'You can change it any time: Design, then App colours.' }), h('button', { type: 'button', class: 'tour-next', text: 'Continue', onclick: done })),
     ),
   );
   document.body.append(TOUR.picker);

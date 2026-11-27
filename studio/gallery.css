@@ -53,6 +53,29 @@
   color: var(--text);
 }
 
+#gallery .g-section {
+  margin-bottom: 34px;
+  animation: g-section-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--g, 0) * 60ms);
+}
+
+@keyframes g-section-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+#gallery .g-group {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--on-mat-2, var(--muted));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #gallery .g-section { animation: none; }
+}
+
 #gallery .g-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));

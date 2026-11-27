@@ -84,7 +84,7 @@ function proseHint() {
   return h('div', { class: 'data-hint', html: `${icon('paragraph', 15)}<span>Type on the page</span>` });
 }
 
-const END_WORDS = ['references', 'bibliography', 'works cited', 'sources', 'appendix', 'appendices'];
+const END_WORDS = ['references', 'bibliography', 'works cited', 'sources', 'appendix', 'appendices', 'bibliographie', 'références', 'annexe', 'annexes', 'المراجع', 'المصادر', 'قائمة المراجع', 'الملاحق', 'ملحق'];
 const FRONT_WORDS = new Set(['abstract', 'acknowledgements', 'acknowledgments', 'preface', 'declaration', 'foreword', 'contents']);
 const PAPER = new Map();
 

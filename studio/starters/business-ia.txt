@@ -1,0 +1,70 @@
+title: Business Management IA
+look: compact
+citations: apa
+word-limit: 1800
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+To what extent should the organisation ...? Write your research question here.
+:::
+
+:::text
+align: center
+size: 10
+---
+Key concept: change, creativity, ethics or sustainability\\
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Introduction
+
+Introduce the real organisation you are investigating and the business issue it faces. State your research question and explain which key concept you will connect it to, and why.
+
+# Supporting documents
+
+List the three to five supporting documents you used. Say what each one is, where it comes from and when it was published [@source2024]. Explain briefly why each is relevant and reliable.
+
+# Analysis
+
+## Tools and theories
+
+Apply business management tools and theories that suit the question, such as SWOT, STEEPLE, ratio analysis, decision trees or force field analysis. Use data from your supporting documents.
+
+Table: Key data from the supporting documents.
+
+| Measure | Year 1 | Year 2 |
+|:--|--:|--:|
+| Revenue | 0 | 0 |
+| Profit | 0 | 0 |
+
+## Analysis and evaluation
+
+Analyse what the tools show. Weigh different stakeholder views and the strengths and limits of the evidence. Keep linking back to the key concept.
+
+# Conclusion
+
+Answer the research question directly, using only what your analysis showed. Note any questions that remain unanswered.
+
+# References
+
+:::sources
+@source2024
+type: website
+author: Surname, Firstname
+year: 2024
+title: Title of the document
+site: Website name
+url: https://example.com
+accessed: 2026-11-01
+:::
+
+:::bibliography
+:::
+
+# Appendix: Supporting documents
+
+Attach a copy of each supporting document here, with the parts you used highlighted.

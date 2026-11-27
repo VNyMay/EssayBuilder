@@ -1,5 +1,7 @@
 #define AppName "Essay Builder"
+#ifndef AppVersion
 #define AppVersion "1.2.0"
+#endif
 
 [Setup]
 AppId={{B7E3A1D2-4C58-4F0B-9A7E-5D2C6F1E8A34}
@@ -39,6 +41,16 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 
+[InstallDelete]
+Type: files; Name: "{app}\studio\flow.js"
+Type: filesandordirs; Name: "{app}\studio\tests"
+Type: filesandordirs; Name: "{app}\studio\editor-src"
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\onnxruntime"
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\numpy"
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\numpy.libs"
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\networkx"
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\pymupdf_layout"
+
 [Files]
 Source: "build\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
@@ -48,6 +60,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\python\Essay Builder.exe"; Pa
 
 [Run]
 Filename: "{app}\python\Essay Builder.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; Description: "Start {#AppName}"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\python\Essay Builder.exe"; Parameters: """{app}\Essay Builder.pyw"""; WorkingDir: "{app}"; Flags: nowait; Check: Relaunch
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\engine\fonts"
@@ -83,4 +96,9 @@ begin
   Result := True;
   if not HasBrowser() then
     MsgBox('Essay Builder needs Google Chrome or Microsoft Edge. Install one of them after this setup and Essay Builder will find it.', mbInformation, MB_OK);
+end;
+
+function Relaunch(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
 end;

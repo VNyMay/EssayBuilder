@@ -5,13 +5,19 @@
 <p align="center"><b>Write your essay on real pages. Get a perfect PDF.</b><br>
 The cover, contents page, page numbers and word count are all done for you.</p>
 
-Made for IB students (EE, IA, TOK), but it works for any long piece of writing.
+Made for IB students, but it works for any long piece of writing. It comes with ready-made templates, each with its own checklist from the IB criteria:
+
+- **Core:** Extended Essay, TOK essay, TOK exhibition, CAS reflection, CAS project
+- **Subjects:** Science IA (Biology, Chemistry, Physics), Maths IA (AA and AI), Computer Science IA, Business Management IA, Digital Society IA, History IA
+- **Languages:** English essay, English Individual Oral, French and Arabic writing tasks (Arabic is written right to left)
 
 ## Get it
 
 ### Windows 10 / 11
 
 Download `EssayBuilder-Setup.exe` from [Releases](../../releases), run it, and you're done. 🎉
+
+If Windows says "Windows protected your PC", press **More info**, then **Run anyway**. It shows this because the app is new and not signed yet. After that, Essay Builder updates itself.
 
 ### Mac / Linux
 
@@ -35,14 +41,16 @@ That's it. It downloads everything else it needs by itself. If Google Chrome isn
 
 ## First steps
 
-The first time you open Essay Builder, you pick a look and a short tour shows you around. A few things worth knowing:
+The first time you open Essay Builder, it asks what you're writing and opens the right template. A few things worth knowing:
 
-- **Insert** adds tables, charts, maps, equations and lots more. Not sure what something is? Press **? Help** and tap any block to see a real example, what it's for and how to use it.
+- **Write and Preview:** the switch at the bottom right. Write lets you type on the real pages; Preview shows the finished PDF. Double-click in Preview to jump back to that spot.
+- **Add** (or type **/**) inserts tables, charts, equations, citations, footnotes and lots more. Type **@** to cite a source or point to a figure.
 - **Point between two blocks** and press **+** to add something exactly there.
-- **Drag on an empty spot** to select several blocks at once.
-- **Hover a page** to add a new one, duplicate it or drag it somewhere else.
+- **Check** goes through your essay against the IB criteria and finds mistakes.
+- **Charts** can show error bars and a line of best fit for science IAs.
 - **Ctrl+K** finds any action, so you never have to hunt through menus.
 - **Export PDF** saves your finished essay wherever you like.
+- **Back up for free:** keep your essays in OneDrive, Google Drive or Dropbox from the home screen.
 
 ## Stuck? Ask an AI 🤖
 

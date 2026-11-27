@@ -1,0 +1,35 @@
+title: French writing task
+language: fr
+look: compact
+heading-numbers: no
+page-numbers: no
+word-limit: 600
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Titre de votre texte
+:::
+
+:::text
+align: center
+size: 10
+---
+Type de texte : article, blog, lettre, discours, brochure...\\
+Destinataire : à qui écrivez-vous ? · SL 250 à 400 mots, HL 450 à 600 mots
+:::
+
+:::spacer 6mm
+
+Commencez par une introduction qui présente le sujet et capte l'attention du lecteur. Respectez les conventions du type de texte choisi : titre, date, formule d'appel, signature.
+
+Développez votre premier argument avec un exemple précis. Utilisez des connecteurs logiques : tout d'abord, en outre, cependant, par conséquent.
+
+Développez votre deuxième argument. Variez le vocabulaire et les structures : subjonctif, conditionnel, phrases complexes.
+
+Concluez en résumant votre message et en vous adressant directement au lecteur.
+
+Signature

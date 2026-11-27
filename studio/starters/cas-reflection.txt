@@ -1,0 +1,45 @@
+title: CAS reflection
+look: compact
+heading-numbers: no
+page-numbers: no
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Name of your CAS experience
+:::
+
+:::text
+align: center
+size: 10
+---
+Strand: Creativity, Activity or Service · Date: today\\
+Learning outcomes: write the numbers of the outcomes this shows (1 to 7)
+:::
+
+# What happened
+
+Describe what you did, where, with whom and for how long. Keep it short: the reflection matters more than the description.
+
+# What I learned
+
+Explain what you learned about yourself and others. Link it to the learning outcomes:
+
+1. Identify your own strengths and areas for growth.
+2. Show that challenges have been undertaken, developing new skills.
+3. Show how to initiate and plan a CAS experience.
+4. Show commitment to and perseverance in CAS experiences.
+5. Show the skills and benefits of working collaboratively.
+6. Show engagement with issues of global significance.
+7. Recognise and consider the ethics of choices and actions.
+
+# What it means for me
+
+Reflect on why this experience mattered and how it changed how you think or act.
+
+# What next
+
+Say what you will do differently or try next time.

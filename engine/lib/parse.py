@@ -21,8 +21,22 @@ from .util import (
     MM_PX, OPTION, PAPERS, Options, Report, css_length, length_px, parse_range, resolve, slug, split_attrs, suggest,
 )
 
+LANGUAGES = {
+    "english": "en", "french": "fr", "francais": "fr", "français": "fr", "arabic": "ar", "عربي": "ar", "العربية": "ar",
+    "spanish": "es", "español": "es", "german": "de", "deutsch": "de", "italian": "it", "portuguese": "pt",
+    "chinese": "zh", "mandarin": "zh", "japanese": "ja", "korean": "ko", "russian": "ru", "hindi": "hi", "dutch": "nl", "turkish": "tr",
+}
+
+
+def page_lang(cfg):
+    value = str(cfg.get("language", "")).strip().lower()
+    if re.fullmatch(r"[a-z]{2}(-[a-z]{2})?", value):
+        return value
+    return LANGUAGES.get(value, "en")
+
+
 SETTINGS = {
-    "title", "subject", "question", "font", "numbers", "heading-numbers", "font-size", "line-spacing", "paper",
+    "title", "subject", "question", "language", "font", "numbers", "heading-numbers", "font-size", "line-spacing", "paper",
     "margins", "cover", "contents", "cover-line", "word-count", "word-count-label", "word-limit", "page-numbers",
     "equation-numbers", "justify", "section-breaks", "image-width", "list-of-figures", "list-of-tables", "assets",
     "caption-size", "code-size", "table-size", "accent", "heading-style", "paragraph-indent", "paragraph-spacing",
@@ -59,7 +73,7 @@ COVER_ITEMS = (
     ("session", "Session"), ("course", "Course"), ("date", "Date"),
 )
 COLOR = re.compile(r"^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$")
-END_WORDS = ("references", "bibliography", "works cited", "sources", "appendix", "appendices")
+END_WORDS = ("references", "bibliography", "works cited", "sources", "appendix", "appendices", "bibliographie", "références", "annexe", "annexes", "المراجع", "المصادر", "قائمة المراجع", "الملاحق", "ملحق")
 FRONT_WORDS = {"abstract", "acknowledgements", "acknowledgments", "preface", "declaration", "foreword", "contents"}
 CALLOUTS = {
     "definition": ("def", "Definition"), "theorem": ("thm", "Theorem"), "lemma": ("lem", "Lemma"),
@@ -85,7 +99,7 @@ TABLE_KEYS = {"sci", "group-digits", "src", "file", "csv", "data", "path", "shee
               "group", "total", "size", "width", "caption", "id", "source", "note", "header", "header-rows", "split", "style", "transpose", "place", "wrap"}
 CHART_KEYS = {"type", "src", "file", "csv", "data", "path", "sheet", "x", "y", "width", "ratio", "xlabel", "ylabel", "xlog",
               "ylog", "legend", "grid", "lines", "markers", "labels", "bins", "xmin", "xmax", "ymin", "ymax", "hline",
-              "vline", "f", "function", "domain", "caption", "id", "source", "align", "wrap"}
+              "vline", "f", "function", "domain", "caption", "id", "source", "align", "wrap", "yerr", "xerr", "trendline"}
 DIAGRAM_KEYS = {"direction", "width", "caption", "id", "source", "title", "align", "wrap"}
 GRID_KEYS = {"cols", "width", "caption", "id", "source", "align", "wrap"}
 FIGURES_KEYS = {"cols", "width", "caption", "id", "source", "align", "wrap"}
@@ -549,7 +563,12 @@ class Compiler(*KITS):
             title = render_inline(self.cfg.get("title", ""), self)
             asked = self.cfg.get("question", "").strip()
             category = self.cfg.get("category", "").strip()
-            shown = render_inline(category, self) if category else hint("Category (language essays)")
+            language = re.search(
+                r"\b(english|french|spanish|german|arabic|chinese|mandarin|japanese|italian|russian|korean|hindi|dutch|portuguese|latin|greek|language|literature)\b",
+                self.cfg.get("subject", ""),
+                re.I,
+            )
+            shown = render_inline(category, self) if category else (hint("Category") if language else "")
             heading = subject + (f'<span class="ib-category">{shown}</span>' if shown else "")
             question_block = ""
             if asked and title:
@@ -825,11 +844,15 @@ class Compiler(*KITS):
         ident = self.unique(attrs.get("id") or slug(title))
         label = f"Section {number}" if number else title
         self.registry[("sec", ident)] = (label, ident)
-        num = f'<span class="num">{number}</span>' if number else ""
+        body = self.inline(text, line)
+        lead = re.match(r'<span style="([^"]*)">', body)
+        size = re.search(r"font-size:\s*([^;]+)", lead.group(1)) if lead else None
+        sized = f' style="font-size:{size.group(1).strip()}"' if size else ""
+        num = f'<span class="num"{sized}>{number}</span>' if number else ""
         look = style_css(" ".join(f'{key}="{value}"' for key, value in attrs.items() if key in STYLE_KEYS and key != "id"), self, line.where)
         look = f' style="{look}"' if look else ""
         hidden = ' class="notoc"' if "notoc" in flags else ""
-        self.emit(f'<h{level} id="{ident}"{hidden}{look}>{num}{self.inline(text, line)}</h{level}>')
+        self.emit(f'<h{level} id="{ident}"{hidden}{look}>{num}{body}</h{level}>')
 
     def do_para(self, block):
         self.ensure_section(block.line)
@@ -1757,6 +1780,7 @@ class Compiler(*KITS):
             "labels": opts.flag("labels") if kind not in {"pie", "donut"} else (opts.get("labels") or "").lower() or None,
             "bins": int(opts.number("bins", 0)) or None, "alt": opts.get("caption") or "Chart",
             "hlines": [], "vlines": [],
+            "trend": (opts.get("trendline") or "").strip().lower() in {"linear", "yes", "on", "true", "line"} or None,
         }
         for key in ("xmin", "xmax", "ymin", "ymax"):
             if opts.get(key) is not None:
@@ -1833,6 +1857,26 @@ class Compiler(*KITS):
         xi = column(opts.get("x") or "1")
         if xi is None:
             xi = 0
+
+        def errors(key):
+            value = (opts.get(key) or "").strip()
+            if not value:
+                return []
+            found = []
+            for part in re.split(r"\s*,\s*", value):
+                number = to_float(part.rstrip("%"))
+                if part.endswith("%") and number is not None:
+                    found.append(("percent", number))
+                elif number is not None and part.lower() not in lookup:
+                    found.append(("fixed", number))
+                else:
+                    idx = column(part)
+                    if idx is not None:
+                        found.append(("column", idx))
+            return found
+
+        yerr, xerr = errors("yerr"), errors("xerr")
+        skip = {xi} | {idx for mode, idx in yerr + xerr if mode == "column"}
         ys = []
         if opts.get("y"):
             for part in re.split(r"\s*,\s*", opts.get("y")):
@@ -1842,7 +1886,7 @@ class Compiler(*KITS):
                     ys.append((idx, label.strip() or header[idx]))
         if not ys:
             for i, h in enumerate(header):
-                if i != xi:
+                if i not in skip:
                     values = [to_float(r[i]) for r in rows[1:] if i < len(r) and r[i].strip()]
                     if values and all(v is not None for v in values):
                         ys.append((i, h))
@@ -1853,15 +1897,34 @@ class Compiler(*KITS):
             return None
         body = rows[1:]
         series = []
-        for idx, label in ys:
+
+        def spread(found, number, values):
+            if not found:
+                return None
+            mode, value = found[min(number, len(found) - 1)]
+            if mode == "column":
+                out = [to_float(r[value]) if value < len(r) else None for r in body]
+            elif mode == "percent":
+                out = [abs(v) * value / 100 if v is not None else None for v in values]
+            else:
+                out = [value] * len(values)
+            return [abs(v) if v is not None else None for v in out]
+
+        for number, (idx, label) in enumerate(ys):
             yv = [to_float(r[idx]) if idx < len(r) else None for r in body]
             labels = [r[xi] if xi < len(r) else "" for r in body]
             xv = [to_float(t) for t in labels]
             categorical = kind in {"bar", "hbar", "pie", "donut"} or any(v is None for v in xv)
-            series.append({
+            entry = {
                 "name": label, "y": [v if v is not None else None for v in yv],
                 "x": [None if categorical else v for v in xv] if categorical else xv, "xlabels": labels,
-            })
+            }
+            ey, ex = spread(yerr, number, yv), spread(xerr, number, xv)
+            if ey:
+                entry["yerr"] = ey
+            if ex and not categorical:
+                entry["xerr"] = ex
+            series.append(entry)
         if kind in {"bar", "hbar", "pie", "donut"}:
             for s in series:
                 s["x"] = [None] * len(s["y"])

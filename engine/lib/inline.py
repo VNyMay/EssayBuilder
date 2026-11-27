@@ -16,7 +16,10 @@ CITE = re.compile(
     r"(?:\s*;\s*-?@[A-Za-z][\w:.-]*(?:\s*,\s*[^\];@]+?)?)*)\]"
 )
 INNER_CITE = re.compile(CITE.pattern + r"(?![({])")
-NARRATIVE = re.compile(r"(?<![\w@/.])(@(?!(?:fig|tbl|eq|code|sec|def|thm|lem|prop|cor|ex|rem):)[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*)")
+NARRATIVE = re.compile(
+    r"(?<![\w@/.])(@(?!(?:fig|tbl|eq|code|sec|def|thm|lem|prop|cor|ex|rem):)[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*)"
+    r"(?: ?\[([^\]@;\x00]+)\](?![({]))?"
+)
 SPECIAL = {"$": "&#36;", "<": "&lt;", ">": "&gt;"}
 HARD_BREAK = "\x02"
 
@@ -145,7 +148,8 @@ def render_inline(text, doc=None, where=""):
         return keep(doc.add_cite(match.group(1), False, where))
 
     def narrative(match):
-        return keep(doc.add_cite(match.group(1), True, where))
+        raw = match.group(1) + (f", {match.group(2).strip()}" if match.group(2) else "")
+        return keep(doc.add_cite(raw, True, where))
 
     if doc is not None and hasattr(doc, "add_cite"):
         text = CITE.sub(cite, text)

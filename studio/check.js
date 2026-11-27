@@ -108,7 +108,20 @@ async function checkRefresh() {
   checkDraw();
 }
 
-function checkJump(line) {
+function checkJump(line, text = '') {
+  const missing = String(text).match(/called “([^”]+)” that doesn't exist/);
+  if (missing && typeof FLOW !== 'undefined' && FLOW.on && FLOW.editor) {
+    let at = null;
+    FLOW.editor.state.doc.descendants((node, pos) => {
+      if (at === null && node.type.name === 'chip' && node.attrs.kind === 'ref' && node.attrs.src.endsWith(`:${missing[1]}`)) at = pos;
+    });
+    const dom = at === null ? null : FLOW.editor.view.nodeDOM(at);
+    if (dom && dom.scrollIntoView) {
+      dom.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      setTimeout(() => flowChipPop(dom, at), 420);
+      return;
+    }
+  }
   if (!line) return;
   scrollToRange({ start: line, end: line, kind: 'para' });
 }
@@ -122,7 +135,7 @@ function checkRow(item) {
     h('span', { class: 'check-text', text: item.text }),
     item.line ? h('span', { class: 'check-line', text: lineWhere(item.line) }) : null,
   );
-  if (item.line) row.addEventListener('click', () => checkJump(item.line));
+  if (item.line) row.addEventListener('click', () => checkJump(item.line, item.text));
   return row;
 }
 

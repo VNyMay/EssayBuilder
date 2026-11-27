@@ -553,6 +553,7 @@ numbers: latex
 | `word-count` | `auto` (counted), `off` (not shown on the cover), or a number to print | `auto` |
 | `word-count-label` | Text before the count on the cover | `Word count` |
 | `word-limit` | e.g. `4000`: the build warns when exceeded | none |
+| `language` | The language you write in, e.g. `French`, `Arabic`, `fr`, `ar`: sets spellcheck and the PDF language. Arabic and Hebrew text is laid out right to left by itself | `English` |
 | `equation-numbers` | `labeled` (only equations with an id), `all`, `none` | `labeled` |
 | `list-of-figures` / `list-of-tables` | `yes` adds the list, with page numbers, under the contents | `no` |
 | `image-width` | Default width of figures and charts | `86%` |
@@ -926,6 +927,8 @@ id: converge
 | `xlog`, `ylog` | `yes` for a logarithmic axis |
 | `xmin`, `xmax`, `ymin`, `ymax` | Fix the axis range |
 | `hline`, `vline` | Reference line: `value | label`. May be repeated |
+| `yerr`, `xerr` | Error bars: a column of uncertainties (that column is not plotted), a fixed value like `0.05`, or a percentage like `5%`. Comma-separate to give each series its own. `yerr` also works on `bar` charts |
+| `trendline` | `linear` draws a line of best fit for each series and prints its equation and R² |
 | `legend` | `none` hides it; `show` forces it for one series |
 | `lines`, `markers` | `yes`/`no` to connect points / show markers |
 | `labels` | `yes` prints values on bars; for `pie`: `value` instead of percent |

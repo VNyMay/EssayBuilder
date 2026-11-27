@@ -1,0 +1,47 @@
+title: CAS project
+look: compact
+page-numbers: no
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+Name of your CAS project
+:::
+
+:::text
+align: center
+size: 10
+---
+Team: names of the people in your project · At least one month long\\
+Strands: Creativity, Activity and/or Service
+:::
+
+# Investigation
+
+Explain the need or interest your project responds to. Describe how you found out about it and who it is for.
+
+# Preparation
+
+Plan the project: roles, resources, timeline and how you will know it worked.
+
+Table: Project plan.
+
+| Week | Task | Who |
+|:--|:--|:--|
+| 1 | Describe the task | Name |
+| 2 | Describe the task | Name |
+
+# Action
+
+Describe what your team did. Note the problems you met and how you solved them together.
+
+# Reflection
+
+Reflect on what you learned, how the team worked, and the impact the project had.
+
+# Demonstration
+
+Explain how you shared the project and its results with others: a presentation, a post, an exhibition or a report.

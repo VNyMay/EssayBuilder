@@ -320,6 +320,8 @@ async function openFontPop(anchor, value, onPick, options = {}) {
     const total = fontData.all.length.toLocaleString();
     count.textContent = group === 'all' && !term ? `Popular fonts · ${total} in total` : `${matches.length.toLocaleString()} ${matches.length === 1 ? 'font' : 'fonts'}`;
     if (term) matches.sort((a, b) => (a.family.toLowerCase().startsWith(term) ? 0 : 1) - (b.family.toLowerCase().startsWith(term) ? 0 : 1));
+    const standard = options.empty && !term ? String(options.empty).replace(/\s*\(default\)\s*$/i, '') : '';
+    if (standard && standard !== options.empty) matches = matches.filter((item) => item.family !== standard);
     list.replaceChildren();
     list.scrollTop = 0;
     shown = 0;

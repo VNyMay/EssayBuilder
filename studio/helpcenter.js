@@ -45,6 +45,7 @@ function helpOpen() {
       action('copy', 'Save as template', () => saveAsTemplate(), open && typeof saveAsTemplate === 'function'),
       action('folder', 'Show this essay in its folder', () => api('/api/reveal', {}), open),
       action('clock', "What's new", () => whatsNew(true), typeof whatsNew === 'function'),
+      action('warn', 'Report a problem', () => reportOpen(), typeof reportOpen === 'function'),
     ].filter(Boolean),
   );
   const search = h('input', { type: 'search', class: 'fpop-input help-search', placeholder: 'Search questions', spellcheck: 'false' });

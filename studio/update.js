@@ -12,15 +12,48 @@ async function updateCheck() {
 
 function updateNote() {
   const info = UPDATE.info;
-  if (!info || !info.newer || document.getElementById('updateNote')) return;
-  const note = h(
-    'div',
-    { id: 'updateNote' },
-    h('span', { class: 'update-dot' }),
-    h('span', { text: `Version ${info.latest} is available` }),
-    h('button', { type: 'button', class: 'pill solid small', text: 'Download', onclick: () => api('/api/link', { url: info.url }) }),
-  );
-  document.body.append(note);
+  if (!info || !info.newer) return;
+  let note = document.getElementById('updateNote');
+  if (!note) {
+    note = h('div', { id: 'updateNote' });
+    document.body.append(note);
+  }
+  const progress = UPDATE.progress || info.progress || { stage: 'idle' };
+  const button = (text, run, solid = true) => h('button', { type: 'button', class: `pill ${solid ? 'solid' : 'ghost'} small`, text, onclick: run });
+  if (!info.canInstall) {
+    note.replaceChildren(h('span', { class: 'update-dot' }), h('span', { text: `Version ${info.latest} is available` }), button('Download', () => api('/api/link', { url: info.url })));
+  } else if (progress.stage === 'downloading') {
+    const share = progress.total ? Math.min(100, Math.round((progress.done / progress.total) * 100)) : 0;
+    note.replaceChildren(h('span', { class: 'update-spin' }), h('span', { text: `Downloading version ${info.latest}` }), h('span', { class: 'update-bar', style: `--p:${share}%` }, h('i')), h('span', { class: 'update-share', text: `${share}%` }));
+  } else if (progress.stage === 'ready') {
+    note.replaceChildren(h('span', { class: 'update-dot' }), h('span', { text: `Version ${info.latest} is ready` }), button('Restart to update', updateInstall));
+  } else if (progress.stage === 'error') {
+    note.replaceChildren(h('span', { class: 'update-dot bad' }), h('span', { text: progress.error || 'The update could not be downloaded.' }), button('Try again', updateStart));
+  } else {
+    note.replaceChildren(h('span', { class: 'update-dot' }), h('span', { text: `Version ${info.latest} is available` }), button('Update', updateStart));
+  }
+}
+
+async function updateStart() {
+  UPDATE.progress = await api('/api/update_download').catch(() => ({ stage: 'error' }));
+  updateNote();
+  clearInterval(UPDATE.timer);
+  UPDATE.timer = setInterval(async () => {
+    UPDATE.progress = await api('/api/update_progress').catch(() => UPDATE.progress);
+    updateNote();
+    if (!UPDATE.progress || UPDATE.progress.stage !== 'downloading') clearInterval(UPDATE.timer);
+  }, 500);
+}
+
+async function updateInstall() {
+  if (typeof saveNow === 'function') await saveNow();
+  const answer = await api('/api/update_install').catch((error) => ({ error: String(error) }));
+  if (answer.error) {
+    toast(answer.error, true);
+    return;
+  }
+  const back = h('div', { id: 'updatingSheet' }, h('div', { class: 'updating-card' }, h('span', { class: 'update-spin big' }), h('b', { text: `Updating to version ${UPDATE.info.latest}` }), h('span', { text: 'Essay Builder will close and open again by itself in about a minute. Your work is saved.' })));
+  document.body.append(back);
 }
 
 function whatsNew(force = false) {

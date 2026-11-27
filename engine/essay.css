@@ -25,7 +25,7 @@ blockquote { margin: 4pt 0 14pt; padding: 0 0 0 14pt; border-left: 2pt solid var
 blockquote p:last-child { margin-bottom: 0; }
 .probe { position: absolute; left: 45%; top: 0; font-size: 4pt; line-height: 1; font-weight: 400; text-transform: none !important; letter-spacing: 0 !important; font-variant: normal !important; }
 
-ul, ol { margin: 0 0 10pt; padding-left: 1.6em; }
+ul, ol { margin: 0 0 10pt; padding-inline-start: 1.6em; }
 li { margin: 0 0 3pt; text-align: justify; }
 li > ul, li > ol { margin: 3pt 0 0; }
 .txt p { text-align: inherit; }
@@ -61,7 +61,7 @@ h1 {
 h2 { font-size: 14pt; line-height: 1.35; margin: 20pt 0 4pt; }
 h3 { font-size: 12pt; line-height: 1.4; margin: 14pt 0 2pt; font-style: italic; }
 h1 + h2 { margin-top: 0; }
-.num { margin-right: 0.55em; }
+.num { margin-inline-end: 0.55em; }
 
 .toc { line-height: 1.35; }
 .toc a { display: flex; align-items: baseline; padding: 4.5pt 0; }
@@ -377,3 +377,6 @@ figure.fig.wrap .cap, figure.tbl.wrap .cap { margin-left: 0; margin-right: 0; }
 .ph { color: #9aa0a6; font-style: italic; font-weight: 400; letter-spacing: 0; text-transform: none; border-bottom: 1px dashed #c4c7c5; }
 .design-page { break-before: page; break-after: page; }
 .cvx-flow { display: block; }
+
+.cap, .src, .fnote { unicode-bidi: plaintext; }
+h1, h2, h3, .box p { text-align: start; }

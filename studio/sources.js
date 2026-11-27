@@ -278,7 +278,7 @@ function srcForm() {
   });
   box.replaceChildren(
     h('div', { class: 'src-types' }, picker),
-    h('div', { class: 'src-fields' }, ...(SRC_FORMS[type] || SRC_FORMS.book).map(([name, label]) => srcField(name, label)), h('div', { class: 'src-key' }, line('Key', h('div', { class: 'field' }, keyInput)))),
+    h('div', { class: 'src-fields' }, ...(SRC_FORMS[type] || SRC_FORMS.book).map(([name, label]) => srcField(name, label)), h('div', { class: 'src-key' }, line('Short name', h('div', { class: 'field' }, keyInput)))),
   );
 }
 

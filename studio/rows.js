@@ -36,7 +36,7 @@ function rowsInput(item, field, ctx) {
   }
   if (field.kind === 'choice') {
     const choices = field.choices.map(([v, label]) => ({ value: v, label }));
-    if (!choices.some((choice) => choice.value.toLowerCase() === String(value).toLowerCase())) choices.push({ value, label: value || '—' });
+    if (!choices.some((choice) => choice.value.toLowerCase() === String(value).toLowerCase())) choices.push({ value, label: value || 'None' });
     const hit = choices.find((choice) => choice.value.toLowerCase() === String(value).toLowerCase());
     const pick = dropdown({
       choices,

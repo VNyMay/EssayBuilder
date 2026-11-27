@@ -519,7 +519,7 @@ const ROW_KINDS = {
   graph: regexKind({
     fields: [
       { key: 'from', placeholder: 'A', grow: 2 },
-      { key: 'way', kind: 'choice', choices: [['-', '—'], ['->', '→']], size: 'xs' },
+      { key: 'way', kind: 'choice', choices: [['-', '─'], ['->', '→']], size: 'xs' },
       { key: 'to', placeholder: 'B', grow: 2, optional: true },
       { key: 'weight', placeholder: 'weight', grow: 1, optional: true },
     ],

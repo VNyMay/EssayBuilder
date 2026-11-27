@@ -100,10 +100,11 @@ function openCover() {
     section(
       'Details',
       coverText('Title', 'title'),
+      coverText('Research question', 'question', 'Your research question'),
       coverText('Subtitle', 'subtitle'),
       coverText('Subject', 'subject'),
       coverText('Category', 'category', 'Language essays only'),
-      coverText('Author', 'author'),
+      coverText('Author', 'author', style === 'classic' ? 'Not printed: IB covers are anonymous' : ''),
       coverText('Candidate', 'candidate', 'Candidate number'),
       coverText('School', 'school'),
       coverText('Supervisor', 'supervisor'),

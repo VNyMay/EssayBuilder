@@ -102,7 +102,8 @@ class Kit:
             if not items:
                 return raw if narrative else '<span class="bad">[source?]</span>'
             shown = citations.cite_group(items, entries, style, order, narrative)
-            self.cite_map[raw] = re.sub(r"<[^>]+>", "", shown)
+            label = re.sub(r"^(@[^,]+),\s*(.+)$", r"\1 [\2]", raw) if narrative else raw
+            self.cite_map[label] = re.sub(r"<[^>]+>", "", shown)
             return shown if narrative else f"<!--cite-->{shown}<!--/cite-->"
         text = re.sub(f"{MARK}(\\d+){MARK}", swap, text)
         shown = list(entries.values()) if self.bib_all else cited

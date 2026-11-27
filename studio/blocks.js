@@ -39,7 +39,7 @@ const BLOCKS = {
       type: ['', 'line', 'scatter', 'bar', 'hbar', 'hist', 'pie', 'donut', 'function'], src: 'f', sheet: 't', x: 't',
       y: 't', xlabel: 't', ylabel: 't', xlog: 'y', ylog: 'y', legend: 't', grid: 'y', lines: 'y', markers: 'y',
       labels: 't', bins: 'n', xmin: 'n', xmax: 'n', ymin: 'n', ymax: 'n', hline: 't', vline: 't', f: 't',
-      domain: 't', width: 't', ratio: 't', caption: 't', id: 't', source: 't', ...PLACE,
+      domain: 't', yerr: 't', xerr: 't', trendline: 'y', width: 't', ratio: 't', caption: 't', id: 't', source: 't', ...PLACE,
     },
     repeat: ['hline', 'vline', 'f'],
     body: 'Data',
@@ -338,6 +338,9 @@ const TEMPLATES = [
 ];
 
 const ICONS = {
+  cloud: 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z',
+  globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9M12 3c-2.5 2.7-3.8 5.7-3.8 9s1.3 6.3 3.8 9',
+  laptop: 'M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1ZM2 19h20',
   footnote: 'M4 8h10M4 12h10M4 16h6M18 4v5M16.5 5.5 18 4M4 20h16',
   heading: 'M6 4v16M18 4v16M6 12h12',
   paragraph: 'M4 6h16M4 10h16M4 14h16M4 18h10',

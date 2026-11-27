@@ -1,0 +1,63 @@
+title: Digital Society IA
+look: compact
+citations: apa
+word-limit: 1500
+---
+
+:::text
+align: center
+style: bold
+size: 17
+---
+To what extent does the digital system affect the people who use it? Write your inquiry question here.
+:::
+
+:::text
+align: center
+size: 10
+---
+Inquiry process document · Your recorded presentation is up to 10 minutes\\
+Candidate code: abc123 · Session: May 2027
+:::
+
+# Inquiry focus
+
+Name the real-world digital system you are investigating and the people it affects. Explain how your inquiry question links to the course concepts, content and contexts.
+
+# Key sources
+
+Describe the three key sources you chose [@source2024]. For each one, explain where it comes from, who made it and why, and how it helps answer your inquiry question.
+
+Table: Overview of the key sources.
+
+| Source | Type | Why it is useful | A limitation |
+|:--|:--|:--|:--|
+| Source 1 | Article | Reason | Limitation |
+| Source 2 | Interview | Reason | Limitation |
+| Source 3 | Data set | Reason | Limitation |
+
+# Claims and perspectives
+
+Set out the main claims your sources make and the perspectives behind them. Show where they agree and where they disagree.
+
+# Inquiry process
+
+Explain how your inquiry developed: what you planned, what changed, and why. Note the decisions you made along the way.
+
+# Next steps
+
+Summarise what your presentation will argue and how it will reach a conclusion about the impacts and implications for the people involved.
+
+# References
+
+:::sources
+@source2024
+type: article
+author: Surname, Firstname
+year: 2024
+title: Title of the article
+journal: Journal or website name
+:::
+
+:::bibliography
+:::

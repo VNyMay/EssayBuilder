@@ -1,0 +1,66 @@
+name: release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Get the build tools
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          $iscc = Get-Command iscc -ErrorAction SilentlyContinue
+          if (-not $iscc -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") -and -not (Test-Path "$env:ProgramFiles\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+      - name: Build the installer
+        shell: pwsh
+        run: ./installer/build-installer.ps1
+      - name: Keep the unsigned installer
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: EssayBuilder-Setup-unsigned
+          path: installer/dist/EssayBuilder-Setup.exe
+      - name: Sign with SignPath
+        if: ${{ vars.SIGNPATH_PROJECT != '' }}
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT }}
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: installer/signed
+      - name: Use the signed installer when there is one
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem installer/signed -Filter *.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($signed) { Copy-Item $signed.FullName installer/dist/EssayBuilder-Setup.exe -Force }
+      - name: Attach it to the release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          $signed = Get-ChildItem installer/signed -Filter *.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $names = gh release view $tag --json assets --jq ".assets[].name"
+          if ($signed -or -not ($names -contains "EssayBuilder-Setup.exe")) {
+            gh release upload $tag installer/dist/EssayBuilder-Setup.exe --clobber
+          } else {
+            Write-Host "Keeping the installer already attached to the release"
+          }

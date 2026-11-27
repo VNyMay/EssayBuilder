@@ -1,0 +1,174 @@
+title: Steam Power and the Growth of British Industrial Cities
+subject: History
+question: To what extent was steam power responsible for the growth of Britain's industrial cities between 1780 and 1850?
+font: Cambria
+cover-line: Candidate number: 000000
+cover-line: May 2027 session
+word-limit: 1500
+section-breaks: no
+list-of-figures: yes
+list-of-tables: yes
+---
+# Introduction
+
+In 1801 the painter Philip James de Loutherbourg showed the iron furnaces of Coalbrookdale glowing against the night sky (@fig:coalbrookdale). The picture is often used to stand for an entire era: fire, smoke and machinery pushing into a countryside that had changed very little for centuries. Within a lifetime the same transformation had reached the cities. Manchester, drawn from the hills above it in 1857, had become a skyline of chimneys (@fig:manchester).
+
+:::figure
+src: images/coalbrookdale.jpg
+caption: Coalbrookdale by Night, by Philip James de Loutherbourg (1801).
+id: coalbrookdale
+width: large
+source: Wikimedia Commons (public domain)
+:::
+
+Historians agree that Britain's urban population grew at an unprecedented rate in these decades, but they disagree about why. This essay asks how far steam power, rather than cheap coal, high wages, new institutions or the cotton trade itself, explains the rise of the industrial city. It argues that steam was a necessary enabler of the largest cities but not their only cause.
+
+:::box
+Claim: steam power decided *where* factories could be built, but it did not decide *whether* Britain industrialised.
+:::
+
+# Before steam: water, wool and small towns
+
+Early mechanised textile production did not need steam at all. Spinning machines such as the spinning jenny (@fig:machines, part a) were small enough for a cottage or a workshop, and the first large mills were built beside fast rivers because they were driven by water wheels. A mill owner had to build where the water was, which usually meant a narrow valley far from any large town and its workers.
+
+This matters for the argument. If water power had been sufficient, industry would have remained scattered along rivers, and the growth of large cities would look much less inevitable. Steam changed that logic, and the main dates are collected in @fig:dates.
+
+:::timeline
+title: Key dates
+caption: Selected developments in British industrial technology.
+id: dates
+---
+1712: Newcomen's atmospheric engine pumps water from mines
+1769: Watt patents the separate condenser
+1779: The Iron Bridge is completed at Coalbrookdale
+1830: The Liverpool and Manchester Railway opens
+1833: The Factory Act limits the working hours of children
+:::
+
+# Steam and the location of industry
+
+Newcomen's engine was used mainly to pump water out of coal mines. It burned a great deal of coal for little work, which was acceptable only where coal was almost free. James Watt's separate condenser, patented in 1769, made the engine far more efficient, and in partnership with Matthew Boulton he began to sell engines to factories as well as mines [@ashton1948]. A surviving Watt-type beam engine is shown in @fig:machines, part b.
+
+The consequence was a change of location. A steam-driven mill needed coal and water for the boiler, but it no longer needed a waterfall. Owners could build in or beside an existing town, where labour, canals and later railways were already close by. The sequence of cause and effect is summarised in @fig:chain.
+
+:::flow
+direction: LR
+caption: How steam power helped to concentrate industry in towns.
+id: chain
+---
+Steam engine -> Factories in towns -> Migration to cities -> Crowded housing
+:::
+
+:::figures
+cols: 2
+caption: Two machines of the early Industrial Revolution.
+id: machines
+source: Wikimedia Commons
+---
+images/spinning-jenny.jpg | A spinning jenny
+images/watt-engine.jpg | A Watt-type steam engine
+:::
+
+# The scale of urban growth
+
+The population of England and Wales more than tripled during the nineteenth century (@tbl:population). Growth was not slow and steady: in the first four decades of the century every census recorded an increase of more than fourteen per cent.
+
+:::table
+src: data/population.csv
+caption: Population of England and Wales at each census, 1801 to 1901.
+id: population
+decimals: Population (millions)=1, Growth over the decade (%)=1
+align: c c c
+source: Census of England and Wales, rounded. Growth over the decade is calculated from the rounded figures.
+:::
+
+@fig:growth shows the same figures as a line. The curve does not bend sharply at any one date, which is a first warning against giving one invention all the credit.
+
+:::chart
+type: line
+src: data/population.csv
+x: Year
+y: Population (millions)
+xmin: 1800
+xmax: 1905
+xlabel: Census year
+ylabel: Population (millions)
+caption: Population of England and Wales, 1801 to 1901.
+id: growth
+:::
+
+Over the whole century the average annual rate of growth was
+
+$$ r = \left(\frac{P_{1901}}{P_{1801}}\right)^{1/100} - 1 = \left(\frac{32.5}{8.9}\right)^{1/100} - 1 \approx 0.013 $$ {#rate}
+
+so the population grew by roughly 1.3 per cent every year for a hundred years (@eq:rate). Much of this increase was concentrated in towns, because that is where the new work was.
+
+# Evidence from the city
+
+Contemporaries had no doubt that the new cities were different. @engels1845 described the crowded districts of Manchester in detail, and the viewpoint of @fig:manchester shows why the city seemed so strange: a belt of countryside in the foreground and a wall of smoke behind it.
+
+:::figure
+src: images/manchester.jpg
+caption: Manchester from Kersal Moor, by William Wyld (1857).
+id: manchester
+width: large
+source: Wikimedia Commons (public domain)
+:::
+
+The same image also illustrates the danger of reading too much from one source. Wyld was a painter, not a statistician, and the smoke in his picture is also a symbol. It should be read alongside the numbers in @tbl:population, not instead of them.
+
+# Evaluation: was steam the cause?
+
+Several historians reject a steam-centred account. @allen2009 argues that Britain industrialised because wages were high and energy was cheap, which made it profitable to replace labour with machines; steam engines were one result of that incentive, not its origin. @mokyr2009 emphasises the culture of useful knowledge that allowed engineers and scientists to share ideas. @hobsbawm1968 places the cotton industry at the centre of the story, since cotton created the first mass demand for factory work.
+
+These arguments do not remove steam from the picture. They change its role. Without steam the factory town of the 1830s could not have grown as large as it did, because water power was tied to rivers. With steam alone, however, nothing would have happened unless coal was cheap, capital was available and there were markets for cloth. Steam, in other words, made the large industrial city possible; it did not make it certain.
+
+:::definition Industrial city {#icity}
+In this essay, a town whose growth between 1780 and 1850 depended mainly on mechanised factory production rather than on trade, government or agriculture.
+:::
+
+# Conclusion
+
+The evidence supports a middle position. Steam power was responsible for the shape of the industrial city, because it freed factories from rivers and drew them towards coal, labour and transport. It was not responsible for the wider decision to industrialise, which depended on wages, energy prices, knowledge and markets. The rapid, sustained growth in @tbl:population is best read as the result of all these causes acting together, with steam acting as the link that tied them to the city.
+
+# References
+
+:::bibliography
+:::
+
+:::sources
+@allen2009
+type: book
+author: Allen, Robert C.
+title: The British Industrial Revolution in Global Perspective
+year: 2009
+publisher: Cambridge University Press
+
+@ashton1948
+type: book
+author: Ashton, Thomas S.
+title: The Industrial Revolution, 1760–1830
+year: 1948
+publisher: Oxford University Press
+
+@engels1845
+type: book
+author: Engels, Friedrich
+title: The Condition of the Working Class in England
+year: 1845
+publisher: Otto Wigand
+
+@hobsbawm1968
+type: book
+author: Hobsbawm, Eric J.
+title: Industry and Empire
+year: 1968
+publisher: Weidenfeld and Nicolson
+
+@mokyr2009
+type: book
+author: Mokyr, Joel
+title: The Enlightened Economy: An Economic History of Britain 1700–1850
+year: 2009
+publisher: Yale University Press
+:::

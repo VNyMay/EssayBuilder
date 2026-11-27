@@ -91,7 +91,15 @@ async function openGallery() {
       GALLERY.items = [];
     }
   }
-  const cards = [{ id: '', name: 'Blank', note: '' }, ...GALLERY.items].map(galleryCard);
+  const order = ['Mine', 'Core', 'Subjects', 'Languages', 'General'];
+  const items = [{ id: '', name: 'Blank', note: '', group: 'General' }, ...GALLERY.items];
+  const names = [...new Set([...order, ...items.map((item) => item.group || 'General')])].filter((name) => items.some((item) => (item.group || 'General') === name));
+  const sections = names.map((name, index) => {
+    const list = items.filter((item) => (item.group || 'General') === name);
+    if (name === 'General') list.sort((a, b) => (a.id ? 1 : 0) - (b.id ? 1 : 0));
+    return h('div', { class: 'g-section', style: `--g:${index}` }, h('h3', { class: 'g-group', text: name === 'Mine' ? 'My templates' : name }), h('div', { class: 'g-grid' }, list.map(galleryCard)));
+  });
+  const cards = sections.flatMap((section) => [...section.querySelectorAll('.g-card')]);
   node.replaceChildren(
     h(
       'div',
@@ -102,13 +110,13 @@ async function openGallery() {
         h('h2', { class: 'g-title', text: 'New essay' }),
         h('button', { type: 'button', class: 'round g-close', title: 'Close (Esc)', html: icon('close', 18), onclick: closeGallery }),
       ),
-      h('div', { class: 'g-grid' }, cards),
+      ...sections,
     ),
   );
   GALLERY.busy = false;
   node.hidden = false;
   document.documentElement.classList.add('gallery-open');
-  cards[0].focus({ preventScroll: true });
+  (cards.find((card) => card.dataset.template === '') || cards[0]).focus({ preventScroll: true });
 }
 
 function closeGallery() {
@@ -147,21 +155,30 @@ async function createFrom(item) {
   }
 }
 
-function galleryColumns(cards) {
-  const top = cards[0].offsetTop;
-  const count = cards.findIndex((card) => card.offsetTop !== top);
-  return count < 0 ? cards.length : count;
+function galleryBelow(cards, from, down) {
+  const box = from.getBoundingClientRect();
+  const row = cards
+    .map((card) => ({ card, box: card.getBoundingClientRect() }))
+    .filter((item) => (down ? item.box.top > box.bottom - 4 : item.box.bottom < box.top + 4));
+  if (!row.length) return from;
+  const edge = down ? Math.min(...row.map((item) => item.box.top)) : Math.max(...row.map((item) => item.box.top));
+  const line = row.filter((item) => Math.abs(item.box.top - edge) < 4);
+  const middle = box.left + box.width / 2;
+  return line.reduce((best, item) => (Math.abs(item.box.left + item.box.width / 2 - middle) < Math.abs(best.box.left + best.box.width / 2 - middle) ? item : best)).card;
 }
 
 function galleryKeys(event) {
   const cards = [...event.currentTarget.querySelectorAll('.g-card')];
   const index = cards.indexOf(document.activeElement);
   if (index < 0) return;
-  const columns = galleryColumns(cards);
-  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns, Home: -index, End: cards.length - 1 - index }[event.key];
-  if (step === undefined) return;
+  let next;
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') next = galleryBelow(cards, cards[index], event.key === 'ArrowDown');
+  else {
+    const step = { ArrowLeft: -1, ArrowRight: 1, Home: -index, End: cards.length - 1 - index }[event.key];
+    if (step === undefined) return;
+    next = cards[Math.max(0, Math.min(cards.length - 1, index + step))];
+  }
   event.preventDefault();
-  const next = cards[Math.max(0, Math.min(cards.length - 1, index + step))];
   next.focus();
   next.scrollIntoView({ block: 'nearest' });
 }

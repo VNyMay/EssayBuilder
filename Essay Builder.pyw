@@ -15,7 +15,6 @@ ENGINE = ROOT / "engine"
 INSTALLED = (ROOT / "installed.flag").is_file()
 if INSTALLED:
     os.environ.setdefault("ESSAY_BUILDER_DATA", str(Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "Essay Builder"))
-    os.environ.setdefault("ESSAY_BUILDER_ESSAYS", str(Path.home() / "Documents" / "Essay Builder"))
     os.environ["PATH"] = str(ROOT / "node") + os.pathsep + os.environ.get("PATH", "")
 DATA = Path(os.environ.get("ESSAY_BUILDER_DATA") or STUDIO)
 DATA.mkdir(parents=True, exist_ok=True)

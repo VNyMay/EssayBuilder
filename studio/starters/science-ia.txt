@@ -66,6 +66,25 @@ Show one sample calculation, then present the processed data and a graph with er
 
 $$ "mean" = (x_1 + x_2 + x_3) / 3 $$
 
+:::chart
+type: scatter
+x: Independent variable
+y: Mean
+yerr: Uncertainty
+trendline: linear
+xlabel: Independent variable / unit
+ylabel: Dependent variable / unit
+caption: Replace this data with your processed results.
+---
+| Independent variable | Mean | Uncertainty |
+|--:|--:|--:|
+| 1 | 2.1 | 0.2 |
+| 2 | 3.9 | 0.3 |
+| 3 | 6.2 | 0.3 |
+| 4 | 7.8 | 0.4 |
+| 5 | 10.1 | 0.4 |
+:::
+
 Describe the trend, its uncertainty and any anomalies.
 
 # Conclusion

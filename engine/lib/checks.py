@@ -10,7 +10,7 @@ STARTER_DIR = Path(__file__).resolve().parents[2] / "studio" / "starters"
 LONG_PARAGRAPH = 300
 REPEAT = re.compile(r"(?<![\w'’-])([A-Za-z]+)\s+\1(?![\w'’-])", re.I)
 FINE_REPEATS = {"had", "that", "bye", "ha", "no", "very", "far", "so", "many", "knock", "tut", "boo"}
-WORD = re.compile(r"[A-Za-z0-9][\w’'.\-]*")
+WORD = re.compile(r"[^\W_][\w\u0300-\u036f\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed’'.\-]*")
 WHERE = re.compile(r"^(.*?):(\d+):\s*([\s\S]*)$")
 HINT_MARK = re.compile(r"\byour\b|\bhere\b|\.\.\.|\babc123\b|^title of\b|^name of\b|\bname of the\b", re.I)
 PLACEHOLDER_HEADING = re.compile(r"\b(name of|your|first|second|third)\b", re.I)
@@ -74,7 +74,8 @@ TASKS = {
                 "Reflection",
                 [
                     "Reflected on my research process",
-                    "Written my reflections in the RPPF",
+                    "Written my three reflections in the RPF",
+                    "Prepared my reflective statement after the viva",
                 ],
             ),
         ],
@@ -182,6 +183,7 @@ TASKS = {
                     "Explained the relevant background",
                     "Described a method someone could repeat",
                     "Identified and controlled variables",
+                    "Considered safety, ethics and the environment",
                 ],
             ),
             (
@@ -191,6 +193,7 @@ TASKS = {
                     "Recorded raw data with units and uncertainties",
                     "Processed data correctly",
                     "Presented data in clear tables and graphs",
+                    "Shown how uncertainties affect the result",
                 ],
             ),
             (
@@ -377,6 +380,273 @@ TASKS = {
                 [
                     "Written clearly and precisely",
                     "Used literary terms accurately",
+                ],
+            ),
+        ],
+    },
+    "business-ia": {
+        "name": "Business Management IA",
+        "limit": 1800,
+        "question": True,
+        "keys": r"\bbusiness\b|\bBM IA\b|\bkey concept\b",
+        "criteria": [
+            (
+                "A",
+                "Integration of a key concept",
+                [
+                    "Chosen one key concept: change, creativity, ethics or sustainability",
+                    "Linked the key concept to the question all the way through",
+                ],
+            ),
+            (
+                "B",
+                "Supporting documents",
+                [
+                    "Used three to five supporting documents",
+                    "Chosen relevant documents from the last three years",
+                    "Included a range of views and data",
+                ],
+            ),
+            (
+                "C",
+                "Tools and theories",
+                [
+                    "Chosen business tools that suit the question",
+                    "Applied them to data from my documents",
+                ],
+            ),
+            (
+                "D",
+                "Analysis and evaluation",
+                [
+                    "Analysed what the tools show",
+                    "Weighed stakeholder views and the limits of the evidence",
+                ],
+            ),
+            (
+                "E",
+                "Conclusions",
+                [
+                    "Answered the research question directly",
+                    "Based the conclusion only on my analysis",
+                ],
+            ),
+            (
+                "F",
+                "Structure",
+                [
+                    "Organised it in a clear, logical order",
+                ],
+            ),
+            (
+                "G",
+                "Presentation",
+                [
+                    "Added a title page, contents and page numbers",
+                    "Labelled every table and figure",
+                    "Referenced every source",
+                ],
+            ),
+        ],
+    },
+    "digital-society-ia": {
+        "name": "Digital Society IA",
+        "limit": 1500,
+        "question": True,
+        "keys": r"\bdigital society\b|\binquiry process\b",
+        "criteria": [
+            (
+                "A",
+                "Inquiry focus",
+                [
+                    "Written a focused inquiry question",
+                    "Named a real digital system and the people it affects",
+                ],
+            ),
+            (
+                "B",
+                "Claims and perspectives",
+                [
+                    "Used three key sources",
+                    "Explained the claims and perspectives in each",
+                ],
+            ),
+            (
+                "C",
+                "Analysis and evaluation",
+                [
+                    "Analysed impacts and implications for people",
+                    "Evaluated how reliable my sources are",
+                ],
+            ),
+            (
+                "D",
+                "Conclusion",
+                [
+                    "Reached a conclusion that answers the inquiry question",
+                    "Suggested further steps or questions",
+                ],
+            ),
+            (
+                "E",
+                "Communication",
+                [
+                    "Kept the recorded presentation under 10 minutes",
+                    "Communicated clearly with good visuals",
+                ],
+            ),
+        ],
+    },
+    "english-io": {
+        "name": "English Individual Oral",
+        "keys": r"\bindividual oral\b|\bglobal issue\b|\bIO\b",
+        "criteria": [
+            (
+                "A",
+                "Knowledge, understanding and interpretation",
+                [
+                    "Shown how both extracts present the global issue",
+                    "Linked each extract to its work as a whole",
+                ],
+            ),
+            (
+                "B",
+                "Analysis and evaluation",
+                [
+                    "Analysed the authors' choices",
+                    "Evaluated how those choices shape the global issue",
+                ],
+            ),
+            (
+                "C",
+                "Focus and organisation",
+                [
+                    "Kept to 10 bullet points or fewer",
+                    "Balanced time between the two works",
+                    "Planned for 10 minutes, then 5 minutes of questions",
+                ],
+            ),
+            (
+                "D",
+                "Language",
+                [
+                    "Practised speaking clearly, not reading a script",
+                    "Used literary terms accurately",
+                ],
+            ),
+        ],
+    },
+    "french-writing": {
+        "name": "French Writing Task",
+        "limit": 600,
+        "keys": r"\bfrench\b|\bfran[cç]ais\b",
+        "criteria": [
+            (
+                "A",
+                "Language",
+                [
+                    "Used varied vocabulary and complex structures",
+                    "Checked accents, agreements and verb tenses",
+                ],
+            ),
+            (
+                "B",
+                "Message",
+                [
+                    "Answered every part of the task",
+                    "Developed ideas with details and examples",
+                    "Linked ideas with connectors",
+                ],
+            ),
+            (
+                "C",
+                "Conceptual understanding",
+                [
+                    "Used the conventions of the text type",
+                    "Chosen a register that suits the audience",
+                    "Kept the purpose of the text clear",
+                ],
+            ),
+        ],
+    },
+    "arabic-writing": {
+        "name": "Arabic Writing Task",
+        "limit": 600,
+        "keys": r"\barabic\b|عربي|العربية",
+        "criteria": [
+            (
+                "A",
+                "Language",
+                [
+                    "Used varied vocabulary and complex structures",
+                    "Checked spelling, grammar and agreement",
+                ],
+            ),
+            (
+                "B",
+                "Message",
+                [
+                    "Answered every part of the task",
+                    "Developed ideas with details and examples",
+                    "Linked ideas with connectors",
+                ],
+            ),
+            (
+                "C",
+                "Conceptual understanding",
+                [
+                    "Used the conventions of the text type",
+                    "Chosen a register that suits the audience",
+                    "Kept the purpose of the text clear",
+                ],
+            ),
+        ],
+    },
+    "cas-reflection": {
+        "name": "CAS Reflection",
+        "keys": r"\bCAS\b(?!\s+project)",
+        "criteria": [
+            (
+                "R",
+                "Reflection",
+                [
+                    "Described what happened briefly",
+                    "Explained what I learned about myself and others",
+                    "Linked it to at least one learning outcome",
+                    "Said what I will do next",
+                ],
+            ),
+            (
+                "E",
+                "Evidence",
+                [
+                    "Added a photo or other evidence",
+                    "Uploaded it to ManageBac or my CAS portfolio",
+                ],
+            ),
+        ],
+    },
+    "cas-project": {
+        "name": "CAS Project",
+        "keys": r"\bCAS project\b",
+        "criteria": [
+            (
+                "S",
+                "Five CAS stages",
+                [
+                    "Investigated a real need or interest",
+                    "Prepared a plan with roles and a timeline",
+                    "Taken action as a team",
+                    "Reflected on the process and impact",
+                    "Demonstrated the project to others",
+                ],
+            ),
+            (
+                "T",
+                "Teamwork and time",
+                [
+                    "Worked with at least one other student",
+                    "Kept it going for at least a month",
                 ],
             ),
         ],
@@ -626,8 +896,26 @@ def short(text, size=46):
     return text if len(text) <= size else text[: size - 1].rstrip(" ,.;:") + "…"
 
 
+KIND_NAMES = {"fig": "figure", "tbl": "table", "eq": "equation", "sec": "section", "code": "listing", "def": "definition", "thm": "theorem"}
+
+
 def plain_message(text):
     text = text.strip()
+    found = re.match(r"^reference @(\w+):([\w.-]+) does not exist", text)
+    if found:
+        kind = KIND_NAMES.get(found.group(1), found.group(1))
+        return f"A link points to a {kind} called “{found.group(2)}” that doesn't exist. Click here and pick the right {kind} with @"
+    found = re.match(r"^the id '([^']+)' is used twice for (\w+)", text)
+    if found:
+        kind = KIND_NAMES.get(found.group(2), found.group(2))
+        return f"Two {kind}s have the same label “{found.group(1)}”. Change one of them"
+    found = re.match(r"^chart column '([^']+)' is not in the data", text)
+    if found:
+        return f"A chart asks for a column called “{found.group(1)}” that isn't in its data, so another column was used"
+    found = re.match(r"^unknown option '([^']+)'", text)
+    if found:
+        return f"“{found.group(1)}” is not a setting Essay Builder knows, so it was ignored"
+    text = re.sub(r"\s*\((?:use |known |add it |did you mean |allowed: )[^()]*(?:\([^()]*\)[^()]*)*\)", "", text).strip()
     return text[:1].upper() + text[1:] if text else text
 
 
@@ -817,9 +1105,12 @@ def run(path, source, pages=None, task=None, extra=None):
     for item in mains:
         if item["kind"] == "code":
             continue
+        name = "Image" if item["kind"] == "img" else item["label"]
         if not item["caption"]:
-            name = "Image" if item["kind"] == "img" else item["label"]
             add("warn", f"{name} has no caption", item["line"].no)
+            missing_caption += 1
+        elif re.fullmatch(r"\s*[A-Za-z]+ caption\.?\s*", str(item["caption"])):
+            add("warn", f"{name} still has the sample caption “{item['caption'].strip()}”", item["line"].no)
             missing_caption += 1
     for item in mains:
         if item["kind"] not in {"fig", "tbl"} or roles.get(item["line"].no, "body") == "end" and not item["id"]:
@@ -934,12 +1225,13 @@ def run(path, source, pages=None, task=None, extra=None):
         add(level, plain_message(text), line)
     for item in extra or []:
         level = "error" if item.get("level") == "error" else "warn"
-        text = str(item.get("text") or "").strip()
+        given, text = message_parts(str(item.get("text") or "").strip(), path.name)
+        text = text.strip()
         if not text or (level, text) in seen or any(rx.search(text) for rx in OWN_TOPICS):
             continue
         seen.add((level, text))
         line = item.get("line")
-        add(level, plain_message(text), line if isinstance(line, int) else None)
+        add(level, plain_message(text), line if isinstance(line, int) else given)
     if not report.errors and not any(item.get("level") == "error" for item in extra or []):
         add("ok", "No build errors")
 
