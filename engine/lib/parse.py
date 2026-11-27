@@ -810,6 +810,8 @@ class Compiler(*KITS):
                 flow = " flow"
             if flags & {"samepage", "nobreak"}:
                 flow = " flow"
+            if flags & {"newpage", "pagebreak"}:
+                flow = ""
             self.implicit_front, self.seen_heading = False, True
             appendix = re.match(r"(?i)appendix\s+([A-Z])(?![A-Za-z])", title)
             self.appendix = appendix.group(1).upper() if appendix else ""
@@ -830,12 +832,16 @@ class Compiler(*KITS):
         elif level == 2:
             self.seen_heading = True
             self.ensure_section(block.line)
+            if flags & {"newpage", "pagebreak"}:
+                self.emit('<div class="pb"></div>')
             number = ""
             if self.numbered_h1 and "nonumber" not in flags and "unnumbered" not in flags:
                 self.h2 += 1
                 number = f"{self.h1}.{self.h2}"
         else:
             self.ensure_section(block.line)
+            if flags & {"newpage", "pagebreak"}:
+                self.emit('<div class="pb"></div>')
             look = style_css(" ".join(f'{key}="{value}"' for key, value in attrs.items() if key in STYLE_KEYS and key != "id"), self, line.where)
             look = f' style="{look}"' if look else ""
             self.emit(f"<h3{look}>{self.inline(text, line)}</h3>")

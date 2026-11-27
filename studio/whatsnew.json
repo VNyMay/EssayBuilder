@@ -1,6 +1,14 @@
 {
-  "version": "1.3.1",
+  "version": "1.3.2",
   "items": [
+    [
+      "Start any heading on a new page",
+      "Open the text style menu on a heading, or its block menu, and pick Starts a new page. Ctrl+Enter adds a page break right where you are typing."
+    ],
+    [
+      "Smoother controls",
+      "Align, wrap, source type and every switch now slide into place, and Essay Builder opens full screen."
+    ],
     [
       "Templates for every subject",
       "New starters with their own Check lists: Business Management IA, Digital Society IA, English Individual Oral, French and Arabic writing tasks, and CAS reflections and projects. Arabic and French words now count properly."

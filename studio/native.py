@@ -251,6 +251,7 @@ def main():
         width=1360,
         height=900,
         min_size=(MIN_WIDTH, MIN_HEIGHT),
+        maximized=True,
         frameless=False,
         easy_drag=False,
         background_color="#f4f7f5",

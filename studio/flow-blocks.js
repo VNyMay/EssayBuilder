@@ -66,26 +66,7 @@ function flowHandleMount() {
         { label: 'Quote', cls: 'st-quote', run: into('quote') },
       );
     }
-    if (node.type.name === 'heading') {
-      const tail = node.attrs.tail || '';
-      const has = (flag) => new RegExp(`(^|[\\s{])${flag}(?=[\\s}])`).test(tail);
-      const toggle = (flag, on) => () => {
-        const inner = tail.replace(/^\{|\}$/g, '').split(/\s+/).filter((part) => part && part !== flag && !(flag === 'nonumber' && part === 'unnumbered'));
-        if (on) inner.push(flag);
-        const next = inner.length ? `{${inner.join(' ')}}` : '';
-        FLOW.editor.view.dispatch(FLOW.editor.state.tr.setNodeMarkup(pos, null, { ...node.attrs, tail: next }));
-      };
-      const numbered = !has('nonumber') && !has('unnumbered');
-      const listed = !has('notoc');
-      items.push(
-        { label: `${numbered ? '✓ ' : ''}Numbered`, cls: 'sep-top', run: toggle('nonumber', numbered) },
-        { label: `${listed ? '✓ ' : ''}In contents`, run: toggle('notoc', listed) },
-      );
-      if (node.attrs.level === 1 && !/^(no|off|false)$/i.test(String((S.settings || {})['section-breaks'] || 'yes'))) {
-        const ownPage = !has('samepage') && !has('nobreak');
-        items.push({ label: `${ownPage ? '✓ ' : ''}Starts a new page`, run: toggle('samepage', ownPage) });
-      }
-    }
+    if (node.type.name === 'heading') items.push(...flowHeadingItems(pos, node));
     items.push(
       { label: 'Move up', cls: 'sep-top', run: () => flowMoveNode(pos, -1) },
       { label: 'Move down', run: () => flowMoveNode(pos, 1) },
@@ -217,6 +198,29 @@ function flowWithId(lines) {
     n += 1;
   }
   return [lines[0], `id: ${ident}`, ...lines.slice(1)];
+}
+
+function flowHeadingItems(pos, node) {
+  const tail = node.attrs.tail || '';
+  const has = (flag) => new RegExp(`(^|[\\s{])${flag}(?=[\\s}])`).test(tail);
+  const toggle = (flags, on) => () => {
+    const drop = [flags].flat();
+    const inner = tail.replace(/^\{|\}$/g, '').split(/\s+/).filter((part) => part && !drop.includes(part) && !(drop.includes('nonumber') && part === 'unnumbered'));
+    if (on) inner.push(drop[0]);
+    const next = inner.length ? `{${inner.join(' ')}}` : '';
+    FLOW.editor.view.dispatch(FLOW.editor.state.tr.setNodeMarkup(pos, null, { ...node.attrs, tail: next }));
+    const paged = drop[0] === 'newpage' ? on : drop[0] === 'samepage' ? !on : null;
+    if (paged !== null) toast(paged ? 'This heading now starts on a new page' : 'This heading now follows on the same page');
+  };
+  const numbered = !has('nonumber') && !has('unnumbered');
+  const listed = !has('notoc');
+  const breaks = node.attrs.level === 1 && !/^(no|off|false)$/i.test(String((S.settings || {})['section-breaks'] || 'yes'));
+  const ownPage = breaks ? !has('samepage') && !has('nobreak') : has('newpage') || has('pagebreak');
+  return [
+    { label: `${ownPage ? '✓ ' : ''}Starts a new page`, cls: 'sep-top', run: breaks ? toggle(['samepage', 'nobreak'], ownPage) : toggle(['newpage', 'pagebreak'], !ownPage) },
+    { label: `${numbered ? '✓ ' : ''}Numbered`, run: toggle('nonumber', numbered) },
+    { label: `${listed ? '✓ ' : ''}In contents`, run: toggle('notoc', listed) },
+  ];
 }
 
 function flowInsertBlocks(lines, kind) {

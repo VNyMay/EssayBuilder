@@ -32,6 +32,7 @@ function rowsInput(item, field, ctx) {
       item[field.key] = box.checked;
       ctx.changed(true);
     });
+    switchMotion(box);
     return h('div', { class: 'field rw-check' }, box);
   }
   if (field.kind === 'choice') {

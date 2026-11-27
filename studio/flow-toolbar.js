@@ -21,7 +21,11 @@ function flowToolbar() {
   const style = h('button', { type: 'button', class: 'fpick style', title: 'Text style' });
   style.addEventListener('mousedown', (event) => {
     event.preventDefault();
-    flowMenu(style, FLOW_STYLES.map((item) => ({ label: item.label, cls: `st-${item.value}`, on: flowBlockType() === item.value, run: () => flowSetBlock(item.value) })));
+    const items = FLOW_STYLES.map((item) => ({ label: item.label, cls: `st-${item.value}`, on: flowBlockType() === item.value, run: () => flowSetBlock(item.value) }));
+    const { $from } = FLOW.editor.state.selection;
+    const top = $from.depth ? $from.node(1) : null;
+    if (top && top.type.name === 'heading') items.push(...flowHeadingItems($from.before(1), top));
+    flowMenu(style, items);
   });
   const size = h('button', { type: 'button', class: 'fpick size', title: 'Size' });
   size.addEventListener('mousedown', (event) => {
@@ -80,7 +84,7 @@ function flowAddMenu(anchor) {
     block('Table', 'table', { cls: 'sep-top' }),
     block('Chart', 'chart'),
     block('Image', 'image'),
-    block('Page break', 'pagebreak'),
+    block('Page break', 'pagebreak', { hint: 'Ctrl+Enter' }),
     { label: 'All blocks…', icon: 'box', hint: '/', run: () => setTimeout(() => reveal($('#palette')), 0) },
   ].filter(Boolean));
 }

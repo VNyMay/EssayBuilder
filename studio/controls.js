@@ -113,6 +113,7 @@ function segmented(options, value, onPick) {
       html: `${option.icon ? icon(option.icon, 16) : ''}${option.label ? `<span>${option.label}</span>` : ''}`,
       onclick: () => {
         if (option.disabled) return;
+        motionRemember(box, { left: thumb.style.left, width: thumb.style.width });
         box.querySelectorAll('button').forEach((item) => item.classList.remove('on'));
         button.classList.add('on');
         placeThumb();
@@ -121,6 +122,7 @@ function segmented(options, value, onPick) {
     });
     box.append(button);
   });
+  box.dataset.motion = options.map((option) => option.value).join('|');
   const thumb = h('span', { class: 'seg-thumb' });
   box.prepend(thumb);
   box.classList.add('has-thumb');
@@ -133,7 +135,20 @@ function segmented(options, value, onPick) {
     thumb.style.left = `${active.offsetLeft}px`;
     thumb.style.width = `${active.offsetWidth}px`;
   };
+  let first = true;
   const settle = () => {
+    const ready = box.isConnected && box.offsetWidth > 0;
+    const before = first && ready && motionRecall(box);
+    if (ready) first = false;
+    if (before && before.width && before.width !== '0px' && !box.classList.contains('ready')) {
+      thumb.style.left = before.left;
+      thumb.style.width = before.width;
+      void thumb.offsetWidth;
+      box.classList.add('ready');
+      void thumb.offsetWidth;
+      placeThumb();
+      return;
+    }
     placeThumb();
     if (thumb.style.width !== '0px') requestAnimationFrame(() => box.classList.add('ready'));
   };
@@ -183,21 +198,75 @@ function cards(options, value, onPick, columns = 3) {
       title: option.title || option.label,
       html: `<span class="art">${option.art || ''}</span><span class="cap">${option.label}</span>`,
       onclick: () => {
+        const was = box.querySelector('.card.on');
+        motionRemember(box, { index: was ? [...box.children].indexOf(was) : -1 });
         box.querySelectorAll('.card').forEach((item) => item.classList.remove('on'));
-        card.classList.add('on');
+        card.classList.add('on', 'picked');
+        setTimeout(() => card.classList.remove('picked'), 400);
         onPick(option.value);
       },
     });
     box.append(card);
   });
+  box.dataset.motion = options.map((option) => option.value).join('|');
+  requestAnimationFrame(() => {
+    const before = motionRecall(box);
+    const now = box.querySelector('.card.on');
+    const old = before && before.index >= 0 ? box.children[before.index] : null;
+    if (!now || !old || old === now) return;
+    now.classList.remove('on');
+    old.classList.add('on');
+    void box.offsetWidth;
+    old.classList.remove('on');
+    now.classList.add('on', 'picked');
+    setTimeout(() => now.classList.remove('picked'), 400);
+  });
   return box;
+}
+
+const MOTION_MEMORY = new Map();
+
+function motionKey(node) {
+  const owner = node.closest('.line, .section, section');
+  const label = owner ? (owner.querySelector('label, .section-title, h3') || {}).textContent || '' : '';
+  const panel = node.closest('[id]');
+  return `${panel ? panel.id : ''}#${label}#${node.dataset.motion || node.type || ''}`;
+}
+
+function motionRemember(node, state) {
+  if (!node.isConnected) return;
+  MOTION_MEMORY.set(motionKey(node), { state, time: performance.now() });
+}
+
+function motionRecall(node) {
+  if (!node.isConnected) return null;
+  const key = motionKey(node);
+  const saved = MOTION_MEMORY.get(key);
+  MOTION_MEMORY.delete(key);
+  return saved && performance.now() - saved.time < 900 ? saved.state : null;
 }
 
 function switchField(on, onChange, title = '') {
   const box = h('input', { type: 'checkbox', title });
   box.checked = on;
   box.addEventListener('change', () => onChange(box.checked));
+  switchMotion(box);
   return h('div', { class: 'field' }, box);
+}
+
+function switchMotion(box) {
+  box.addEventListener('change', () => motionRemember(box, { checked: !box.checked }), true);
+  requestAnimationFrame(() => {
+    const before = motionRecall(box);
+    if (!before || before.checked === box.checked) return;
+    const now = box.checked;
+    box.classList.add('snap');
+    box.checked = before.checked;
+    void box.offsetWidth;
+    box.classList.remove('snap');
+    box.checked = now;
+  });
+  return box;
 }
 
 function stepper({ value, min, max, step = 1, onChange }) {

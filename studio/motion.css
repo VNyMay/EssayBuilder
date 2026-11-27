@@ -233,3 +233,59 @@ html.theming *::before {
     transition-duration: 1ms !important;
   }
 }
+
+.field input[type='checkbox'].snap,
+.field input[type='checkbox'].snap::before {
+  transition: none !important;
+}
+
+.chips .chip {
+  transition: background-color var(--mid) ease, color var(--mid) ease, box-shadow var(--mid) var(--ease), transform var(--fast) ease;
+}
+
+.chips .chip:active {
+  transform: scale(0.94);
+}
+
+.check-box {
+  transition: background-color var(--mid) ease, border-color var(--mid) ease, color var(--fast) ease, transform var(--fast) ease;
+}
+
+.check-box svg {
+  scale: 0.3;
+  opacity: 0;
+  transition: scale var(--slow) var(--ease-spring), opacity var(--fast) ease;
+}
+
+.check-tick input:checked + .check-box svg {
+  scale: 1;
+  opacity: 1;
+}
+
+.check-tick:active .check-box {
+  transform: scale(0.86);
+}
+
+.check-tick-text {
+  transition: color var(--mid) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check-box svg { transition: none; }
+}
+
+.hv-row {
+  transition: background-color var(--mid) ease, box-shadow var(--mid) var(--ease);
+}
+
+.cards > .card.picked .art {
+  animation: card-pick var(--slow) var(--ease-spring);
+}
+
+@keyframes card-pick {
+  50% { scale: 1.04; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cards > .card.picked .art { animation: none; }
+}

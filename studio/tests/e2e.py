@@ -359,6 +359,49 @@ def test_panel_stays_open_while_editing(app):
         check(f"title: {title}" in app.js("S.source"), f"the edit {title} should reach the essay")
 
 
+def test_panel_controls_slide(app):
+    app.fresh()
+    for _ in range(2):
+        app.js("document.querySelector('.fb[data-kind=chart]').scrollIntoView({ block: 'center' })")
+        time.sleep(1)
+    spot = app.js("(() => { const r = document.querySelector('.fb[data-kind=chart]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+    app.browser.click(spot[0], spot[1])
+    app.wait("!!S.panel && [...document.querySelectorAll('#panel .line.stack')].some((l) => /Align/.test(l.textContent))", 10, "the chart panel")
+    time.sleep(0.6)
+    trace = app.js("""new Promise((done) => {
+      const line = () => [...document.querySelectorAll('#panel .line.stack')].find((l) => l.querySelector('label') && l.querySelector('label').textContent === 'Align');
+      const target = [...line().querySelectorAll('button')].find((b) => !b.classList.contains('on') && !b.classList.contains('off'));
+      const start = line().querySelector('.seg-thumb').getBoundingClientRect().left;
+      target.click();
+      const seen = [];
+      const tick = () => {
+        const thumb = line().querySelector('.seg-thumb');
+        seen.push(thumb.getBoundingClientRect().left);
+        if (seen.length < 30) requestAnimationFrame(tick);
+        else done({ start, seen, end: target.isConnected ? target.getBoundingClientRect().left : line().querySelector('button.on').getBoundingClientRect().left });
+      };
+      requestAnimationFrame(tick);
+    })""")
+    between = [x for x in trace["seen"] if min(trace["start"], trace["end"]) + 3 < x < max(trace["start"], trace["end"]) - 3]
+    check(abs(trace["end"] - trace["start"]) > 10, f"Align should move to another button: {trace}")
+    check(len(between) >= 3, f"the Align highlight should slide, not jump: {trace['start']} -> {trace['seen'][:12]}")
+    flip = app.js("""new Promise((done) => {
+      const box = [...document.querySelectorAll('#panel .field input[type=checkbox]')][0];
+      const knob = () => parseFloat(getComputedStyle(document.querySelectorAll('#panel .field input[type=checkbox]')[0], '::before').left);
+      const start = knob();
+      box.click();
+      const seen = [];
+      const tick = () => {
+        seen.push(knob());
+        if (seen.length < 20) requestAnimationFrame(tick);
+        else done({ start, seen });
+      };
+      requestAnimationFrame(tick);
+    })""")
+    middle = [x for x in flip["seen"] if 4 < x < 18]
+    check(len(middle) >= 2, f"the switch knob should slide: {flip}")
+
+
 def test_check_shows_section_names(app):
     app.fresh()
     check(app.js("lineWhere(3)") == "Settings", "lines in the settings header should say Settings")
@@ -541,6 +584,35 @@ def test_adding_a_table_keeps_other_blocks_right(app):
     wrong = [look for look in looks if look[0] == "sources" and "fb-info" not in look[1]]
     check(not wrong, f"the sources box must keep its own look after a table is added: {looks}")
     check(not app.js(OUTSIDE_PAGES), "text should stay on the pages after adding a table")
+
+
+def test_new_page_shortcut_and_heading_option(app):
+    app.fresh()
+    at = app.caret_to_paragraph("Newcomen's engine was used")
+    check(at, "the paragraph should be found")
+    app.js("(() => { const ed = FLOW.editor; let p = null; ed.state.doc.descendants((n, pos) => { if (p === null && n.type.name === 'paragraph' && n.textContent.startsWith(\"Newcomen's engine was used\")) p = pos; }); const text = ed.state.doc.nodeAt(p).textContent; ed.commands.setTextSelection(p + 1 + text.indexOf(' James Watt')); ed.commands.focus(); })()")
+    time.sleep(0.3)
+    for kind in ("keyDown", "keyUp"):
+        app.browser.send("Input.dispatchKeyEvent", {"type": kind, "key": "Enter", "code": "Enter", "modifiers": 2, "windowsVirtualKeyCode": 13})
+    time.sleep(0.3)
+    app.browser.send("Input.insertText", {"text": "Z"})
+    app.wait("S.source.includes(':::pagebreak')", 10, "the page break in the essay")
+    source = app.js("S.source")
+    before = source.index("almost free.")
+    brk = source.index(":::pagebreak")
+    after = source.index("Z James Watt")
+    check(before < brk < after, "Ctrl+Enter should split the paragraph, put a page break in between, and keep typing on the new page")
+    states = app.js("""(() => {
+      let pos = null, node = null;
+      FLOW.editor.state.doc.forEach((n, p) => { if (n.type.name === 'heading' && n.textContent.startsWith('Evaluation')) { pos = p; node = n; } });
+      const first = flowHeadingItems(pos, node)[0];
+      first.run();
+      let again = null;
+      FLOW.editor.state.doc.forEach((n, p) => { if (n.type.name === 'heading' && n.textContent.startsWith('Evaluation')) again = flowHeadingItems(p, n)[0]; });
+      return [first.label, again.label];
+    })()""")
+    check(states[0].startswith("✓") != states[1].startswith("✓") and "Starts a new page" in states[1], f"the heading option should switch: {states}")
+    app.wait("/# Evaluation: was steam the cause\\? \\{(newpage|samepage)\\}/.test(S.source)", 10, "the heading flag in the essay")
 
 
 def test_insert_between_blocks(app):
@@ -796,6 +868,7 @@ APP_TESTS = [
     test_all_blocks_palette,
     test_preview_is_read_only,
     test_panel_stays_open_while_editing,
+    test_panel_controls_slide,
     test_check_shows_section_names,
     test_undo_redo,
     test_changes_elsewhere_are_never_lost,
@@ -806,6 +879,7 @@ APP_TESTS = [
     test_blocks_never_go_blank_while_updating,
     test_new_source_from_at_keeps_sentence,
     test_adding_a_table_keeps_other_blocks_right,
+    test_new_page_shortcut_and_heading_option,
     test_insert_between_blocks,
     test_at_finds_blocks_by_name,
     test_text_size_shortcuts,

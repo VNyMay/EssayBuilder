@@ -1127,7 +1127,7 @@ def launch_window(url):
         smooth += ["--ozone-platform-hint=auto", "--class=essay-builder"]
     WINDOWS.append(
         subprocess.Popen(
-            [found, f"--app={url}", "--window-size=1280,860", *flags, *smooth],
+            [found, f"--app={url}", "--start-maximized", *flags, *smooth],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
@@ -1144,13 +1144,13 @@ def launch(url):
     for name in ("chrome", "msedge"):
         found = shutil.which(name)
         if found:
-            subprocess.Popen([found, f"--app={url}", "--window-size=1280,860", *SMOOTH])
+            subprocess.Popen([found, f"--app={url}", "--start-maximized", *SMOOTH])
             return
     for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"), os.environ.get("LocalAppData")):
         for relative in ("Google/Chrome/Application/chrome.exe", "Microsoft/Edge/Application/msedge.exe"):
             candidate = Path(base or "/nonexistent") / relative
             if candidate.is_file():
-                subprocess.Popen([str(candidate), f"--app={url}", "--window-size=1280,860", *SMOOTH])
+                subprocess.Popen([str(candidate), f"--app={url}", "--start-maximized", *SMOOTH])
                 return
     webbrowser.open(url)
 

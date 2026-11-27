@@ -1633,6 +1633,7 @@ function inputFor(row, spec, onChange) {
       row.value = box.checked ? 'yes' : 'no';
       onChange(150);
     });
+    switchMotion(box);
     return h('div', { class: 'field' }, box);
   }
   if (Array.isArray(spec) && spec.length && typeof spec[0] === 'object') {

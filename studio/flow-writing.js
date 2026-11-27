@@ -165,7 +165,7 @@ function flowFocusPaint() {
 
 const FLOW_SHORTCUTS = [
   ['Writing', [
-    ['Ctrl+B', 'Bold'], ['Ctrl+I', 'Italic'], ['Ctrl+U', 'Underline'], ['Ctrl+Shift+S', 'Strikethrough'], ['Ctrl+.', 'Superscript'], ['Ctrl+,', 'Subscript'], ['Ctrl+Shift+> / <', 'Bigger / smaller text'],
+    ['Ctrl+B', 'Bold'], ['Ctrl+I', 'Italic'], ['Ctrl+U', 'Underline'], ['Ctrl+Shift+S', 'Strikethrough'], ['Ctrl+.', 'Superscript'], ['Ctrl+,', 'Subscript'], ['Ctrl+Shift+> / <', 'Bigger / smaller text'], ['Ctrl+Enter', 'New page'],
     ['Ctrl+M', 'Maths'], ['Shift+Enter', 'Line break'], ['/', 'Insert anything'], ['Ctrl+Z / Ctrl+Y', 'Undo / Redo'],
   ]],
   ['Paragraphs', [

@@ -441,6 +441,8 @@ const FlowKeys = () => TT.Extension.create({
         return true;
       },
       'Mod-k': () => false,
+      'Mod-Enter': () => flowPageBreak(),
+      'Mod-Shift-Enter': () => flowPageBreak(),
       'Mod-Alt-m': () => {
         flowNoteAdd();
         return true;
@@ -466,6 +468,39 @@ const FlowKeys = () => TT.Extension.create({
     };
   },
 });
+
+function flowPageBreak() {
+  const found = TEMPLATES.find((item) => item.label === 'Page break');
+  if (!found) return false;
+  const { state } = FLOW.editor;
+  const { $from, empty } = state.selection;
+  if (!empty || $from.depth !== 1 || !$from.parent.isTextblock) {
+    flowInsertTemplate(found);
+    return true;
+  }
+  let made = null;
+  flowDocFrom(flowBlocks(flowWithId(found.lines), 0)).forEach((node) => {
+    if (!made && node.type.name === 'figureBlock') made = node.type.create({ ...node.attrs, uid: flowNextUid() });
+  });
+  if (!made) return false;
+  let tr = state.tr;
+  let caret;
+  if ($from.parentOffset === 0) {
+    const at = $from.before(1);
+    tr = tr.insert(at, made);
+    caret = $from.pos + made.nodeSize;
+  } else {
+    const atEnd = $from.parentOffset === $from.parent.content.size;
+    tr = tr.split($from.pos, 1, atEnd ? [{ type: state.schema.nodes.paragraph }] : undefined);
+    const between = $from.pos + 1;
+    tr = tr.insert(between, made);
+    caret = between + made.nodeSize + 1;
+  }
+  tr = tr.setSelection(TT.TextSelection.create(tr.doc, caret)).scrollIntoView();
+  FLOW.editor.view.dispatch(tr);
+  FLOW.editor.commands.focus();
+  return true;
+}
 
 function flowCalloutExit() {
   const { state } = FLOW.editor;

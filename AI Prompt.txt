@@ -625,6 +625,8 @@ cover-color: #1f4e79
 ### Minor heading    level 3: not numbered, not in the contents
 # Results {nonumber}      no number
 # Methods {#methods}      your own id (for @sec:methods)
+## Results {newpage}      this heading (any level) starts on a new page
+# Discussion {samepage}  when sections start new pages, keep this one on the same page
 ```
 
 These level-1 headings are recognised and **never numbered**: `References`, `Bibliography`, `Works Cited`, `Sources`, `Appendix ...` (and `Abstract`, `Acknowledgements`, `Preface`, ...). The word count covers everything from the first numbered section up to the first `References` / `Appendix`. Do **not** write a `# Contents` heading: it is generated.
